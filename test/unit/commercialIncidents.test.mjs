@@ -14,8 +14,8 @@ const {publishCommercialPolicy}=await import('../../src/domain/commercialKernel/
 const {evaluateCommercialPolicies}=await import('../../src/domain/commercialKernel/commercialPolicy.ts');
 const {loadCommercialPolicies}=await import('../../src/services/commercialKernel/policyStore.ts');
 const {openCommercialIncident,updateCommercialIncident}=await import('../../src/domain/commercialKernel/incidentCommands.ts');
-const {incidentCandidates}=await import('../../src/domain/commercialKernel/commercialIncident.ts');
-const {loadCommercialIncidents,INCIDENT_STORAGE_KEY,syncIncidentVersions}=await import('../../src/services/commercialKernel/incidentStore.ts');
+const {incidentCandidates,isCommercialIncident}=await import('../../src/domain/commercialKernel/commercialIncident.ts');
+const {loadCommercialIncidents,loadCommercialIncidentsForWorkspace,incidentCodec,INCIDENT_STORAGE_KEY,syncIncidentVersions}=await import('../../src/services/commercialKernel/incidentStore.ts');
 const {projectOutcomeRequirements}=await import('../../src/domain/commercialKernel/outcomeRequirement.ts');
 const {decodeHistoricalStorage}=await import('../../src/services/historicalStorageCodec.ts');
 const {getLocalHistoricalSourcesAt}=await import('../../src/services/historicalQuery.ts');
@@ -83,4 +83,23 @@ test('historical Incident stays open at its original cutoff despite future respo
  const first=open().value,cutoff=revisions().find(row=>row.entityType==='commercial_incidents').recordedAt;change(first,{disposition:'dismissed'});
  const sources=getLocalHistoricalSourcesAt('owner',cutoff,storage),result=composeCommercialStateAsOf({sources,scope:'owner',opportunityId:'o',cutoff,timeZone:'UTC'});
  assert.equal(result.status,'available');assert.equal(result.incidents[0].status,'open');assert.equal(result.incidents[0].version,1);assert.equal(result.incidents[0].closedAt,null);
+});
+
+test('raw cloud timestamps preserve the exact opening instant without accepting a changed or malformed basis',()=>{
+ const first=open().value;
+ const cloudTime=first.createdAt.replace('Z','+00:00');
+ assert.equal(isCommercialIncident({...first,createdAt:cloudTime}),true);
+ assert.equal(isCommercialIncident({...first,createdAt:new Date(Date.parse(first.createdAt)+1).toISOString()}),false);
+ assert.equal(isCommercialIncident({...first,createdAt:'not-a-date'}),false);
+});
+
+test('JSONB object key order cannot block a same-version incident load; changed values still conflict',async()=>{
+ const first=open().value;await new Promise(r=>setTimeout(r,0));signedIn=true;
+ await syncIncidentVersions(loadCommercialIncidents());
+ const reorder=value=>Array.isArray(value)?value.map(reorder):value&&typeof value==='object'?Object.fromEntries(Object.entries(value).reverse().map(([key,item])=>[key,reorder(item)])):value;
+ const row=reorder(incidentCodec.toRow(first,'owner'));
+ cloud.set('commercial_incidents:i',row);cloud.set('listing',{table:'commercial_incidents',row});
+ const loaded=await loadCommercialIncidentsForWorkspace('owner');assert.equal(loaded[0].id,'i');assert.equal(loaded[0].version,1);
+ const changed={...row,material_impact:'Changed impact'};cloud.set('commercial_incidents:i',changed);cloud.set('listing',{table:'commercial_incidents',row:changed});
+ await assert.rejects(()=>loadCommercialIncidentsForWorkspace('owner'),/conflict|different|version/i);
 });

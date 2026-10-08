@@ -11,7 +11,8 @@ import {
   createOpportunityOutcomeFromOpportunity,
   type OpportunityOutcomeRecord,
 } from './opportunityOutcomeStore.ts';
-import { createStakeholder, emptyStakeholderInput, type StakeholderRecord } from './stakeholderStore.ts';
+import { createStakeholder, emptyStakeholderInput, loadStakeholders, type StakeholderRecord } from './stakeholderStore.ts';
+import { matchingAccountContacts } from '../utils/stakeholderIdentity.ts';
 import {
   LEAD_STAGE,
   QUALIFIED_STAGE,
@@ -216,16 +217,19 @@ export async function createLead(
   const contactName = (input.contactName || '').trim();
   if (contactName) {
     try {
+      const candidates=matchingAccountContacts(await loadStakeholders(sample?undefined:userId),{accountId:result.opportunity.accountId,accountName,name:contactName,roleTitle:input.contactRole,userId:sample?undefined:userId,isSample:sample});
+      if(candidates.length)return {...result,stakeholder:candidates.length===1?candidates[0]:null,warning:candidates.length>1?'Lead saved. More than one contact has this name; choose the person in the account People tab.':result.warning};
       const created = await createStakeholder(
         {
           ...emptyStakeholderInput,
+          accountId:result.opportunity.accountId || '',
           accountName,
           opportunityId: result.opportunity.id,
           opportunityName: result.opportunity.opportunityName,
           name: contactName,
           roleTitle: (input.contactRole || '').trim(),
           stakeholderRole: 'Unknown',
-          lastInteractionDate: todayDateKey(),
+          lastInteractionDate: '',
         },
         userId,
         workspace,
@@ -235,6 +239,7 @@ export async function createLead(
       // The lead is the record; the person is context on it. A failed person
       // write must not report the lead as failed, and the name is still on the
       // capture that produced it.
+      return {...result,stakeholder:null,warning:result.warning || 'Lead saved, but the contact could not be saved. Add the contact in the account People tab.'};
     }
   }
 

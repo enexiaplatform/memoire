@@ -50,7 +50,7 @@ export function TimelinePage() {
   // drawn underneath it.
   const [boardWindow, setBoardWindow] = useState<PlanBoardWindow>(() => {
     const range = getPlanRange('week');
-    return { start: range.start, end: range.end, today: todayDateKey() };
+    return { start: range.start, end: range.end, today: todayDateKey(), includeOverdueBacklog:false };
   });
   /**
    * What the board says about the period on screen - which week, and how much

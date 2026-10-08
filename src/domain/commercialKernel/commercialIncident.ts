@@ -18,7 +18,7 @@ export function isCommercialIncident(value:unknown):value is CommercialIncident{
   &&text(r.summary,500)&&text(r.materialImpact,2000)&&text(r.coordinator,200)&&typeof r.responseNote==='string'&&r.responseNote.length<=4000
   &&Number.isSafeInteger(r.version)&&r.version>=1&&r.version<=2147483647
   &&['open','closed'].includes(r.status)&&r.sourceType==='manual'&&instant(r.createdAt)&&instant(r.updatedAt)&&Date.parse(r.updatedAt)>=Date.parse(r.createdAt)
-  &&Boolean(b)&&b.version===1&&instant(b.capturedAt)&&b.capturedAt===r.createdAt&&isCommercialPolicy(b.policy)
+  &&Boolean(b)&&b.version===1&&instant(b.capturedAt)&&Date.parse(b.capturedAt)===Date.parse(r.createdAt)&&isCommercialPolicy(b.policy)
   &&b.policy.id===r.policyId&&b.policy.userId===r.userId&&b.policy.opportunityId===r.opportunityId&&b.policy.lifecycle==='active'
   &&Boolean(b.policy.isSample)===Boolean(r.isSample)&&text(b.reason,2000)&&Array.isArray(b.sourceRecordIds)
   &&b.sourceRecordIds.length<=300&&b.sourceRecordIds.every(id=>text(id,200))&&b.sourceRecordIds.includes(r.policyId)

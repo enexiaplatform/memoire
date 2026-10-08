@@ -18,7 +18,7 @@ import type { FirstWeekPath } from '../../utils/firstWeekPath';
  * Capture with no indication of why they were there, what came next, or how far
  * through anything they were.
  *
- * So this rides in the corner of every workspace route, and three rules keep it
+ * So this sits above the content of every workspace route, and three rules keep it
  * from becoming the nagging overlay every product eventually grows:
  *
  *   - It is derived, never asserted. Every step is read from the workspace by
@@ -104,9 +104,7 @@ export function GettingStartedCoach() {
 
   return (
     <div
-      // Clear of the phone tab bar, and of the safe area below it.
-      className="pointer-events-none fixed inset-x-0 bottom-20 z-40 flex justify-end px-4 lg:bottom-6 lg:px-6"
-      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      className="flex shrink-0 justify-end border-b border-line-soft bg-canvas px-4 py-2 lg:px-6"
     >
       <div className="pointer-events-auto w-full max-w-sm">
         {graduating ? (

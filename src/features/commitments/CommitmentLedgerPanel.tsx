@@ -210,7 +210,7 @@ export function CommitmentLedgerPanel({
               board had been paged to. */}
           {fold && (
             <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-400">
-              Not on the week shown ({listedCount})
+              Not shown on the board ({listedCount})
             </p>
           )}
           <CommitmentGroup
@@ -376,8 +376,9 @@ function CommitmentGroup({
   showLabel?: boolean;
   ledger: ReturnType<typeof useCommitmentLedger>;
 }) {
+  const [pageSize,setPageSize]=useState(12);
   if (items.length === 0) return null;
-  const visible = limit ? items.slice(0, limit) : items;
+  const visible = items.slice(0,limit||pageSize);
 
   return (
     <div>
@@ -479,6 +480,7 @@ function CommitmentGroup({
           +{items.length - visible.length} more in Plan
         </p>
       )}
+      {!limit&&items.length>visible.length&&<button type="button" onClick={()=>setPageSize(size=>size+12)} className="mt-2 min-h-11 text-xs font-bold text-brand-blue">Show {Math.min(12,items.length-visible.length)} more ({items.length-visible.length} remaining)</button>}
     </div>
   );
 }

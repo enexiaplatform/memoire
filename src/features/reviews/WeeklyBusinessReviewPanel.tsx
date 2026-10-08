@@ -151,6 +151,7 @@ function reviewSections(
               Stuck: {review.moneyFlow.stuckThreads.slice(0, 3).map((thread) => `${thread.accountName} (${thread.stuckReason})`).join('; ')}
             </p>
           )}
+          <p className="mt-2 text-xs text-muted">Open order lanes show cash still to collect. Paid shows settled contract value; collected cash includes partial receipts and overpayments in the scoreboard.</p>
         </article>
       ),
     },

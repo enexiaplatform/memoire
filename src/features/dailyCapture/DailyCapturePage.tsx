@@ -6,6 +6,7 @@ import { useAuthContext } from '../../auth/authContext';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
 import { SuggestInput } from '../../components/common/SuggestInput';
 import { normalizeEntityName, sameAccount } from '../../utils/accountIdentity';
+import { editCaptureDraft,applyCaptureActionCorrection } from '../../utils/captureDraftEdit';
 import { getReportingCurrency } from '../../utils/money';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { classifySalesActivity, type ClassifiedSalesActivity, type SalesActivityType } from '../../utils/salesActivityClassifier';
@@ -761,7 +762,7 @@ export function DailyCapturePage() {
     setAccountAliases(memory.aliases);
     setActivities((current) => [result.record, ...current.filter((item) => item.id !== result.record.id)]);
     setLastSavedActivity(result.record);
-    openReviewForCapture(result.record);
+    openReviewForCapture(result.record,originalParsedDraft || localPreview || undefined);
     setRawNote('');
     setEmailForm(createInitialEmailThreadCaptureForm(searchParams));
     setStructuredDraft(null);
@@ -856,10 +857,9 @@ export function DailyCapturePage() {
     if (!preview) return;
     if (!originalParsedDraft) setOriginalParsedDraft(cloneClassifiedDraft(preview));
     setStructuredDraft({
-      ...preview,
+      ...editCaptureDraft(preview,key,value),
       rawNote: activeCaptureText.trim(),
       activityDate: activeActivityDate,
-      [key]: value,
       ...(key === 'activityType' && preview.summary.startsWith(preview.activityType)
         ? { summary: `${String(value)}${preview.summary.slice(preview.activityType.length)}` } : {}),
     });
@@ -986,8 +986,8 @@ export function DailyCapturePage() {
    * needs a second look is what Memoire *derived* from it, and none of that is
    * written until the review is saved.
    */
-  const openReviewForCapture = useCallback((record: SalesActivityRecord) => {
-    const changeSet = parseCapture({
+  const openReviewForCapture = useCallback((record: SalesActivityRecord,original?:ClassifiedSalesActivity) => {
+    const parsedSet = parseCapture({
       rawCapture: record.rawNote,
       captureDate: record.activityDate,
       // The scope the operator confirmed above the Save button. Every accepted
@@ -1042,6 +1042,7 @@ export function DailyCapturePage() {
       },
     });
 
+    const changeSet=applyCaptureActionCorrection(parsedSet,original,record);
     // Counts only, on this device. See services/captureFactMetrics.ts for why
     // nothing here leaves the browser.
     recordCaptureFactMetrics({
@@ -1176,7 +1177,7 @@ export function DailyCapturePage() {
   const composingConsequences = useMemo(() => {
     if (!preview) return ['Nothing yet. Write what happened and this says what saving it will do.'];
     const sentences = [
-      `Saving adds one touch to ${preview.accountName || 'this workspace'}'s history, dated ${formatSafeBusinessDate(activeActivityDate)}${logToActivity ? '.' : ', kept out of Activity.'}`,
+      `Saving adds one ${preview.activityChannel==='Desk work'?'work record':'touch'} to ${preview.accountName || 'this workspace'}'s history, dated ${formatSafeBusinessDate(activeActivityDate)}${logToActivity ? '.' : ', kept out of Activity.'}`,
     ];
     if (activeScope.opportunityName) sentences.push(`It is filed under ${activeScope.opportunityName}.`);
     else if (leadDraft.enabled && activeScope.accountName) sentences.push(`It creates a new lead for ${activeScope.accountName} and files the note under it.`);
@@ -1633,7 +1634,9 @@ export function DailyCapturePage() {
       </section>
       )}
 
-      {lastSavedActivity && (
+      {lastSavedActivity && lastSavedActivity.linkStatus !== 'Ignored' && !activeCaptureText.trim()
+        && (captureMode !== 'quick' || (!quickForm.whatHappened.trim() && !quickForm.nextAction.trim()
+          && quickForm.accountName === lastSavedActivity.accountName)) && (
         <ActivityOpportunityLinkPanel
           activity={lastSavedActivity}
           opportunities={opportunities}

@@ -125,6 +125,7 @@ import {
   type OpportunityOutcomeDraft,
   type OpportunityOutcomeRecord,
 } from '../../services/opportunityOutcomeStore';
+import type { MoneyFlowInput } from '../../utils/moneyFlow';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { useWorkspaceRefresh } from '../../hooks/useWorkspaceRefresh';
 import { type AccountMemoryRecord } from '../../services/accountStore';
@@ -246,6 +247,7 @@ export function OpportunitiesPage() {
   const [opportunityOutcomes, setOpportunityOutcomes] = useState<OpportunityOutcomeRecord[]>([]);
   const [salesAssets, setSalesAssets] = useState<SalesAssetRecord[]>([]);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
+  const [moneyRecords,setMoneyRecords]=useState<Pick<MoneyFlowInput,'receivableRecords'|'milestoneRecords'>>({receivableRecords:[],milestoneRecords:[]});
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
   const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>([]);
   const [loading, setLoading] = useState(() => !getCachedSalesWorkspaceData(hasLocalSampleData() ? undefined : user?.id));
@@ -324,6 +326,7 @@ export function OpportunitiesPage() {
     setOpportunityOutcomes(workspaceData.opportunityOutcomes);
     setSalesAssets(workspaceData.assets);
     setQuotes(workspaceData.quotes);
+    setMoneyRecords({receivableRecords:workspaceData.receivableRecords||[],milestoneRecords:workspaceData.milestoneRecords||[]});
     setAccounts(workspaceData.accounts);
     setAccountMerges(workspaceData.accountMerges);
   };
@@ -1447,6 +1450,7 @@ export function OpportunitiesPage() {
           }}
           onClose={closePanel} />
         : <OpportunityPanel
+        moneyRecords={moneyRecords}
         accounts={accounts}
         mode={panelMode}
         form={form}
@@ -3024,6 +3028,7 @@ function OpportunitySortableHeader({
 }
 
 function OpportunityPanel({
+  moneyRecords,
   mode,
   form,
   saveState,
@@ -3054,6 +3059,7 @@ function OpportunityPanel({
   onViewHistory,
   onDelete,
 }: {
+  moneyRecords:Pick<MoneyFlowInput,'receivableRecords'|'milestoneRecords'>;
   mode: 'closed' | 'add' | 'edit';
   form: OpportunityFormInput;
   saveState: SaveState;
@@ -3271,6 +3277,7 @@ function OpportunityPanel({
       {mode === 'edit' && currentOpportunity && (
         <DealFirstThingHead
           snapshot={buildCommercialJourneySnapshot({
+            ...moneyRecords,
             opportunity: currentOpportunity,
             quotes,
             activities: linkedActivities,
@@ -5112,7 +5119,7 @@ function ForecastCallPanel({
 
       <p className="mt-2 text-[11px] font-bold uppercase tracking-wide text-gray-500">What your call changes</p>
       <ul className="mt-1 space-y-0.5">
-        {consequences.map((line) => (
+        {(opportunity.status==='Active'?consequences:['This deal is closed. Its forecast settings remain historical context; order risk and cash follow the recorded milestones and payments.']).map((line) => (
           <li key={line} className="text-[11px] leading-5 text-gray-600">• {line}</li>
         ))}
       </ul>

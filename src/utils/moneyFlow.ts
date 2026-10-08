@@ -41,7 +41,7 @@ export type MoneyFlow = {
   totalInMotionBase: number;
 };
 
-type MoneyFlowInput = {
+export type MoneyFlowInput = {
   receivableRecords?: OrderReceivableRecord[];
   milestoneRecords?: OrderMilestoneRecord[];
   opportunities: CrmLiteOpportunity[];
@@ -88,8 +88,8 @@ export function buildMoneyFlow(input: MoneyFlowInput): MoneyFlow {
       const receiptRisk = collection.overdueBase > 0 ? 'Payment overdue' : '';
       return { id: `order-${order.opportunityId}`, accountName: order.accountName, label: order.orderName,
         amount: stage === 'Paid' ? order.amount : collection.valueUnavailable ? null : convertMoney(collection.outstandingBase, getReportingCurrency(), order.currency as SupportedCurrency),
-        currency: order.currency, stage, stuck: Boolean(receiptRisk || order.overdue || order.stalled),
-        stuckReason: receiptRisk || (order.overdue ? 'Order checkpoint overdue' : order.stalled ? 'Order has not moved' : ''),
+        currency: order.currency, stage, stuck: !collection.settled && Boolean(receiptRisk || order.overdue || order.stalled),
+        stuckReason: collection.settled ? '' : receiptRisk || (order.overdue ? 'Order checkpoint overdue' : order.stalled ? 'Order has not moved' : ''),
         nextAction: defaultNextAction(stage) };
     });
 

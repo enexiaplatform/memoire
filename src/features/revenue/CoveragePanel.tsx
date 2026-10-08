@@ -87,6 +87,7 @@ export function CoveragePanel() {
         <div className="flex items-center gap-2">
           <TargetIcon className="h-4 w-4 text-brand-blue" />
           <h2 className="text-lg font-bold text-ink">Coverage</h2>
+          <p className="text-xs text-muted">Won plus probability-weighted supported pipeline against target. Evidence-qualified coverage is a separate, stricter reading.</p>
         </div>
         <button
           type="button"

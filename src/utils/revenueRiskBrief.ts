@@ -2,11 +2,11 @@ import type { AccountMemoryRecord } from '../services/accountStore.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
-import { buildMoneyFlow, formatMoneyFlowAmount } from './moneyFlow.ts';
+import { buildMoneyFlow, formatMoneyFlowAmount, type MoneyFlowInput } from './moneyFlow.ts';
 import { buildRetentionSignals } from './retentionSignals.ts';
 import { formatBaseCurrencyAmount, formatCurrencyAmount } from './money.ts';
 
-type RevenueRiskBriefInput = {
+type RevenueRiskBriefInput = Pick<MoneyFlowInput, 'receivableRecords' | 'milestoneRecords'> & {
   opportunities: CrmLiteOpportunity[];
   quotes: QuoteRecord[];
   activities?: SalesActivityRecord[];
@@ -23,9 +23,11 @@ type RevenueRiskBriefInput = {
  * going cold). Nothing here is inferred beyond what those rules state.
  */
 export function generateRevenueRiskBriefMarkdown(input: RevenueRiskBriefInput): string {
-  const flow = buildMoneyFlow({ opportunities: input.opportunities, quotes: input.quotes, today: input.today });
+  const flow = buildMoneyFlow(input);
   const retention = buildRetentionSignals({
     quotes: input.quotes,
+    receivableRecords: input.receivableRecords,
+    milestoneRecords: input.milestoneRecords,
     activities: input.activities || [],
     opportunities: input.opportunities,
     accounts: input.accounts,

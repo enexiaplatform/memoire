@@ -14,6 +14,7 @@ import {
 } from '../../utils/accountCsvImport';
 import { type AccountAliasIndex } from '../../utils/accountAliases';
 import { copyTextToClipboard } from '../../utils/clipboard';
+import { importAccountContacts } from '../../services/accountContactImport';
 
 /**
  * The first hour, for somebody who already has customers.
@@ -104,14 +105,19 @@ export function AccountImportPanel({
       const result = await createAccounts(importable.map((row) => row.input), userId);
       const skipped = (parsed?.length || 0) - result.accounts.length;
       onImported(result.accounts);
+      let contactMessage='';
+      try{
+        const contacts=await importAccountContacts(result.accounts,userId);
+        contactMessage=` ${contacts.created} contacts added to People, ${contacts.reused} reused.${contacts.failed?` ${contacts.failed} contacts could not be saved; account profile text is retained.`:''}${contacts.pending?` ${contacts.pending} contacts await account sync.`:''}`;
+      }catch{contactMessage=' Contacts could not be checked; account profile text is retained. Retry from the account profile.';}
       setImportState({
         status: 'done',
         created: result.accounts.length,
         skipped,
-        message: result.warning
+        message: (result.warning
           || (result.mode === 'cloud'
             ? 'Saved to your account and to this device.'
-            : 'Saved on this device. Sign in to sync these to your account.'),
+            : 'Saved on this device. Sign in to sync these to your account.'))+contactMessage,
       });
       setParsed(null);
       setCsvText('');

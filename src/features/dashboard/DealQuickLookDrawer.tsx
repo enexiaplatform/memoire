@@ -1,3 +1,4 @@
+import type { MoneyFlowInput } from '../../utils/moneyFlow';
 import { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowRight, PenLine, X } from 'lucide-react';
@@ -16,6 +17,7 @@ import { formatSafeBusinessDate } from '../../utils/safeDate.ts';
  * link leaves Today.
  */
 export function DealQuickLookDrawer({
+  moneyRecords,
   opportunity,
   activities,
   quotes,
@@ -23,6 +25,7 @@ export function DealQuickLookDrawer({
   onClose,
   onDraftFollowUp,
 }: {
+  moneyRecords:Pick<MoneyFlowInput,'receivableRecords'|'milestoneRecords'>;
   opportunity: CrmLiteOpportunity;
   activities: SalesActivityRecord[];
   quotes: QuoteRecord[];
@@ -30,7 +33,7 @@ export function DealQuickLookDrawer({
   onClose: () => void;
   onDraftFollowUp: () => void;
 }) {
-  const journey = buildCommercialJourneySnapshot({ opportunity, quotes, activities, objections });
+  const journey = buildCommercialJourneySnapshot({ ...moneyRecords, opportunity, quotes, activities, objections });
   const position = `${journey.position}${journey.positionSource === 'money-flow' ? ' (money flow)' : ''}`;
   const fullRecordHref = `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`;
 

@@ -255,9 +255,9 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
               label="Active pipeline"
               value={formatBaseMoney(revenue.activePipeline, true)}
               tone="blue"
-              detail="Every open deal"
+              detail="Every open deal, including unqualified Leads"
             />
-            <RevenueMetric label="At risk" value={formatBaseMoney(revenue.atRiskRevenue, true)} tone={revenue.atRiskRevenue ? 'red' : 'green'} />
+            <RevenueMetric label="At risk" value={formatBaseMoney(revenue.atRiskRevenue, true)} tone={revenue.atRiskRevenue ? 'red' : 'green'} detail="Contract exposure at risk; Collections shows cash still owed" />
             {/* Pipeline metrics, on a page that also carries an order book -
                 so this one says whose follow-ups it means. `overdueFollowUps`
                 counts deals with an overdue next-action date plus quotes at

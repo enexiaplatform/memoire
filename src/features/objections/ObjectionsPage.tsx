@@ -28,6 +28,7 @@ import {
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import { objectionStatusTone } from '../../utils/objectionLedger';
+import { instantToLocalInput, localInputToInstant } from '../../utils/localDateTime';
 import {
   ageObjections,
   compareByDebtAge,
@@ -563,7 +564,7 @@ function ObjectionPanel({
         <SelectField label="Impact" value={form.impact} options={objectionImpacts} onChange={(value) => update('impact', value)} />
         <SelectField label="Status" value={form.status} options={objectionStatuses} onChange={(value) => update('status', value)} />
         <Field label="Due date" type="date" value={form.dueDate} onChange={(value) => update('dueDate', value)} />
-        <Field label="Resolved at" type="datetime-local" value={form.resolvedAt ? form.resolvedAt.slice(0, 16) : ''} onChange={(value) => update('resolvedAt', value ? new Date(value).toISOString() : '')} />
+        <Field label="Resolved at" type="datetime-local" value={instantToLocalInput(form.resolvedAt)} onChange={(value) => update('resolvedAt', localInputToInstant(value))} />
         <Field label="Tags" value={form.tags.join(', ')} onChange={(value) => update('tags', parseCommaList(value))} />
       </div>
       <TextArea label="Required proof" value={form.requiredProof} onChange={(value) => update('requiredProof', value)} />

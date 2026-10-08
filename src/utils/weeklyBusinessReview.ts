@@ -5,7 +5,7 @@ import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeSto
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
-import { buildMoneyFlow, type MoneyFlow } from './moneyFlow.ts';
+import { buildMoneyFlow, type MoneyFlow, type MoneyFlowInput } from './moneyFlow.ts';
 import { buildRetentionSignals } from './retentionSignals.ts';
 import { buildCustomerSignalDigest, type SignalDigest, type SignalDigestItem } from './customerSignals.ts';
 import { readInitiativeExperiment, type InitiativeDecision } from './initiativeExperiment.ts';
@@ -80,7 +80,7 @@ export type WeeklyBusinessReview = {
   nextWeekPriorities: NextWeekPriority[];
 };
 
-type WeeklyBusinessReviewInput = {
+type WeeklyBusinessReviewInput = Pick<MoneyFlowInput, 'receivableRecords' | 'milestoneRecords'> & {
   opportunities: CrmLiteOpportunity[];
   quotes: QuoteRecord[];
   operatingContexts: OperatingContextRecord[];
@@ -100,7 +100,7 @@ type WeeklyBusinessReviewInput = {
  */
 export function buildWeeklyBusinessReview(input: WeeklyBusinessReviewInput): WeeklyBusinessReview {
   const today = sanitizeBusinessDate(input.today) || todayDateKey();
-  const moneyFlow = buildMoneyFlow({ opportunities: input.opportunities, quotes: input.quotes, today });
+  const moneyFlow = buildMoneyFlow({ ...input, today });
 
   const periodOutcomes = input.opportunityOutcomes.filter((outcome) => (
     !isDisqualifiedLeadOutcome(outcome) && isBusinessDateInRange(outcome.outcomeDate, input.period.start, input.period.end)
@@ -306,6 +306,8 @@ function buildNextWeekPriorities(
   // Retention tail: the coldest paid-but-quiet customer earns one slot -
   // future revenue going cold is next week's work too, never this week's fire.
   const coldestRetention = buildRetentionSignals({
+    receivableRecords: input.receivableRecords,
+    milestoneRecords: input.milestoneRecords,
     quotes: input.quotes,
     activities: input.activities,
     opportunities: input.opportunities,

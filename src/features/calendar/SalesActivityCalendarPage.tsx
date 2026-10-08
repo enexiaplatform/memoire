@@ -33,6 +33,7 @@ import {
 } from '../../utils/activityLedger';
 import { SubjectChip } from '../../components/common/SubjectChip';
 import { ActivityInsightsBand } from './ActivityInsightsBand';
+import type { MoneyFlowInput } from '../../utils/moneyFlow';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
 import { useWorkspaceRefresh } from '../../hooks/useWorkspaceRefresh';
 import { businessDomains, businessDomainTone, classifyBusinessDomain, type BusinessDomain } from '../../utils/businessDomain';
@@ -110,6 +111,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
+  const [moneyRecords,setMoneyRecords]=useState<Pick<MoneyFlowInput,'receivableRecords'|'milestoneRecords'>>({receivableRecords:[],milestoneRecords:[]});
   const [objections, setObjections] = useState<ObjectionRecord[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
   const [selectedActivity, setSelectedActivity] = useState<SalesActivityRecord | null>(null);
@@ -127,6 +129,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
       setActivities(cachedData.activities);
       setOpportunities(cachedData.opportunities);
       setQuotes(cachedData.quotes);
+      setMoneyRecords({receivableRecords:cachedData.receivableRecords||[],milestoneRecords:cachedData.milestoneRecords||[]});
       setObjections(cachedData.objections);
       setAccountMerges(cachedData.accountMerges);
       setAccounts(cachedData.accounts);
@@ -139,6 +142,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
     setActivities(workspaceData.activities);
     setOpportunities(workspaceData.opportunities);
     setQuotes(workspaceData.quotes);
+    setMoneyRecords({receivableRecords:workspaceData.receivableRecords||[],milestoneRecords:workspaceData.milestoneRecords||[]});
     setObjections(workspaceData.objections);
     setAccountMerges(workspaceData.accountMerges);
     setAccounts(workspaceData.accounts);
@@ -479,6 +483,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
 
       {selectedActivity && (
         <ActivityDetailModal
+          moneyRecords={moneyRecords}
           allActivities={activities}
           quotes={quotes}
           objections={objections}
@@ -672,6 +677,7 @@ function ActivityStateTrail({ activity }: { activity: SalesActivityRecord }) {
 }
 
 function ActivityDetailModal({
+  moneyRecords,
   activity,
   allActivities,
   quotes,
@@ -685,6 +691,7 @@ function ActivityDetailModal({
   onIgnore,
   onUnlink,
 }: {
+  moneyRecords:Pick<MoneyFlowInput,'receivableRecords'|'milestoneRecords'>;
   activity: SalesActivityRecord;
   allActivities: SalesActivityRecord[];
   quotes: QuoteRecord[];
@@ -701,7 +708,7 @@ function ActivityDetailModal({
   useEscapeToClose(onClose);
   const linkedOpportunity = opportunities.find((item) => item.id === activity.linkedOpportunityId) || null;
   const journey = linkedOpportunity
-    ? buildCommercialJourneySnapshot({ opportunity: linkedOpportunity, quotes, activities: allActivities, objections })
+    ? buildCommercialJourneySnapshot({ ...moneyRecords, opportunity: linkedOpportunity, quotes, activities: allActivities, objections })
     : null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-navy/40 px-4 py-8">

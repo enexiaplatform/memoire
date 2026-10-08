@@ -63,7 +63,7 @@ export function LibraryGate({ title, children }: { title: string; children: Reac
         <p className="mt-3 text-sm leading-6 text-gray-400">
           This evidence gate is separate from billing and the free preview. Your records remain available.
           Progress: {activation.realEventCount} captured activities, {activation.decidedOpportunityCount} won/lost deals,
-          {activation.repeatedObjectionCount} repeated objection themes with a recorded response.
+          {activation.repeatedObjectionCount} repeated objection themes with a recorded response (including resolved history).
         </p>
         <div className="mt-5 flex flex-wrap justify-center gap-2">
           <Link to="/app/capture" className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white hover:bg-navy/90">

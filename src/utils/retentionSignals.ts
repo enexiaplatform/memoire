@@ -3,6 +3,9 @@ import { normalizeEntityName } from './accountIdentity.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
+import { buildOrderBook } from './orderToCash.ts';
+import { buildReceivables } from './receivables.ts';
+import type { MoneyFlowInput } from './moneyFlow.ts';
 import {
   compareBusinessDateDesc,
   isMoreRecentBusinessDate,
@@ -24,7 +27,7 @@ export type RetentionSignal = {
   lastTouchDate: string;
 };
 
-type RetentionSignalsInput = {
+type RetentionSignalsInput = Pick<MoneyFlowInput,'receivableRecords'|'milestoneRecords'> & {
   quotes: QuoteRecord[];
   activities: SalesActivityRecord[];
   opportunities?: CrmLiteOpportunity[];
@@ -45,8 +48,10 @@ export function buildRetentionSignals(input: RetentionSignalsInput): RetentionSi
   const activities = input.activities || [];
   const opportunities = input.opportunities || [];
   const accounts = input.accounts || [];
+  const book=input.receivableRecords===undefined?null:buildOrderBook({opportunities,quotes:input.quotes,receivableRecords:input.receivableRecords,milestoneRecords:input.milestoneRecords||[],linkage:'explicit-id',today});
+  const settledIds=new Set(book?buildReceivables({orders:book.orders,records:input.receivableRecords||[],today}).orders.filter(order=>order.settled).map(order=>order.opportunityId):[]);
   const paidQuotes = (input.quotes || [])
-    .filter((quote) => !quote.__deleted && quote.status === 'Accepted' && quote.paymentStatus === 'Paid');
+    .filter((quote) => !quote.__deleted && quote.status === 'Accepted' && (book?Boolean(quote.opportunityId&&settledIds.has(quote.opportunityId)):quote.paymentStatus === 'Paid'));
 
   const latestPaidByAccount = new Map<string, QuoteRecord>();
   paidQuotes.forEach((quote) => {

@@ -445,6 +445,8 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     leadSignals,
   }), [accountHygienePreferences, data.accounts, data.activities, data.expenses, data.objections, data.opportunityOutcomes, data.quotes, data.stakeholders, leadSignals, livePipelineHealth, pipelineOpportunities, revenueView.actionItems]);
   const proactiveNudges = useMemo(() => buildProactiveNudges({
+    receivableRecords: pictureRecords?.receivables,
+    milestoneRecords: pictureRecords?.milestones,
     revenueActions: revenueView.actionItems,
     opportunities: pipelineOpportunities,
     activities: data.activities,
@@ -461,7 +463,7 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
     // "what Memoire would start with". A third card in the watch-list was the
     // same note a third time, with a third opinion about how urgent it is.
     captureInboxShown: true,
-  }), [accountHygienePreferences, data.accounts, data.activities, data.objections, data.operatingContext, data.opportunityOutcomes, data.quotes, data.stakeholders, nudgeState, pipelineOpportunities, plannedCommitments, revenueView.actionItems]);
+  }), [accountHygienePreferences, data.accounts, data.activities, data.objections, data.operatingContext, data.opportunityOutcomes, data.quotes, data.stakeholders, nudgeState, pipelineOpportunities, plannedCommitments, revenueView.actionItems, pictureRecords]);
   const decidedActionIds = useMemo(() => (
     new Set(dailyExecutionState.decisions.map((decision) => decision.actionId))
   ), [dailyExecutionState.decisions]);
@@ -985,6 +987,7 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
           )}
           {quickLookOpportunity && (
             <DealQuickLookDrawer
+              moneyRecords={{receivableRecords:pictureRecords?.receivables||[],milestoneRecords:pictureRecords?.milestones||[]}}
               opportunity={quickLookOpportunity}
               activities={data.activities}
               quotes={data.quotes}

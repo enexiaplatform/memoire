@@ -178,6 +178,7 @@ export type PlanBoardWindow = {
   end: string;
   /** Today, so a carried-forward promise is counted as visible. */
   today: string;
+  includeOverdueBacklog?: boolean;
 };
 
 /**
@@ -223,7 +224,7 @@ function isOnPlanBoard(commitment: CommercialCommitment, window: PlanBoardWindow
   // Carried forward onto today, and only while today is a column on screen:
   // paging back to March is a deliberate look at March, and the board does not
   // inject this week's backlog into it.
-  return compareSafeBusinessDate(due, window.today) < 0
+  return window.includeOverdueBacklog !== false && compareSafeBusinessDate(due, window.today) < 0
     && isBusinessDateInRange(window.today, window.start, window.end);
 }
 
