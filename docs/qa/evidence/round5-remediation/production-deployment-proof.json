@@ -1,0 +1,40 @@
+{
+  "result": {
+    "deployment": {
+      "id": "dpl_26DsHFzHtmmRUm8iVAgNFV2LJvqh",
+      "name": "memoire",
+      "url": "memoire-b7kyq7xqy-enexiaplatforms-projects.vercel.app",
+      "type": "LAMBDAS",
+      "state": "READY",
+      "createdAt": 1791440287359,
+      "creator": {
+        "uid": "scLiCrp91aVnEhq5s51gbxzy",
+        "username": "enexiaplatform"
+      },
+      "project": {
+        "id": "prj_IG0RdVVsY9KzEuSFHdTez5T5nQNH",
+        "name": "memoire",
+        "framework": "vite"
+      },
+      "meta": {
+        "githubCommitRef": "codex/qc-r5-remediation",
+        "githubCommitSha": "2f89e64e54640c3031b8f3b7864b12ad4c8e9364",
+        "githubCommitMessage": "fix: keep dashboard source heading below sticky navigation",
+        "githubRepo": "memoire",
+        "githubOrg": "enexiaplatform"
+      },
+      "alias": [
+        "memoire-enexiaplatforms-projects.vercel.app"
+      ],
+      "target": "production",
+      "regions": [
+        "iad1"
+      ],
+      "buildingAt": 1791440288439,
+      "ready": 1791440346423,
+      "readyState": "READY",
+      "source": "cli",
+      "aliasError": null
+    }
+  }
+}

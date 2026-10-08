@@ -1,0 +1,25 @@
+{
+  "exportedAt": "2026-10-08T06:24:35.798Z",
+  "checks": [
+    {
+      "name": "edited capture stores exactly one reviewed action",
+      "pass": true
+    },
+    {
+      "name": "capture promise keeps account, opportunity and owner scope",
+      "pass": true
+    },
+    {
+      "name": "contract mapping persists against the confirmed promise",
+      "pass": true
+    },
+    {
+      "name": "account preparation stores Desk work without a customer participant",
+      "pass": true
+    },
+    {
+      "name": "customer contact dates remain unchanged by preparation",
+      "pass": true
+    }
+  ]
+}

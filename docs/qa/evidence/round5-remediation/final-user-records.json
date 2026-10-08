@@ -1,0 +1,34 @@
+{
+  "testedAt": "2026-10-08T06:25:15.859Z",
+  "checks": [
+    {
+      "name": "CSV imports one owner-scoped person",
+      "pass": true
+    },
+    {
+      "name": "Import retry and Lead creation do not duplicate the person",
+      "pass": true
+    },
+    {
+      "name": "Importer preserves unknown authority and no interaction",
+      "pass": true
+    },
+    {
+      "name": "Capture scalar and structured action agree",
+      "pass": true
+    },
+    {
+      "name": "Capture stores the reviewed due date",
+      "pass": true
+    },
+    {
+      "name": "New commitment has correct owner/account/deal scope",
+      "pass": true
+    },
+    {
+      "name": "Resolved instant remains 18:38 UTC+7 after two UI saves",
+      "pass": true
+    }
+  ],
+  "allPass": true
+}

@@ -1,0 +1,11 @@
+{
+  "integration": "Actual restore service, current raw cloud export, signed-in owner SDK; isolated in-memory browser-storage adapter, not UI proof",
+  "deployment": "dpl_GW9Tu1wXidUAhA9btB38irMMk5Ad",
+  "records": 1345,
+  "stores": 46,
+  "cloudPushedCount": 41,
+  "cloudFailedCount": 0,
+  "restore": true,
+  "localUndo": true,
+  "summary": "1345 records recovered in this browser. Historical account state restored as one transaction; 0 other collections incomplete. Keep the backup. Local undo does not undo account changes."
+}
