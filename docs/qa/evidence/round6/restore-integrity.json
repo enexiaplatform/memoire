@@ -1,0 +1,8 @@
+{
+  "beforeRows": 989,
+  "afterRows": 989,
+  "changed": [],
+  "comparison": "All fields exact except objections.updated_at touched by database update trigger; recorded dates, amounts, evidence and history preserved.",
+  "allPass": true,
+  "outsideBackupAssets": 1
+}

@@ -369,7 +369,7 @@ export function SettingsPage() {
             <div>
               <p className="text-sm font-semibold text-ink">Getting started</p>
               <p className="mt-1 text-sm text-gray-500">
-                Bring back the five-step guide in the corner of the workspace. If your workspace is still empty, the
+                Bring back the five-step guide above the workspace content. If your workspace is still empty, the
                 welcome screen comes back too.
               </p>
             </div>

@@ -1,0 +1,44 @@
+{
+  "downloadedNativeFile": "memoire-report (1).zip",
+  "detailRows": 37,
+  "summaryGroups": 2,
+  "checks": [
+    {
+      "metric": "recordCount",
+      "actual": 37,
+      "expected": 37,
+      "pass": true,
+      "missing": 0
+    },
+    {
+      "metric": "orderValue",
+      "actual": 435884.6153846154,
+      "expected": 435884.6153846154,
+      "pass": true,
+      "missing": 0
+    },
+    {
+      "metric": "received",
+      "actual": 354949.23076923075,
+      "expected": 354949.23076923075,
+      "pass": true,
+      "missing": 0
+    },
+    {
+      "metric": "outstanding",
+      "actual": 85671.92307692308,
+      "expected": 85671.92307692308,
+      "pass": true,
+      "missing": 0
+    },
+    {
+      "metric": "overdue",
+      "actual": 85671.92307692308,
+      "expected": 85671.92307692308,
+      "pass": true,
+      "missing": 0
+    }
+  ],
+  "mode": "Captured current run; not historical reconstruction",
+  "allPass": true
+}

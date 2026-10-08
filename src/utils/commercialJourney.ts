@@ -2,7 +2,7 @@ import type { ObjectionRecord } from '../services/objectionStore.ts';
 import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
-import { buildMoneyFlow } from './moneyFlow.ts';
+import { buildMoneyFlow, type MoneyFlowInput } from './moneyFlow.ts';
 import { classifyOpportunitySilence } from './proactiveNudges.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 import { compareBusinessDateDesc,
@@ -26,7 +26,7 @@ export type CommercialJourneySnapshot = {
   riskStatus: string;
 };
 
-type JourneyInput = {
+type JourneyInput = Pick<MoneyFlowInput, 'receivableRecords' | 'milestoneRecords'> & {
   opportunity: CrmLiteOpportunity;
   quotes: QuoteRecord[];
   activities: SalesActivityRecord[];
@@ -47,7 +47,7 @@ export function buildCommercialJourneySnapshot(input: JourneyInput): CommercialJ
   const today = sanitizeBusinessDate(input.today) || todayDateKey();
   const { opportunity } = input;
 
-  const flow = buildMoneyFlow({ opportunities: [opportunity], quotes: input.quotes, today });
+  const flow = buildMoneyFlow({ ...input, opportunities: [opportunity], quotes: input.quotes.filter(quote => quote.opportunityId ? quote.opportunityId === opportunity.id : normalize(quote.accountName)===normalize(opportunity.accountName)&&normalize(quote.opportunityName)===normalize(opportunity.opportunityName)), today });
   const accountKey = normalize(opportunity.accountName);
   const moneyThread = flow.threads.find((thread) => thread.id !== `opp-${opportunity.id}`
     && normalize(thread.accountName) === accountKey) || null;

@@ -6,10 +6,18 @@ import {decodeHistoricalStorage} from '../historicalStorageCodec.ts';
 import {reportWorkspaceSyncError} from '../workspaceSyncStatus.ts';
 type Versioned={id:string;userId:string|null;version:number;createdAt:string;updatedAt:string;isSample?:boolean};
 
+// JSONB may return object keys in a different order. Arrays and values remain
+// exact: ordering within a basis and an actual same-version edit still conflict.
+function orderedJson(value:unknown):unknown{
+ if(Array.isArray(value))return value.map(orderedJson);
+ if(value&&typeof value==='object')return Object.fromEntries(Object.entries(value).sort(([a],[b])=>a.localeCompare(b)).map(([key,entry])=>[key,orderedJson(entry)]));
+ return value;
+}
+
 /** Strict publication sync over the existing Kernel repository and canonical Revisions. */
 export function versionedKernelStore<T extends Versioned>(codec:KernelCodec<T>,label:string,beforeSync?:(records:T[])=>Promise<void>){
  let syncTail:Promise<void>=Promise.resolve();
- const same=(a:T,b:T)=>JSON.stringify(codec.toRow(a,a.userId!))===JSON.stringify(codec.toRow(b,b.userId!));
+ const same=(a:T,b:T)=>JSON.stringify(orderedJson(codec.toRow(a,a.userId!)))===JSON.stringify(orderedJson(codec.toRow(b,b.userId!)));
  function load():T[]{
   if(typeof window==='undefined')return [];
   const raw:unknown=JSON.parse(window.localStorage.getItem(codec.storageKey)||'[]');

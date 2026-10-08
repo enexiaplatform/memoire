@@ -1,0 +1,470 @@
+[
+  {
+    "name": "build",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:seo",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:navigation",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:storage-safety",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:performance-budget",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:surface-scale",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:digest-delivery",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:commercial-kernel",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:kernel-surface",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:delta-intelligence",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:recommendation-ranking",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:capture-facts",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:commercial-evidence",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:commercial-learning",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:commercial-linkage",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:product-analytics",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:ui-text-polish",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:first-week-path",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:first-run",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:cohort-qualification",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:cohort-stop-go",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:route-health",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:sample-live-separation",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:currency-locale",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:one-metrics-engine",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:canonical-account",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:recommendation-dedupe",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:deal-drawer-altitude",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:review-action-cap",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:weekly-commitment",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:workspace-restore",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:installable-mobile",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:account-merge",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:weekly-plan",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:activity-channel",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:qualification",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:no-invented-identities",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:record-field-coverage",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:activity-ledger",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:pipeline-ordering",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:operator-insight",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:account-link",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:money-model",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:quote-deal-link",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:opportunity-outcome",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:money-out",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:order-to-cash",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:order-margin",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:brand-and-supply",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:business-vault-knowledge",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:post-won-customers",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:own-obligations",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:daily-digest",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:safe-date",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:regex-flags",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:ai-capture",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:capture-memory",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:pipeline-defense-center",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:today-command-center",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:account-hygiene",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:account-import",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:offline-capture",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:empty-states",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:win-loss-learning",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:proactive-nudges",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:follow-up-impact",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:morning-brief",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:objection-playbook",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:forecast-calibration",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:ask-insight-answers",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:business-activity-os",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:business-os-deep-loop",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:evidence-instrumentation",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:quote-state-suggestions",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:initiative-experiment",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:commercial-journey",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:commercial-learning-brief",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:revenue-risk-brief",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:follow-up-brief",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:activity-state-trail",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:initiative-activity-link",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:meddic-stakeholder-map",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:ingestion-foundation",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:product-positioning-demo-path",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:commercial",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:cohort",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:no-ai",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:rate-limit-runtime",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:production-readiness",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:health-runtime",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:data-isolation",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:data-isolation-runtime",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:lead-ops",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:lead-ops-runtime",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:auth-recovery",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:trust-boundary",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:admin-console",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:support-cohort",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:activation-workflow",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:cloud-json-runtime",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:cloud-collection-tables",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:user-profile",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:legal-entity",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:billing-paid-readiness",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:trial-entitlement",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:accessibility-failure-state",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:commercial-fulfillment",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:daily-commercial-priority",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:daily-execution-loop",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:sales-flow-execution",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:operating-system-execution",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:commercial-operating-loop",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:historical-integrity",
+    "exitCode": 0
+  },
+  {
+    "name": "verify:next-gen-release",
+    "exitCode": 0
+  },
+  {
+    "name": "api-typecheck",
+    "exitCode": 0
+  },
+  {
+    "name": "lint",
+    "exitCode": 0
+  },
+  {
+    "name": "unit",
+    "exitCode": 0
+  }
+]

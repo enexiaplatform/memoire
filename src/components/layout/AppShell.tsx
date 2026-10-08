@@ -126,6 +126,7 @@ export function AppShell() {
             about the state of the data in front of you. It also stays silent
             for most of the trial - see the component. */}
         <TrialStatusBanner />
+        <GettingStartedCoach />
         <div className="flex-1">
           {/* Keyed on the route so navigating away and back is the retry, and
               so a screen that broke this morning is not still broken after the
@@ -143,7 +144,6 @@ export function AppShell() {
       {/* Guidance rides the shell rather than a page, because the whole point is
           that it survives walking from Today to Capture to do the thing it just
           asked for. It renders nothing on a workspace that is past it. */}
-      <GettingStartedCoach />
     </div>
     </TopBarProvider>
   );

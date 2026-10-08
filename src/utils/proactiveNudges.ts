@@ -1,4 +1,5 @@
 import { isLeadStage } from './leadIdentity.ts';
+import type { MoneyFlowInput } from './moneyFlow.ts';
 import type { AccountMemoryRecord } from '../services/accountStore.ts';
 import type { NudgeRecord, NudgeSource, NudgeUrgency } from '../services/nudgeStore.ts';
 import type { OperatingContextRecord } from '../services/operatingContextStore.ts';
@@ -19,7 +20,7 @@ import { buildRetentionSignals } from './retentionSignals.ts';
 import { readInitiativeExperiment } from './initiativeExperiment.ts';
 import { compareSafeBusinessDate, daysBetweenBusinessDates, formatSafeBusinessDate, isBusinessDateOverdue, isValidBusinessDate, sanitizeBusinessDate, todayDateKey, timestampToLocalDateKey } from './safeDate.ts';
 
-export type ProactiveNudgeInput = {
+export type ProactiveNudgeInput = Pick<MoneyFlowInput,'receivableRecords'|'milestoneRecords'> & {
   revenueActions?: RevenueActionItem[];
   opportunities?: CrmLiteOpportunity[];
   activities?: SalesActivityRecord[];
@@ -568,6 +569,8 @@ const RETENTION_NUDGE_CAP = 3;
  */
 function buildRetentionNudges(input: ProactiveNudgeInput, today: string) {
   return buildRetentionSignals({
+    receivableRecords: input.receivableRecords,
+    milestoneRecords: input.milestoneRecords,
     quotes: input.quotes || [],
     activities: input.activities || [],
     opportunities: input.opportunities,

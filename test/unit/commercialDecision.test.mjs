@@ -94,3 +94,56 @@ test('sample Decision remains local and cannot be sent as a cloud row',()=>{
   assert.equal(result.ok,true);assert.equal(result.value.isSample,true);assert.equal(isSyncableRecord(result.value),false);
   assert.equal(loadCommercialDecisions()[0].id,'sample-decision');
 });
+
+async function decisionBackupCopies(){
+  finalizeCommercialDecision(scope,input('backup-decision'));
+  const d=loadCommercialDecisions()[0];
+  const cutoff=new Date(Date.parse(d.decidedAt)+86400000).toISOString();
+  const finalized=new Date(Date.parse(cutoff)+86400000).toISOString();
+  const observation={id:'backup-observation',userId:'owner',accountId:'account',opportunityId:'opp',decisionId:d.id,
+    observationCutoff:cutoff,elapsedDays:1,operatorNote:'Observed context only',sourceType:'manual',finalizedAt:finalized,createdAt:finalized,
+    snapshot:{version:1,derivedWithCurrentRules:true,opportunity:{id:'opp',name:'Acme renewal',stage:'Proposal',status:'Active',targetDate:null,value:1000,currency:'USD'},
+      target:{kind:'requirement',requirementId:'qa',label:'QA acceptance',role:'required_now',state:'unresolved',conditionState:'unknown',sourceEvidenceIds:[]},
+      blockers:[],forecast:{verdict:'conditional',timingEvaluation:'incomplete',reasonCodes:[]},timing:null,money:[],execution:[],buyerProgress:null,sourceRecordIds:['opp','qa'],
+      coverage:{core:'full',target:'full',buyerProgress:'partial',moneyConsequences:'partial'}}};
+  const {decisionCodec}=await import('../../src/services/commercialKernel/decisionStore.ts');
+  const {decisionObservationCodec}=await import('../../src/services/commercialKernel/decisionObservationStore.ts');
+  const cloudDecision=decisionCodec.toRow(d,'owner');
+  const cloudObservation=decisionObservationCodec.toRow(observation,'owner');
+  for(const row of [cloudDecision,cloudObservation])for(const key of ['decided_at','created_at','observation_cutoff','finalized_at'])
+    if(typeof row[key]==='string')row[key]=row[key].replace(/Z$/,'+00:00');
+  const reverseKeys=value=>Array.isArray(value)?value.map(reverseKeys):value&&typeof value==='object'
+    ?Object.fromEntries(Object.entries(value).reverse().map(([key,child])=>[key,reverseKeys(child)])):value;
+  cloudDecision.basis_snapshot=reverseKeys(cloudDecision.basis_snapshot);cloudObservation.snapshot=reverseKeys(cloudObservation.snapshot);
+  return {formatVersion:18,exportedAt:finalized,cloudData:{user_id:'owner',data:{commercial_decisions:[cloudDecision],commercial_decision_observations:[cloudObservation]}},
+    localBrowserData:{'memoire.accounts.v1':[{id:'account',userId:'owner',accountName:'Acme'}],'memoire.opportunities.v1':[opportunity],
+      'memoire.outcomeRequirements.v1':[{id:'qa',userId:'owner',accountId:'account',opportunityId:'opp',expectedOutcome:'QA acceptance',question:'Is QA complete?',role:'required_now',conditionId:null,lifecycle:'active',sourceType:'manual',createdAt:at,updatedAt:at}],
+      [DECISION_STORAGE_KEY]:[d],'memoire.decisionObservations.v1':[observation]}};
+}
+
+test('native backup accepts equivalent SQL instants and reordered JSONB Decision/Observation copies',async()=>{
+  const backup=await decisionBackupCopies();const plan=buildRestorePlan(backup);
+  assert.equal(JSON.parse(plan.writes.find(w=>w.key===DECISION_STORAGE_KEY).value).length,1);
+  assert.equal(JSON.parse(plan.writes.find(w=>w.key==='memoire.decisionObservations.v1').value).length,1);
+});
+
+test('native backup still rejects changed immutable Decision content and observation snapshots',async()=>{
+  for(const kind of ['decision','observation']){
+    const backup=await decisionBackupCopies();
+    if(kind==='decision')backup.localBrowserData[DECISION_STORAGE_KEY][0].rationale='Different accepted rationale';
+    else backup.localBrowserData['memoire.decisionObservations.v1'][0].snapshot.opportunity.value=999;
+    assert.throws(()=>buildRestorePlan(backup),/Decision history conflicts/);
+  }
+});
+
+test('native backup rejects changed cutoff instants, array order, malformed dates and owner scope',async()=>{
+  for(const kind of ['cutoff','array','date','owner']){
+    const backup=await decisionBackupCopies();
+    const d=backup.localBrowserData[DECISION_STORAGE_KEY][0];
+    if(kind==='cutoff')backup.localBrowserData['memoire.decisionObservations.v1'][0].observationCutoff=new Date(Date.parse(backup.localBrowserData['memoire.decisionObservations.v1'][0].observationCutoff)+1).toISOString();
+    if(kind==='array')d.basisSnapshot.sourceRecordIds.reverse();
+    if(kind==='date')d.createdAt='invalid';
+    if(kind==='owner')d.userId='foreign';
+    assert.throws(()=>buildRestorePlan(backup),/conflicts|invalid|owner|scope/i);
+  }
+});

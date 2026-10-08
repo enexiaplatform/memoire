@@ -113,7 +113,8 @@ export function planCompletionNeedsPerson(
   opportunities: CrmLiteOpportunity[],
   channel?: ActivityChannel | '',
 ): boolean {
-  if (isOutOfOfficeChannel(normalizeActivityChannel(channel ?? item.channel))) return false;
+  const actualChannel=normalizeActivityChannel(channel ?? item.channel);
+  if (isOutOfOfficeChannel(actualChannel)||actualChannel==='Desk work') return false;
   return Boolean(planItemAccountName(item, opportunities));
 }
 
@@ -190,7 +191,7 @@ export function buildPlanCompletionActivity(input: PlanCompletionLogInput): Plan
 
   const channel = normalizeActivityChannel(input.channel ?? item.channel);
   const namedAccount = planItemAccountName(item, input.opportunities);
-  const person = isOutOfOfficeChannel(channel) ? null : input.person;
+  const person = isOutOfOfficeChannel(channel)||channel==='Desk work' ? null : input.person;
   const personName = (person?.name || '').trim();
   /*
    * A day off is not about a customer, whatever the line was tagged with.

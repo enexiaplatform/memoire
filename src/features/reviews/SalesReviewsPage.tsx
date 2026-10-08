@@ -42,6 +42,8 @@ import { type AccountMemoryRecord } from '../../services/accountStore';
 import { type ObjectionRecord } from '../../services/objectionStore';
 import { type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { type QuoteRecord } from '../../services/quoteStore';
+import type { OrderReceivableRecord } from '../../utils/receivables';
+import type { OrderMilestoneRecord } from '../../utils/orderToCash';
 import { type StakeholderRecord } from '../../services/stakeholderStore';
 import { type ActionOutcomeRecord } from '../../services/actionOutcomeStore';
 import { type OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore';
@@ -271,6 +273,8 @@ function WeeklyReviewSection({
   const [assets, setAssets] = useState<SalesAssetRecord[]>([]);
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
+  const [receivableRecords, setReceivableRecords] = useState<OrderReceivableRecord[]>([]);
+  const [milestoneRecords, setMilestoneRecords] = useState<OrderMilestoneRecord[]>([]);
   // The two kernel collections the learning patterns need. Loaded here with
   // everything else rather than fetched by the panel, so the section cannot
   // draw from a workspace the rest of the page is not looking at.
@@ -313,12 +317,14 @@ function WeeklyReviewSection({
   const weeklyBusinessReview = useMemo(() => buildWeeklyBusinessReview({
     opportunities,
     quotes,
+    receivableRecords,
+    milestoneRecords,
     operatingContexts,
     activities,
     opportunityOutcomes,
     accounts,
     period,
-  }), [accounts, activities, operatingContexts, opportunities, opportunityOutcomes, period, quotes]);
+  }), [accounts, activities, operatingContexts, opportunities, opportunityOutcomes, period, quotes, receivableRecords, milestoneRecords]);
   // Full activity history goes in (not periodActivities): quiet gaps before the
   // period and replies after a follow-up both matter for honest attribution.
   const periodFollowUpImpact = useMemo(() => buildFollowUpImpact({
@@ -347,6 +353,8 @@ function WeeklyReviewSection({
   );
   const commercialReviewBrief = useMemo(
     () => buildCommercialReviewBrief({
+      receivableRecords,
+      milestoneRecords,
       periodLabel: period.label,
       activities,
       opportunities,
@@ -354,7 +362,7 @@ function WeeklyReviewSection({
       quotes,
       executionReview,
     }),
-    [period.label, activities, opportunities, accounts, quotes, executionReview]
+    [period.label, activities, opportunities, accounts, quotes, executionReview, receivableRecords, milestoneRecords]
   );
   const playbookLearnings = useMemo(
     () => generateSalesPlaybookPatterns({
@@ -501,6 +509,8 @@ function WeeklyReviewSection({
       setAssets(cachedData.assets);
       setAccounts(cachedData.accounts);
       setQuotes(cachedData.quotes);
+      setReceivableRecords(cachedData.receivableRecords || []);
+      setMilestoneRecords(cachedData.milestoneRecords || []);
       setOperatingContexts(cachedData.operatingContext);
       setLearningCommitments(cachedData.commitments);
       setLearningEvidence(cachedData.evidence);
@@ -519,6 +529,8 @@ function WeeklyReviewSection({
     setAssets(workspaceData.assets);
     setAccounts(workspaceData.accounts);
     setQuotes(workspaceData.quotes);
+    setReceivableRecords(workspaceData.receivableRecords || []);
+    setMilestoneRecords(workspaceData.milestoneRecords || []);
     setOperatingContexts(workspaceData.operatingContext);
     setLearningCommitments(workspaceData.commitments);
     setLearningEvidence(workspaceData.evidence);
@@ -654,6 +666,8 @@ function WeeklyReviewSection({
           const markdown = generateRevenueRiskBriefMarkdown({
             opportunities,
             quotes,
+            receivableRecords,
+            milestoneRecords,
             activities,
             accounts,
             periodLabel: period.label,

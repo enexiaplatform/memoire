@@ -246,12 +246,12 @@ function buildObjectionPatterns(objections: ObjectionRecord[], detectedAt: strin
     .filter(([, items]) => items.length > 0)
     .map(([type, items]): SalesPlaybookPattern => ({
       id: `objection-${slugify(type)}`,
-      title: `${type} objections repeat in captured records`,
+      title: items.length > 1 ? `${type} objections recur in unresolved records` : `${type} objection needs a response`,
       category: 'Objection Pattern',
       severity: items.some((item) => item.impact === 'High') || items.length >= 3 ? 'High' : items.length >= 2 ? 'Medium' : 'Low',
       frequency: items.length,
       evidence: items.slice(0, 4).map((item) => `${item.accountName || 'No account'} / ${item.opportunityName || 'No opportunity'}: ${item.objectionText}`),
-      whyItMatters: 'Recurring objections create commercial debt that weakens forecast defense unless proof and response paths are prepared.',
+      whyItMatters: 'These are unresolved objections. Resolved history remains available for learning in the Library; this list identifies current response work.',
       suggestedPlaybookResponse: `Prepare a repeatable response path for ${type.toLowerCase()} objections before the next customer review.`,
       reusableAction: `Create a short ${type.toLowerCase()} proof/response checklist and attach it to active opportunities.`,
       relatedAccounts: unique(items.map((item) => item.accountName).filter(Boolean)),

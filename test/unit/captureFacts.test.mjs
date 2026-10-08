@@ -352,6 +352,14 @@ describe('commitCapturedFacts - partial failure is honest and retry is safe', ()
     rawCapture: 'note', captureDate: CAPTURE_DATE, target, facts, unsupported: [],
   });
 
+  test('a confirmed deal promise retains its canonical account ID for contract mapping',async()=>{
+    const result=await commitCapturedFacts(changeSet([commitFact('linked')]),{...commitContext,
+      opportunities:[{id:'opp-1',accountId:'acct-1',accountName:ACCOUNT,opportunityName:target.opportunityName}]});
+    assert.equal(result.outcomes[0].ok,true);
+    const rows=JSON.parse(window.localStorage.getItem('memoire.commercialCommitments.v1'));
+    assert.equal(rows[0].accountId,'acct-1');assert.equal(rows[0].opportunityId,'opp-1');
+  });
+
   test('34. and 35. the ones that land are reported, the one that fails stays retryable', async () => {
     const result = await commitCapturedFacts(
       changeSet([commitFact('c-1'), orphanValue('v-1'), commitFact('c-2')]),

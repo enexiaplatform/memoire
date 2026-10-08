@@ -313,8 +313,8 @@ export function WeeklyPlanPage({
    * visible anywhere.
    */
   useEffect(() => {
-    onRangeChange?.({ start: board.rangeStart, end: board.rangeEnd, today: todayDateKey() });
-  }, [board.rangeEnd, board.rangeStart, onRangeChange]);
+    onRangeChange?.({ start: board.rangeStart, end: board.rangeEnd, today: todayDateKey(), includeOverdueBacklog:showBacklog });
+  }, [board.rangeEnd, board.rangeStart, onRangeChange, showBacklog]);
 
   /**
    * The same board one period back, for the strip's "against last week".

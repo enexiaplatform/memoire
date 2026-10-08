@@ -1,0 +1,90 @@
+[
+  {
+    "step": 57,
+    "name": "review-after-restore-still-36-stuck",
+    "file": "review-paid-orders-contradiction.png",
+    "at": "2026-10-07T13:43:08.094Z",
+    "url": "https://www.memoire-official.com/app/reviews",
+    "status": "visually inspected in R5; synthetic QC owner"
+  },
+  {
+    "step": 50,
+    "name": "restore-own-cloud-export-rejected-incident",
+    "file": "restore-raw-export-rejected.png",
+    "at": "2026-10-07T13:14:41.240Z",
+    "url": "https://www.memoire-official.com/app/settings?tab=export",
+    "status": "visually inspected in R5; synthetic QC owner"
+  },
+  {
+    "step": 52,
+    "name": "restore-complete-nominal-fixture",
+    "file": "restore-nominal-fixture-complete.png",
+    "at": "2026-10-07T13:30:10.581Z",
+    "url": "https://www.memoire-official.com/app/settings?tab=export",
+    "status": "visually inspected in R5; synthetic QC owner"
+  },
+  {
+    "step": 59,
+    "name": "objection-resolved-at-utc-rendered-as-local",
+    "file": "objection-timezone.png",
+    "at": "2026-10-07T13:43:52.576Z",
+    "url": "https://www.memoire-official.com/app/objections",
+    "status": "visually inspected in R5; synthetic QC owner"
+  },
+  {
+    "step": 54,
+    "name": "assets-user-created-persists-after-reload",
+    "file": "assets-persisted.png",
+    "at": "2026-10-07T13:33:10.987Z",
+    "url": "https://www.memoire-official.com/app/assets",
+    "status": "visually inspected in R5; synthetic QC owner"
+  },
+  {
+    "step": 56,
+    "name": "accounts-merge-undo-persists-15",
+    "file": "accounts-merge-undo.png",
+    "at": "2026-10-07T13:42:01.105Z",
+    "url": "https://www.memoire-official.com/app/accounts",
+    "status": "visually inspected in R5; synthetic QC owner"
+  },
+  {
+    "step": 58,
+    "name": "review-incident-incomplete-after-reload",
+    "file": "review-incident-incomplete.png",
+    "at": "2026-10-07T13:43:18.267Z",
+    "url": "https://www.memoire-official.com/app/reviews",
+    "status": "visually inspected in R5; synthetic QC owner"
+  },
+  {
+    "step": 60,
+    "name": "final-today-after-cloud-restore-and-undo",
+    "file": "final-today.png",
+    "at": "2026-10-07T13:45:08.961Z",
+    "url": "https://www.memoire-official.com/app/today",
+    "status": "visually inspected in R5; synthetic QC owner"
+  },
+  {
+    "step": 43,
+    "name": "collections-after-ui-orders-canonical-brands",
+    "file": "collections-37-orders.png",
+    "at": "2026-10-06T11:33:53.226Z",
+    "url": "https://www.memoire-official.com/app/reports?report=orion-r5-collections",
+    "status": "visually inspected in R5; synthetic QC owner"
+  },
+  {
+    "step": 24,
+    "name": "desk-work-forces-customer-person",
+    "file": "desk-work-customer-person.png",
+    "at": "2026-10-06T00:25:33.113Z",
+    "url": "https://www.memoire-official.com/app/timeline",
+    "status": "visually inspected in R5; synthetic QC owner"
+  },
+  {
+    "step": 45,
+    "name": "coach-occludes-dashboard-restore",
+    "file": "coach-covers-restore.png",
+    "at": "2026-10-06T11:35:34.475Z",
+    "url": "https://www.memoire-official.com/app/dashboards",
+    "status": "visually inspected in R5; synthetic QC owner"
+  }
+]

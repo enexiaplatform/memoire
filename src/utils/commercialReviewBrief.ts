@@ -6,6 +6,7 @@ import { formatBaseCurrencyAmount as formatBaseMoney } from './money';
 import { buildRevenueView, type RevenueViewSummary } from './revenueView';
 import { buildTodayCommandCenter, type CommandCenter } from './salesCommandCenter';
 import type { WeeklyExecutionReview } from './weeklyExecutionReview';
+import type { MoneyFlowInput } from './moneyFlow';
 
 export type CommercialReviewMetric = {
   label: string;
@@ -26,7 +27,7 @@ export type CommercialReviewBrief = {
   markdown: string;
 };
 
-export function buildCommercialReviewBrief(input: {
+export function buildCommercialReviewBrief(input: Pick<MoneyFlowInput,'receivableRecords'|'milestoneRecords'> & {
   periodLabel: string;
   activities: SalesActivityRecord[];
   opportunities: CrmLiteOpportunity[];
@@ -34,7 +35,7 @@ export function buildCommercialReviewBrief(input: {
   quotes: QuoteRecord[];
   executionReview: WeeklyExecutionReview;
 }): CommercialReviewBrief {
-  const revenue = buildRevenueView({ opportunities: input.opportunities, quotes: input.quotes });
+  const revenue = buildRevenueView(input);
   const commandCenter = buildTodayCommandCenter({
     activities: input.activities,
     opportunities: input.opportunities,

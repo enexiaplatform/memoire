@@ -1,4 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
+import { importAccountContacts } from '../../services/accountContactImport';
+import { loadStakeholders } from '../../services/stakeholderStore';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Archive, ArchiveRestore, ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Database, Eye, Filter, Grid3x3, Plus, RefreshCw, Save, Search, Star, Trash2, Upload, X } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
@@ -1550,6 +1552,7 @@ function AccountDetailPanel({
       {selectedMemory && hygieneStatus !== 'Imported only' && hygieneStatus !== 'Archived' && (
         <AccountNextActionCard
           action={buildAccountNextAction({
+            flow: commercialFlow,
             memory: selectedMemory,
             quotes,
             stakeholders,
@@ -1645,7 +1648,7 @@ function AccountGlancePanel({ glance, accountName }: { glance: AccountGlance; ac
       </dl>
       {glance.matters.length === 0 ? (
         <p className="mt-2.5 rounded-2xl bg-tint-green-bg px-3 py-2 text-[12.5px] font-semibold text-tint-green-ink">
-          Nothing on this customer needs attention right now.
+          No urgent open-deal task is flagged. Check the next action and recent changes below.
         </p>
       ) : (
         <ul className="mt-2.5 flex flex-col gap-1.5">
@@ -1819,7 +1822,7 @@ function AccountCommercialLoop({ memory, quotes, flow }: { memory: AccountMemory
   const pendingDeliveryQuotes = quotes.filter((quote) => getQuoteCommercialStage(quote) === 'Pending delivery');
   const pendingPaymentQuotes = quotes.filter((quote) => getQuoteCommercialStage(quote) === 'Pending payment');
   const paidQuotes = quotes.filter((quote) => getQuoteCommercialStage(quote) === 'Paid');
-  const riskyQuotes = quotes.filter((quote) => getQuoteRisk(quote) !== 'None');
+  const riskyQuotes = quotes.filter((quote) => (quote.status==='Sent'||quote.status==='Revised') && getQuoteRisk(quote) !== 'None');
   const steps = [
     // Qualified deals only; leads have their own count in the glance above.
     { label: 'Opportunity', value: memory.opportunities.filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage)).length, hint: 'active, qualified' },
@@ -1898,19 +1901,23 @@ function AccountNextActionCard({
 }
 
 function buildAccountNextAction({
+  flow,
   memory,
   quotes,
   stakeholders,
   objections,
 }: {
+  flow?:MoneyFlow;
   memory: AccountMemory;
   quotes: QuoteRecord[];
   stakeholders: StakeholderRecord[];
   objections: ObjectionRecord[];
 }): AccountNextAction {
   const accountName = memory.account.accountName;
+  const stuck=flow?.stuckThreads[0];
+  if(stuck)return {title:stuck.nextAction,reason:stuck.stuckReason,cta:'Open collections',href:'/app/collections',tone:'amber',badge:stuck.stage};
   const actionQuotes = [...quotes]
-    .filter((quote) => ['Sent', 'Revised', 'Accepted'].includes(quote.status))
+    .filter((quote) => ['Sent', 'Revised'].includes(quote.status))
     .sort((left, right) => quoteActionRank(right) - quoteActionRank(left) || compareSafeBusinessDate(left.validUntil, right.validUntil));
   const riskyQuote = actionQuotes.find((quote) => getQuoteRisk(quote) !== 'None');
   if (riskyQuote) {
@@ -2102,7 +2109,7 @@ function MemorySections({
         )}
 
         {tab === 'people' && (
-          <AccountPeopleTab accountName={memory.account.accountName} stakeholders={stakeholders} />
+          <AccountPeopleTab key={memory.account.id} account={memory.account} accountName={memory.account.accountName} stakeholders={stakeholders} />
         )}
 
         {tab === 'memory' && (
@@ -2158,12 +2165,30 @@ function AccountOpportunitiesSection({ memory }: { memory: AccountMemory }) {
  * support either claim.
  */
 function AccountPeopleTab({
+  account,
   accountName,
-  stakeholders,
+  stakeholders:providedPeople,
 }: {
+  account:AccountMemoryRecord;
   accountName: string;
   stakeholders: StakeholderRecord[];
 }) {
+  const {user}=useAuthContext();
+  const owner=account.isSample?undefined:user?.id;
+  const scopeKey=`${owner||'local'}:${account.id}:${Boolean(account.isSample)}`;
+  const [imported,setImported]=useState<{scope:string;people:StakeholderRecord[]}|null>(null);
+  const [busy,setBusy]=useState(false),[contactMessage,setContactMessage]=useState('');
+  const stakeholders=[...new Map([...providedPeople,...(imported?.scope===scopeKey?imported.people:[])].map(person=>[person.id,person])).values()];
+  const recoverContacts=async()=>{
+    setBusy(true);setContactMessage('');
+    try{
+      const result=await importAccountContacts([account],owner);
+      const people=(await loadStakeholders(owner)).filter(person=>person.accountId===account.id&&Boolean(person.isSample)===Boolean(account.isSample));
+      setImported({scope:scopeKey,people});
+      setContactMessage(`${result.created} contacts added, ${result.reused} already recorded.${result.failed?` ${result.failed} need manual review; profile text is retained.`:''}${result.pending?' Account sync is still pending.':''}`);
+    }catch{setContactMessage('Contacts could not be saved. Profile text is retained; retry when sync is available.');}
+    finally{setBusy(false);}
+  };
   const covered = new Set<string>(stakeholders.map((person) => person.stakeholderRole));
   const missing = ['Champion', 'Economic Buyer', 'Technical Buyer', 'Procurement'].filter((role) => !covered.has(role));
 
@@ -2181,6 +2206,8 @@ function AccountPeopleTab({
         </Link>
       </div>
 
+      {account.keyStakeholders.length>0&&<div className="mt-3 rounded-lg border border-line p-3 text-sm"><p>Profile contact text: {account.keyStakeholders.join('; ')}</p><p className="mt-1 text-xs text-muted">Importing names records context only; it does not confirm buying authority or a customer interaction.</p><button type="button" disabled={busy} onClick={()=>void recoverContacts()} className="mt-2 min-h-11 text-xs font-bold text-brand-blue">{busy?'Checking contacts...':'Add profile contacts to People'}</button></div>}
+      {contactMessage&&<p role="status" className="mt-2 text-xs">{contactMessage}</p>}
       {stakeholders.length === 0 ? (
         <p className="mt-2 text-sm text-gray-500">
           Nobody is recorded at this customer yet. Capture a conversation and the names in it are offered here.
@@ -2350,7 +2377,7 @@ function AccountQuotesSection({ accountName, quotes }: { accountName: string; qu
   const actionQuotes = [...quotes]
     .filter((quote) => ['Sent', 'Revised', 'Accepted'].includes(quote.status))
     .sort((left, right) => quoteActionRank(right) - quoteActionRank(left) || compareSafeBusinessDate(left.validUntil, right.validUntil));
-  const topQuote = actionQuotes[0] || null;
+  const topQuote = actionQuotes.find(quote=>quote.status!=='Accepted') || null;
   const topRisk = topQuote ? getQuoteRisk(topQuote) : null;
   const visibleQuotes = actionQuotes.slice(0, 3);
 
@@ -2362,7 +2389,7 @@ function AccountQuotesSection({ accountName, quotes }: { accountName: string; qu
           <p className="mt-1 text-sm font-bold text-ink">
             {topQuote
               ? `${topQuote.title}: ${topQuote.nextAction || topRisk || 'review quote status'}`
-              : 'No quote action is linked to this account yet.'}
+              : acceptedQuotes.length?'Accepted quote history. Order progress and cash follow the commercial loop.':'No quote action is linked to this account yet.'}
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -2384,13 +2411,13 @@ function AccountQuotesSection({ accountName, quotes }: { accountName: string; qu
       <div className="mt-3 grid grid-cols-3 gap-2">
         <MiniMetric label="Active" value={activeQuotes.length} tone={activeQuotes.length ? 'blue' : 'green'} />
         <MiniMetric label="Accepted" value={acceptedQuotes.length} tone={acceptedQuotes.length ? 'green' : 'blue'} />
-        <MiniMetric label="At risk" value={quotes.filter((quote) => getQuoteRisk(quote) !== 'None').length} tone={quotes.some((quote) => getQuoteRisk(quote) !== 'None') ? 'amber' : 'green'} />
+        <MiniMetric label="Quote risk" value={activeQuotes.filter((quote) => getQuoteRisk(quote) !== 'None').length} tone={activeQuotes.some((quote) => getQuoteRisk(quote) !== 'None') ? 'amber' : 'green'} />
       </div>
 
       {visibleQuotes.length > 0 ? (
         <div className="mt-3 space-y-2">
           {visibleQuotes.map((quote) => {
-            const risk = getQuoteRisk(quote);
+            const risk = quote.status==='Accepted'?'None':getQuoteRisk(quote);
             return (
               <div key={quote.id} className="rounded-lg bg-white p-3 ring-1 ring-cyan-100">
                 <div className="flex flex-wrap items-center gap-2">
@@ -2402,7 +2429,7 @@ function AccountQuotesSection({ accountName, quotes }: { accountName: string; qu
                 <p className="mt-1 text-xs font-semibold text-gray-500">
                   {[quote.opportunityName, formatMoney(quote.amount || 0, quote.currency)].filter(Boolean).join(' | ')}
                 </p>
-                {quote.nextAction && <p className="mt-2 text-xs font-bold text-cyan-700">Next: {quote.nextAction}</p>}
+                {quote.nextAction && quote.status!=='Accepted' && <p className="mt-2 text-xs font-bold text-cyan-700">Next: {quote.nextAction}</p>}
               </div>
             );
           })}

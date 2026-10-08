@@ -46,9 +46,11 @@ try {
   # Child process environment carries the password, never a command argument.
   & $auditTools.psql --no-password -X --set=ON_ERROR_STOP=1 --tuples-only --no-align --command="select current_database(), current_user, version();" *> (Join-Path $auditDestination 'connection-check.log')
   if ($LASTEXITCODE -ne 0) { throw 'Database connection failed. See the local private connection-check.log.' }
-  & $auditTools.pg_dump --no-password --format=custom --lock-wait-timeout=10s --file=(Join-Path $auditDestination 'database.dump') *> (Join-Path $auditDestination 'dump.log')
+  $auditDumpFile = Join-Path $auditDestination 'database.dump'
+  & $auditTools.pg_dump --no-password --format=custom --lock-wait-timeout=10s "--file=$auditDumpFile" *> (Join-Path $auditDestination 'dump.log')
   if ($LASTEXITCODE -ne 0) { throw 'Database dump failed; this directory is incomplete and must not be treated as a recovery point.' }
-  & $auditTools.pg_dumpall --no-password --roles-only --no-role-passwords --file=(Join-Path $auditDestination 'roles.sql') *> (Join-Path $auditDestination 'roles.log')
+  $auditRolesFile = Join-Path $auditDestination 'roles.sql'
+  & $auditTools.pg_dumpall --no-password --roles-only --no-role-passwords "--file=$auditRolesFile" *> (Join-Path $auditDestination 'roles.log')
   if ($LASTEXITCODE -ne 0) { throw 'Role export failed; the backup is incomplete.' }
   & $auditTools.pg_restore --list (Join-Path $auditDestination 'database.dump') *> (Join-Path $auditDestination 'archive-contents.txt')
   if ($LASTEXITCODE -ne 0) { throw 'Archive listing failed; the backup is incomplete.' }

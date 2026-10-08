@@ -1,4 +1,5 @@
-import { useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
+import { Modal } from '../../components/ui/Modal';
 import JSZip from 'jszip';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
@@ -37,6 +38,9 @@ export function ExportTab() {
   const [restoreError, setRestoreError] = useState('');
   const [isReading, setIsReading] = useState(false);
   const [isRestoring, setIsRestoring] = useState(false);
+  const [confirmRestoreOpen,setConfirmRestoreOpen]=useState(false);
+  const closeRestoreConfirmation=useCallback(()=>setConfirmRestoreOpen(false),[]);
+  const restorePlan=useMemo(()=>pending?buildRestorePlan(pending.envelope):null,[pending]);
   // Kept after the restore so the undo stays offered, and so the operator can
   // read what actually landed per collection instead of trusting a sentence.
   const [lastRestore, setLastRestore] = useState<RestoreResult | null>(null);
@@ -57,6 +61,7 @@ export function ExportTab() {
     if (!file || sampleDataActive) return;
     setRestoreError('');
     setPending(null);
+    setConfirmRestoreOpen(false);
     setIsReading(true);
 
     try {
@@ -76,19 +81,10 @@ export function ExportTab() {
   };
 
   const handleConfirmRestore = async () => {
-    if (!pending || sampleDataActive || isRestoring) return;
+    if (!pending || sampleDataActive || isRestoring || !confirmRestoreOpen) return;
     const plan = buildRestorePlan(pending.envelope);
-    const confirmed = window.confirm(
-      `Replace this browser's Memoire workspace with the backup from ${formatBackupDate(pending.summary.exportedAt)}?\n\n`
-      + `${plan.restoredRecords} records will be restored across ${plan.writes.length} stores. `
-      + 'Everything currently in this browser is replaced.'
-      + (user
-        ? ' Supported commercial collections are merged into your account by their existing IDs. Account records outside this backup remain.'
-        : '')
-      + ' Undo restores this browser only; it cannot reverse account merges.',
-    );
-    if (!confirmed) return;
-
+    setConfirmRestoreOpen(false);
+    setStatusMessage(`Restoring ${plan.restoredRecords} records across ${plan.writes.length} stores...`);
     setIsRestoring(true);
     setRestoreError('');
     try {
@@ -329,7 +325,7 @@ export function ExportTab() {
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={handleConfirmRestore}
+                onClick={() => setConfirmRestoreOpen(true)}
                 disabled={isRestoring}
                 className="rounded-full bg-navy px-5 py-2.5 text-sm font-bold text-white disabled:opacity-60"
               >
@@ -347,6 +343,15 @@ export function ExportTab() {
           </div>
         )}
 
+        <Modal isOpen={confirmRestoreOpen&&Boolean(pending)} onClose={closeRestoreConfirmation} title="Confirm workspace restore">
+          {pending&&restorePlan&&<>
+            <p className="text-sm leading-6">Replace this browser's Memoire workspace with the backup from {formatBackupDate(pending.summary.exportedAt)}?</p>
+            <p className="mt-3 text-sm leading-6">{restorePlan.restoredRecords} records will be restored across {restorePlan.writes.length} stores. Everything currently in this browser is replaced.</p>
+            {user&&<p className="mt-3 text-sm leading-6">Supported commercial collections are merged into your account by their existing IDs. Account records outside this backup remain.</p>}
+            <p className="mt-3 text-sm font-semibold">Undo restores this browser only; it cannot reverse account merges.</p>
+            <div className="mt-5 flex gap-3"><button type="button" onClick={closeRestoreConfirmation} className="min-h-11 rounded-full border border-line px-4">Cancel restore</button><button type="button" disabled={isRestoring} onClick={()=>void handleConfirmRestore()} className="min-h-11 rounded-full bg-navy px-4 font-bold text-white disabled:opacity-60">Confirm restore</button></div>
+          </>}
+        </Modal>
         {/* What actually landed, per collection, in records - and the way back.
             A restore that reports one sentence asks to be trusted; this reports
             before and after for every store it touched, and whether the account

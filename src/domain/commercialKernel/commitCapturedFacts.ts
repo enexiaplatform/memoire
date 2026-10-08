@@ -98,7 +98,7 @@ async function commitOne(fact: CapturedFact, context: CommitContext): Promise<st
     case 'objection': {
       const deal = dealFor(fact, context);
       const result = await createObjection({
-        accountId: '',
+        accountId: deal?.accountId || '',
         accountName: fact.target.accountName,
         opportunityId: deal?.id || '',
         opportunityName: deal?.opportunityName || fact.target.opportunityName,
@@ -122,7 +122,7 @@ async function commitOne(fact: CapturedFact, context: CommitContext): Promise<st
     case 'stakeholder': {
       const deal = dealFor(fact, context);
       const result = await createStakeholder({
-        accountId: '',
+        accountId: deal?.accountId || '',
         accountName: fact.target.accountName,
         opportunityId: deal?.id || '',
         opportunityName: deal?.opportunityName || fact.target.opportunityName,
@@ -148,7 +148,7 @@ async function commitOne(fact: CapturedFact, context: CommitContext): Promise<st
       // The kernel's own command: it validates, writes the record, writes the
       // history event and triggers sync. Capture does none of those itself.
       const result = createCommitment(context.scope, {
-        accountId: '',
+        accountId: deal?.accountId || '',
         accountName: fact.target.accountName,
         opportunityId: deal?.id || null,
         commitmentParty: fact.party,

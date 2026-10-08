@@ -1,0 +1,58 @@
+{
+  "testedAt": "2026-10-08T11:27:29.808Z",
+  "method": "QC owner anon client and own existing session; read-only negative checks",
+  "results": [
+    {
+      "table": "accounts",
+      "foreignRowsVisible": 0
+    },
+    {
+      "table": "opportunities",
+      "foreignRowsVisible": 0
+    },
+    {
+      "table": "quotes",
+      "foreignRowsVisible": 0
+    },
+    {
+      "table": "order_receivables",
+      "foreignRowsVisible": 0
+    },
+    {
+      "table": "order_costs",
+      "foreignRowsVisible": 0
+    },
+    {
+      "table": "sales_activities",
+      "foreignRowsVisible": 0
+    },
+    {
+      "table": "commercial_commitments",
+      "foreignRowsVisible": 0
+    },
+    {
+      "table": "portfolio_records",
+      "foreignRowsVisible": 0
+    },
+    {
+      "table": "report_definitions",
+      "foreignRowsVisible": 0
+    },
+    {
+      "table": "dashboard_definitions",
+      "foreignRowsVisible": 0
+    },
+    {
+      "api": "missing-token",
+      "status": 400
+    },
+    {
+      "api": "invalid-token",
+      "status": 401
+    },
+    {
+      "api": "foreign-owner",
+      "status": 401
+    }
+  ]
+}

@@ -230,7 +230,7 @@ export function RecordPlanActivityDrawer({
           <Users className="mt-0.5 h-4 w-4 shrink-0 text-muted" />
           {dayOff
             ? 'A day out of the office reaches no customer, so there is nobody to name and no customer clock moves.'
-            : 'Internal work - this line names no customer, so there is nobody to name and no deal moves.'}
+            : 'Internal work - there is no customer conversation or participant to record, and no deal moves.'}
         </p>
       )}
 
@@ -240,7 +240,7 @@ export function RecordPlanActivityDrawer({
           value={note}
           onChange={(event) => setNote(event.target.value)}
           rows={5}
-          placeholder="What was said, what they asked for next, and anything that changes the deal."
+          placeholder={needsPerson?'What was said, what they asked for next, and anything that changes the deal.':'Describe the preparation or internal work completed. No customer conversation is implied.'}
           className="mt-1.5 w-full rounded-xl border border-line bg-white px-3 py-2.5 text-sm leading-6 text-ink outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/15"
         />
       </label>
@@ -252,6 +252,7 @@ export function RecordPlanActivityDrawer({
           {' '}- so the going-silent watch and the stakeholder&apos;s last interaction both move.
         </p>
       )}
+      {channel==='Desk work'&&accountName&&<p className="text-xs leading-5 text-muted">Preparation is recorded on {accountName}&apos;s history. It does not count as a customer touch or update any person&apos;s last interaction.</p>}
     </RecordDrawer>
   );
 }

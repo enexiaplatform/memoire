@@ -36,13 +36,33 @@ globalThis.CustomEvent = class CustomEvent {
 const { createLead, qualifyLead, nurtureLead, disqualifyLead } = await import('../../src/services/leadCommands.ts');
 const { loadOpportunities, opportunityToFormInput, updateOpportunity } = await import('../../src/services/opportunityStore.ts');
 const { loadOpportunityOutcomes } = await import('../../src/services/opportunityOutcomeStore.ts');
-const { loadStakeholders } = await import('../../src/services/stakeholderStore.ts');
+const { loadStakeholders,createStakeholder,emptyStakeholderInput } = await import('../../src/services/stakeholderStore.ts');
+const {createAccount,emptyAccountInput}=await import('../../src/services/accountStore.ts');
+const {importAccountContacts}=await import('../../src/services/accountContactImport.ts');
 const { loadEvents, EVENT_STORAGE_KEY } = await import('../../src/services/commercialKernel/eventStore.ts');
 const { buildRestorePlan } = await import('../../src/utils/workspaceBackup.ts');
 const { createOpportunity, emptyOpportunityInput, OPPORTUNITY_STORAGE_KEY } = await import('../../src/services/opportunityStore.ts');
 const { buildLeadQueue, selectLeads, selectQualifiedPipeline, disqualifiedLeadIds } = await import('../../src/utils/leadQueue.ts');
 
 beforeEach(() => { storage.clear(); emitted.length = 0; });
+
+test('profile contact import creates People once, preserves unknown authority and refuses foreign accounts',async()=>{
+ const {account}=await createAccount({...emptyAccountInput,accountName:'Orion',keyStakeholders:['Casey Morgan (Quality Director)']},null);
+ assert.deepEqual(await importAccountContacts([account],null),{created:1,reused:0,failed:0,pending:0});
+ assert.deepEqual(await importAccountContacts([account],null),{created:0,reused:1,failed:0,pending:0});
+ const [person]=await loadStakeholders(null);assert.equal(person.accountId,account.id);assert.equal(person.stakeholderRole,'Unknown');assert.equal(person.lastInteractionDate,'');
+ assert.equal((await importAccountContacts([{...account,userId:'foreign'}],null)).failed,1);assert.equal((await loadStakeholders(null)).length,1);
+});
+
+test('Lead reuses an unambiguous account contact without changing proven authority; ambiguity creates no extra person',async()=>{
+ const {account}=await createAccount({...emptyAccountInput,accountName:'Orion'},null);
+ const input={...emptyStakeholderInput,accountId:account.id,accountName:'Orion',name:'Casey Morgan',roleTitle:'Quality Director',stakeholderRole:'Technical Buyer',lastInteractionDate:'2026-09-01'};
+ const {stakeholder}=await createStakeholder(input,null,{source:'user',isSample:false});
+ const lead={accountName:'Orion',opportunityName:'New deal',contactName:'Casey Morgan',contactRole:'Quality Director'};
+ const first=await createLead(lead,null);assert.equal(first.stakeholder.id,stakeholder.id);assert.equal((await loadStakeholders(null)).length,1);assert.equal(first.stakeholder.stakeholderRole,'Technical Buyer');assert.equal(first.stakeholder.lastInteractionDate,'2026-09-01');
+ await createStakeholder(input,null,{source:'user',isSample:false});
+ const second=await createLead({...lead,opportunityName:'Other deal'},null);assert.equal(second.stakeholder,null);assert.match(second.warning,/More than one contact/);assert.equal((await loadStakeholders(null)).length,2);
+});
 
 /** A fresh read from storage - never the object the command returned. */
 async function reread(id) {

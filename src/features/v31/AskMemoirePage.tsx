@@ -330,6 +330,8 @@ export function AskMemoirePage() {
             buildCommercialJourneySnapshot({
               opportunity: deal,
               quotes: rawWorkspace.quotes,
+              receivableRecords: rawWorkspace.receivableRecords,
+              milestoneRecords: rawWorkspace.milestoneRecords,
               activities: rawWorkspace.activities,
               objections: rawWorkspace.objections,
             }),
@@ -362,6 +364,7 @@ export function AskMemoirePage() {
           setAnswer(answerFromMoneyFlow(
             buildMoneyFlow({
               ...rawWorkspace,
+              receivableRecords, milestoneRecords,
             }),
             buildOrderBook({
               opportunities: rawWorkspace.opportunities,
@@ -374,6 +377,8 @@ export function AskMemoirePage() {
           setAnswer(answerFromWeekRecap(rawWorkspace.activities));
         } else if (insightKind === 'retention_check') {
           setAnswer(answerFromRetentionSignals(buildRetentionSignals({
+            receivableRecords: rawWorkspace.receivableRecords || [],
+            milestoneRecords: rawWorkspace.milestoneRecords || [],
             quotes: rawWorkspace.quotes,
             activities: rawWorkspace.activities,
             opportunities: rawWorkspace.opportunities,
@@ -403,7 +408,7 @@ export function AskMemoirePage() {
               milestoneRecords, receivableRecords, costRecords,
               outcomes: rawWorkspace.opportunityOutcomes,
             }),
-            buildMoneyFlow({ ...rawWorkspace }),
+            buildMoneyFlow({ ...rawWorkspace, receivableRecords, milestoneRecords }),
           ));
         } else if (insightKind === 'own_obligations') {
           setAnswer(answerFromOwnObligations(
