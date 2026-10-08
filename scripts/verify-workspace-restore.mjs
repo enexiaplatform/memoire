@@ -64,7 +64,8 @@ import { buildRestorePlan, parseBackupFile } from '../src/utils/workspaceBackup.
 
   assert.match(tab, /parseBackupFile/, 'the restore path validates before doing anything');
   assert.match(tab, /setPending\(\{ envelope: result\.envelope/, 'a valid file fills a preview, not the workspace');
-  assert.match(tab, /window\.confirm\(/, 'the destructive step is confirmed explicitly');
+  assert.match(tab,/isRestoring \|\| !confirmRestoreOpen/, 'restore writes require the explicit in-app confirmation');
+  assert.match(tab,/title="Confirm workspace restore"/, 'restore confirmation is accessible in the application');
 
   const chooseHandler = tab.slice(tab.indexOf('handleChooseBackup'), tab.indexOf('handleConfirmRestore'));
   assert.ok(
@@ -74,6 +75,7 @@ import { buildRestorePlan, parseBackupFile } from '../src/utils/workspaceBackup.
 
   const confirmStart = tab.indexOf('const handleConfirmRestore');
   const confirmHandler = tab.slice(confirmStart, tab.indexOf('\n  const handle', confirmStart + 1));
+  assert.doesNotMatch(confirmHandler,/window\.confirm\(/, 'restore uses the in-app confirmation rather than a browser-blocking dialog');
   assert.match(confirmHandler, /buildRestorePlan/, 'the preview counts come from the sanitized plan');
   assert.match(confirmHandler, /restoreWorkspace\(/, 'the write path goes through the restore service');
   assert.ok(
