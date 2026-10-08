@@ -1,0 +1,42 @@
+{
+  "appCommit": "a29429aefd66afabff30d2248b0ca7ada8fae31e",
+  "deployment": "dpl_3o6N3riqKdXP7uwHi3tf3JqyHiG4",
+  "deploymentState": "READY",
+  "verifiedDomain": "www.memoire-official.com",
+  "fullSourceChecks": {
+    "groups": 117,
+    "passed": 117,
+    "unitTests": 2139,
+    "suites": 339,
+    "fail": 0,
+    "skip": 0
+  },
+  "quotaServiceRegression": {
+    "before": {
+      "tests": 3,
+      "fail": 3
+    },
+    "after": {
+      "tests": 3,
+      "pass": 3
+    },
+    "browserQuotaForced": false
+  },
+  "cloud": {
+    "exportedAt": "2026-10-08T11:30:31.809Z",
+    "complete": true,
+    "tables": 56,
+    "rows": 989,
+    "assets": 15,
+    "portfolioRecords": 76,
+    "outsideBackupAsset": 1
+  },
+  "restore": {
+    "nativeOriginalRecords": 1357,
+    "stores": 66,
+    "incompleteCollections": 0,
+    "actualProductionUI": true,
+    "cancelEscapeUndo": true,
+    "freshNativePreviewRecords": 1358
+  }
+}

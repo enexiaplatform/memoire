@@ -1,0 +1,91 @@
+{
+  "exportedAt": "2026-10-08T11:26:57.240Z",
+  "manifestComplete": true,
+  "totals": {
+    "orders": 37,
+    "orderValue": 435884.6153846155,
+    "received": 354949.2307692308,
+    "outstanding": 85671.92307692306,
+    "overpaid": 4736.538461538454,
+    "landedCost": 283450,
+    "grossMargin": 152434.6153846155,
+    "pipeline": 181730.76923076922
+  },
+  "checks": [
+    {
+      "metric": "orders",
+      "expected": 37,
+      "actual": 37,
+      "pass": true
+    },
+    {
+      "metric": "orderValue",
+      "expected": 435884.6153846154,
+      "actual": 435884.6153846155,
+      "pass": true
+    },
+    {
+      "metric": "received",
+      "expected": 354949.23076923075,
+      "actual": 354949.2307692308,
+      "pass": true
+    },
+    {
+      "metric": "outstanding",
+      "expected": 85671.92307692308,
+      "actual": 85671.92307692306,
+      "pass": true
+    },
+    {
+      "metric": "overpaid",
+      "expected": 4736.538461538454,
+      "actual": 4736.538461538454,
+      "pass": true
+    },
+    {
+      "metric": "landedCost",
+      "expected": 283450,
+      "actual": 283450,
+      "pass": true
+    },
+    {
+      "metric": "grossMargin",
+      "expected": 152434.61538461538,
+      "actual": 152434.6153846155,
+      "pass": true
+    },
+    {
+      "metric": "pipeline",
+      "expected": 181730.7692307692,
+      "actual": 181730.76923076922,
+      "pass": true
+    }
+  ],
+  "baselineIntegrity": [
+    {
+      "table": "opportunities",
+      "baselineRows": 72,
+      "changed": [],
+      "comparison": "Canonical owner stays on SQL row. Optional null quote fields and redundant payload userId normalized; no business amounts or status ignored."
+    },
+    {
+      "table": "sales_activities",
+      "baselineRows": 216,
+      "changed": [],
+      "comparison": "Canonical owner stays on SQL row. Optional null quote fields and redundant payload userId normalized; no business amounts or status ignored."
+    },
+    {
+      "table": "quotes",
+      "baselineRows": 72,
+      "changed": [],
+      "comparison": "Canonical owner stays on SQL row. Optional null quote fields and redundant payload userId normalized; no business amounts or status ignored."
+    },
+    {
+      "table": "order_costs",
+      "baselineRows": 36,
+      "changed": [],
+      "comparison": "Canonical owner stays on SQL row. Optional null quote fields and redundant payload userId normalized; no business amounts or status ignored."
+    }
+  ],
+  "allPass": true
+}
