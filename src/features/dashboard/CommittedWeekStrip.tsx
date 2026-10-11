@@ -66,6 +66,7 @@ export function CommittedWeekStrip({
           <p className="mt-0.5 text-xs text-gray-500">
             Confirmed for {formatSafeBusinessDate(snapshot.periodStart)} - {formatSafeBusinessDate(snapshot.periodEnd)}.
             {snapshot.items.length < MAX_WEEKLY_COMMITMENTS ? ' Change it in the weekly review.' : ''}
+            {' This is the frozen weekly review status; Plan records dated execution separately.'}
           </p>
         </div>
         <Link to="/app/reviews" className="text-xs font-bold text-brand-blue hover:underline">

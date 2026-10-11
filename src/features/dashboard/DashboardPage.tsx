@@ -1,3 +1,5 @@
+import { WorkspaceDataIssuesPanel } from '../../components/common/WorkspaceDataIssuesPanel';
+import { MetricBasisNote } from '../../components/common/MetricBasisNote';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, Navigate } from 'react-router-dom';
 import { normalizeEntityName } from '../../utils/accountIdentity.ts';
@@ -509,7 +511,7 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
   ), [variant, data]);
   // The Commercial Kernel view of the same workspace: threads derived from the
   // records already loaded, and the deterministic recommendations about them.
-  const { threads: commercialThreads, rankedRecommendations: kernelRecommendations, attentionError, attentionScope } = useCommercialThreads();
+  const { threads: commercialThreads, rankedRecommendations: kernelRecommendations, attentionError, attentionScope, workspace: kernelWorkspace } = useCommercialThreads();
 
   // The quietest threads are the point of a control tower - a thread that has
   // been moving does not need watching.
@@ -1058,17 +1060,18 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
                   />
                 </div>
                 <div className="flex min-w-0 flex-col gap-[18px]">
-                  <BusinessCockpitStrip
+                  <details className="rounded-panel bg-white p-4 shadow-panel"><summary className="min-h-11 cursor-pointer font-semibold">Context for the three moves · business questions and money</summary><BusinessCockpitStrip
                     answers={businessCockpit}
                     onOpenDeal={(opportunityId) => {
                       const opportunity = data.opportunities.find((item) => item.id === opportunityId);
                       if (opportunity) setQuickLookOpportunity(opportunity);
                     }}
                   />
-                  <MoneyInMotionPanel motion={moneyInMotion} />
+                  <MoneyInMotionPanel motion={moneyInMotion} /></details>
                 </div>
               </div>
 
+              <MetricBasisNote /><WorkspaceDataIssuesPanel workspace={kernelWorkspace} />
               <ProactiveNudgesPanel
                 center={proactiveNudges}
                 message={nudgeMessage}

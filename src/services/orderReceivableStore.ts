@@ -217,7 +217,7 @@ function persistOrderReceivables(records: OrderReceivableRecord[], syncCloud = t
     requireLocalWrite(writeLocalRecords(ORDER_RECEIVABLE_STORAGE_KEY, sanitized));
     if (syncCloud) {
       triggerReceivableSync(localIO);
-      invalidateWorkspaceCollection('orderReceivables');
+      invalidateWorkspaceCollection('receivableRecords');
     }
   }
   return sanitized;

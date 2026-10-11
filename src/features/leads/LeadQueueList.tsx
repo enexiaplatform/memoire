@@ -76,7 +76,7 @@ export function LeadQueueList({
       {/* Desktop: the record table language every other book in the product
           uses. `lg` rather than `md`, because eight columns need the room. */}
       <div className="record-table-scroller hidden lg:block">
-        <table className="w-full min-w-[960px] border-collapse text-left text-sm">
+        <table data-work-table className="w-full min-w-[960px] border-collapse text-left text-sm">
           <caption className="sr-only">{caption}</caption>
           <thead className="sticky top-0 z-10 bg-bar text-[10.5px] font-bold uppercase tracking-[0.12em] text-muted">
             <tr>

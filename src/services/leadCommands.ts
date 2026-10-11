@@ -153,6 +153,8 @@ export async function disqualifyLead(
 }
 
 export type CreateLeadInput = {
+  brand?: string;
+  brandCatalogId?: string;
   accountName: string;
   opportunityName?: string;
   contactName?: string;
@@ -193,6 +195,8 @@ export async function createLead(
     {
       ...emptyOpportunityInput,
       accountName,
+      brand: input.brand,
+      brandCatalogId: input.brandCatalogId,
       // The deal name is required by every reader. A lead often has no project
       // name yet, and the honest placeholder says so rather than inventing one.
       opportunityName: (input.opportunityName || '').trim() || `${accountName} - lead`,

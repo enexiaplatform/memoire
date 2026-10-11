@@ -533,7 +533,7 @@ function ObjectionLearningSection({
           className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full border border-blue-100 bg-white px-3 py-2 text-xs font-bold text-brand-blue hover:bg-blue-50"
         >
           <Copy className="h-3.5 w-3.5" />
-          Copy proven responses
+          Copy recorded responses
         </button>
       </div>
       <div className="mt-4 grid grid-cols-1 gap-3 lg:grid-cols-2">
@@ -564,7 +564,7 @@ function ObjectionInsightCard({ insight }: { insight: ObjectionPlaybookInsight }
       </div>
       {insight.provenResponses.length > 0 ? (
         <div className="mt-3">
-          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Your proven responses</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Responses with recorded outcomes · inspect the sample</p>
           <ul className="mt-1 space-y-1 text-xs leading-5 text-gray-700">
             {insight.provenResponses.map((response) => (
               <li key={response}>- {response}</li>

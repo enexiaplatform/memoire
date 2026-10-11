@@ -218,32 +218,31 @@ export type TodayCashPicture = {
 };
 
 export function summariseOverdueCash(receivables: ReceivablesSummary): TodayCashPicture {
-  const amount = (...keys: string[]) => receivables.aging
-    .filter((bucket) => keys.includes(bucket.bucket))
-    .reduce((sum, bucket) => sum + bucket.amountBase, 0);
+  const confirmed = receivables.orders.flatMap(order => order.installments || []).filter(row => row.overdue && row.dateBasis === 'confirmed');
+  const amount = (from: number, to = Infinity) => confirmed.filter(row => (row.daysOverdue ?? 0) >= from && (row.daysOverdue ?? 0) <= to).reduce((sum, row) => sum + row.outstandingBase, 0);
 
-  const overdueOrders = receivables.orders.filter((order) => !order.settled && order.overdueBase > 0);
+  const overdueOrders = receivables.orders.filter((order) => !order.settled && order.confirmedOverdueBase > 0);
   const oldest = overdueOrders.reduce<number | null>((max, order) => (
-    order.daysOverdue === null ? max : Math.max(max ?? 0, order.daysOverdue)
+    order.confirmedDaysOverdue === null ? max : Math.max(max ?? 0, order.confirmedDaysOverdue)
   ), null);
 
   return {
-    overdueBase: receivables.totalOverdueBase,
+    overdueBase: receivables.confirmedOverdueBase,
     outstandingBase: receivables.totalOutstandingBase,
     overdueOrderCount: overdueOrders.length,
     oldestDaysOverdue: oldest,
     segments: [
-      { key: 'not-due', label: 'Not yet due', base: amount('due-soon', 'current') },
-      { key: '1-30', label: '1-30 days late', base: amount('1-30') },
-      { key: '31-60', label: '31-60 days late', base: amount('31-60') },
-      { key: '61+', label: 'Over 60 days late', base: amount('61-90', '90+') },
+      { key: 'not-due', label: 'Not overdue / date to confirm', base: receivables.totalOutstandingBase - receivables.confirmedOverdueBase },
+      { key: '1-30', label: '1-30 days confirmed late', base: amount(1, 30) },
+      { key: '31-60', label: '31-60 days confirmed late', base: amount(31, 60) },
+      { key: '61+', label: 'Over 60 days confirmed late', base: amount(61) },
     ],
     worst: receivables.worstOverdue
       ? {
         opportunityId: receivables.worstOverdue.opportunityId,
         accountName: receivables.worstOverdue.accountName,
-        daysOverdue: receivables.worstOverdue.daysOverdue,
-        overdueBase: receivables.worstOverdue.overdueBase,
+        daysOverdue: receivables.worstOverdue.confirmedDaysOverdue,
+        overdueBase: receivables.worstOverdue.confirmedOverdueBase,
       }
       : null,
   };

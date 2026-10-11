@@ -3,6 +3,7 @@ import { normalizeEntityName } from './accountIdentity.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord, StakeholderRole } from '../services/stakeholderStore';
 import { normalizeMeddicRole } from './meddicStakeholderMap.ts';
+import { selectQualifiedPipeline } from './leadIdentity.ts';
 
 export type StakeholderCoverage = {
   missingChampion: boolean;
@@ -78,14 +79,12 @@ export function getStakeholdersForAccount(stakeholders: StakeholderRecord[], acc
 }
 
 export function getStakeholdersForOpportunity(stakeholders: StakeholderRecord[], opportunity: CrmLiteOpportunity | { id?: string; opportunityName?: string; accountName?: string }) {
-  return stakeholders.filter((stakeholder) => (
-    (opportunity.id && stakeholder.opportunityId === opportunity.id) ||
-    (
-      sameText(stakeholder.opportunityName, opportunity.opportunityName || '') &&
-      (!opportunity.accountName || sameText(stakeholder.accountName, opportunity.accountName))
-    ) ||
-    (!stakeholder.opportunityName && opportunity.accountName && sameText(stakeholder.accountName, opportunity.accountName))
-  ));
+  return stakeholders.filter((stakeholder) => {
+    if (stakeholder.opportunityId) return stakeholder.opportunityId === opportunity.id;
+    if (stakeholder.opportunityName) return sameText(stakeholder.opportunityName, opportunity.opportunityName || '')
+      && (!opportunity.accountName || sameText(stakeholder.accountName, opportunity.accountName));
+    return Boolean(opportunity.accountName && sameText(stakeholder.accountName, opportunity.accountName));
+  });
 }
 
 export function deriveStakeholderCandidatesFromActivities(activities: SalesActivityRecord[]) {
@@ -140,7 +139,7 @@ export function summarizeStakeholderCoverage(stakeholders: StakeholderRecord[], 
   const accountNamesByKey = new Map<string, string>();
   [
     ...stakeholders.map((stakeholder) => stakeholder.accountName),
-    ...opportunities.filter((opportunity) => opportunity.status === 'Active').map((opportunity) => opportunity.accountName),
+    ...selectQualifiedPipeline(opportunities).filter((opportunity) => opportunity.status === 'Active').map((opportunity) => opportunity.accountName),
   ].filter(Boolean).forEach((name) => {
     const key = normalizeEntityName(name);
     if (key && !accountNamesByKey.has(key)) accountNamesByKey.set(key, name);
@@ -166,7 +165,7 @@ export function summarizeStakeholderCoverage(stakeholders: StakeholderRecord[], 
    * deal you lost in June is not work, and counting it makes the one number
    * that is real look smaller than it is.
    */
-  const opportunitiesWithStakeholderRisk = opportunities
+  const opportunitiesWithStakeholderRisk = selectQualifiedPipeline(opportunities)
     .filter((opportunity) => opportunity.status === 'Active')
     .filter((opportunity) => analyzeStakeholderCoverage(stakeholders, opportunity).warnings.length > 0)
     .length;

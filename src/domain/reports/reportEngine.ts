@@ -4,6 +4,15 @@ import { parseReportDefinition, REPORT_ROW_LIMIT, reportFields, reportMetricDefi
 export type ReportRow = { id: string; values: Partial<Record<ReportField, ReportCell>>; references: Partial<Record<ReportField, string | null>>; fact: PortfolioFact; href: string };
 export type ReportMeasure = { value: number | null; missing: number; denominator?: number };
 export type ReportGroup = { key: string; labels: string[]; sourceIds: string[]; metrics: Partial<Record<ReportMetric, ReportMeasure>> };
+/** The rows that actually supply a selected measure, rather than its full scope. */
+export function reportMetricContributors(metric: ReportMetric, rows: ReportRow[]): ReportRow[] {
+  if (metric === 'recordCount') return rows;
+  if (metric === 'pipeline' || metric === 'won') return rows.filter(row => row.fact.qualified
+    && row.fact.status === (metric === 'pipeline' ? 'Active' : 'Won') && row.fact.reportingValue !== null);
+  if (metric === 'winRate') return rows.filter(row => row.fact.qualified && ['Won', 'Lost'].includes(row.fact.status));
+  const field = metric === 'orderValue' ? 'reportingValue' : metric;
+  return rows.filter(row => typeof row.values[field] === 'number' && Number.isFinite(row.values[field]));
+}
 export type ReportRun = {
   definition: ReportDefinition; scopeKey: string; runAt: string; timezone: string; today: string; sourceStatus: string;
   money: PortfolioMoneyBasis; rows: ReportRow[]; groups: ReportGroup[]; totals: Partial<Record<ReportMetric, ReportMeasure>>;
@@ -64,7 +73,7 @@ export function runReport(input: {
   const groups = [...buckets].map(([key, bucket]) => ({ key, labels: bucket.labels, sourceIds: bucket.rows.map(row => row.id), metrics: measure(bucket.rows, definition) }));
   return structuredClone({ definition, scopeKey: input.scopeKey, runAt: input.runAt, timezone: input.timezone, today: input.today,
     sourceStatus: input.sourceStatus, money: input.money, rows, groups, totals: measure(rows, definition), sourceCount: source.length,
-    grain: definition.dataset === 'opportunities' ? 'One opportunity per row; current classification' : 'One committed qualified order per row; current planning schedule',
+    grain: definition.dataset === 'opportunities' ? 'One opportunity per row; current classification' : 'One expected or confirmed qualified order per row; inspect order stage and date basis',
     metricVersions: Object.fromEntries(definition.metrics.map(key => [key, reportMetricDefinitions[key].version])) });
 }
 /** Typed cells retain numeric values. User text cannot execute spreadsheet formulas. */

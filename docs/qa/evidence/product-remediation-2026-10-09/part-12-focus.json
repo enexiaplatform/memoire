@@ -1,0 +1,26 @@
+{
+  "date": "2026-10-11",
+  "viewport": {
+    "pageWidth": 375,
+    "width": 390
+  },
+  "shiftTab": {
+    "focus": "Reset demo data",
+    "inert": 6
+  },
+  "tab": {
+    "focus": "Close",
+    "inert": 6
+  },
+  "escape": {
+    "dialogs": 0,
+    "focus": "Reset demo",
+    "inert": [
+      {
+        "id": "app-navigation",
+        "label": "Primary",
+        "tag": "ASIDE"
+      }
+    ]
+  }
+}

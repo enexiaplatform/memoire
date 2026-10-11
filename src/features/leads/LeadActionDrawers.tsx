@@ -12,6 +12,7 @@ import { RecordDrawer } from '../../components/ui/RecordDrawer';
 import { Field, SelectField, TextArea } from '../../components/ui/daylightForm';
 import { ghostPillClass, primaryPillClass } from '../../components/ui/daylightStyles';
 import type { NewLeadInput } from './newLead';
+import { BrandSelect } from '../../components/common/BrandSelect';
 
 /**
  * The two answers that are not "qualify".
@@ -268,6 +269,7 @@ export function AddLeadDrawer({
       <datalist id="lead-account-options">
         {accountOptions.map((option) => <option key={option} value={option} />)}
       </datalist>
+      <BrandSelect value={form.brand} catalogId={form.brandCatalogId} onChange={(brand, brandCatalogId) => onChange({ ...form, brand, brandCatalogId })} />
 
       <Field
         label="Customer"

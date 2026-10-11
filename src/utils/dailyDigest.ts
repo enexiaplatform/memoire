@@ -51,7 +51,7 @@ export function buildDailyDigest(input: DailyDigestInput): DailyDigest {
   const sections: Array<{ title: string; lines: string[] }> = [];
 
   const moneyLines = [
-    `Realized profit: ${formatCompactBaseAmount(cash.realizedProfitBase)} (collected ${formatCompactBaseAmount(cash.collectedRevenueBase)} - paid out ${formatCompactBaseAmount(cash.paidExpensesBase)})`,
+    `Recorded net cash flow: ${formatCompactBaseAmount(cash.realizedProfitBase)} (collected ${formatCompactBaseAmount(cash.collectedRevenueBase)} - paid out ${formatCompactBaseAmount(cash.paidExpensesBase)})`,
     `Money in motion: ${formatCompactBaseAmount(moneyFlow.totalInMotionBase)} across ${moneyFlow.threads.length} thread(s), ${moneyFlow.stuckThreads.length} stuck`,
     `Projected net flow: ${formatCompactBaseAmount(cash.projectedDeltaBase)}`,
   ];

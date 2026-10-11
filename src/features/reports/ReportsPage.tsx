@@ -1,3 +1,4 @@
+import { MetricBasisNote } from '../../components/common/MetricBasisNote';
 import { controlClass, fieldLabelClass, primaryPillClass, ghostPillClass } from '../../components/ui/daylightStyles';
 import { PageHeader } from '../../components/layout/PageFrame';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -15,6 +16,7 @@ import { parseReportDefinition, fieldsForDataset, operatorsForField, reportField
   type ReportCell, type ReportDefinition, type ReportField, type ReportFilter, type ReportMetric } from '../../domain/reports/reportDefinition';
 import { reportCsv, reportMetadata, type ReportRun, type ReportRow, type ReportGroup, type ReportMeasure } from '../../domain/reports/reportEngine';
 import type { SavedReport } from '../../domain/reports/reportRecord';
+import { reportQuestions } from '../../domain/reports/reportQuestions';
 import { portfolioReportDraft } from '../../domain/reports/reportHandoffs';
 import { moneyViewHref } from '../revenue/moneyViews';
 import './reports.css';
@@ -51,23 +53,35 @@ export function ReportsPage() {
   const [run, setRun] = useState<ReportRun | null>(null), [drillGroup, setDrillGroup] = useState<string | null>(null);
   const [page, setPage] = useState(0), [columnSearch, setColumnSearch] = useState(''), [archived, setArchived] = useState(false);
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [message, setMessage] = useState('');
-  const [reload, setReload] = useState(0);
+  const [reload, setReload] = useState(0), [editorOpen, setEditorOpen] = useState(false);
+  const [runRequest, setRunRequest] = useState<{definition: ReportDefinition; scopeKey: string} | null>(null);
+  useEffect(() => {
+    if (!runRequest || runRequest.scopeKey !== scopeKey) return;
+    let cancelled = false;
+    setBusy('run'); setError(''); setRun(null); setPage(0); setDrillGroup(null);
+    void Promise.resolve().then(() => executeWorkspaceReport(scope, parseReportDefinition(runRequest.definition), scopeKey))
+      .then(result => { if (!cancelled) setRun(result); })
+      .catch(failure => { if (!cancelled) setError(failure instanceof Error ? failure.message : 'Report source unavailable.'); })
+      .finally(() => { if (!cancelled) setBusy(''); });
+    return () => { cancelled = true; };
+  }, [runRequest, scope, scopeKey]);
   const selectionKey = JSON.stringify([scopeKey, requestedReport || '', catalogKind || '', catalogId || '', reload]);
   const [linkBlocked, setLinkBlocked] = useState(false);
   useEffect(() => {
     if (authLoading || handledSelection.current === selectionKey) return;
     let cancelled = false;
-    setLibrary(null); setRun(null); setEditing(null); setDefinition(reportTemplate('portfolio')); setError(''); setMessage(''); setLinkBlocked(false); setBusy('library');
+    setLibrary(null); setRun(null); setRunRequest(null); setEditing(null); setDefinition(reportTemplate('portfolio')); setError(''); setMessage(''); setLinkBlocked(false); setBusy('library');
     void Promise.all([loadSavedReports(scope), loadPortfolio(scope)]).then(([value, catalog]) => {
       if (!cancelled) {
         setLibrary({ scopeKey, value, nodes: portfolioNodes(catalog.records) });
         if (requestedReport && requestedReport !== 'new') { const record = value.records.find(row => row.id === requestedReport);
           if (!record || record.archived) { setError('This saved report is unavailable or archived. Restore it or choose another report.'); setLinkBlocked(true); }
-          else { setDefinition(record.definition); setEditing({ id: record.id, version: record.version }); }
+          else { setDefinition(record.definition); setEditing({ id: record.id, version: record.version }); setRunRequest({ definition: record.definition, scopeKey }); }
         } else if (catalogKind !== null || catalogId !== null) {
-          try { setDefinition(portfolioReportDraft(catalogKind, catalogId, portfolioNodes(catalog.records))); }
+          try { const draft = portfolioReportDraft(catalogKind, catalogId, portfolioNodes(catalog.records)); setDefinition(draft); setRunRequest({ definition: draft, scopeKey }); }
           catch (failure) { setError(failure instanceof Error ? failure.message : 'Portfolio report unavailable.'); setLinkBlocked(true); }
         }
+        if (!requestedReport && catalogKind === null && catalogId === null) setRunRequest({ definition: reportTemplate('portfolio'), scopeKey });
         handledSelection.current = selectionKey;
       }
     }).catch(failure => { if (!cancelled) setError(failure instanceof Error ? failure.message : 'Could not load reports.'); })
@@ -82,7 +96,7 @@ export function ReportsPage() {
     const next = new URLSearchParams(reportParams); next.set('report', id); next.delete('catalogKind'); next.delete('catalogId');
     handledSelection.current = JSON.stringify([scopeKey, id, '', '', reload]); setReportParams(next, { replace }); setLinkBlocked(false); setError('');
   };
-  const selectSaved = (record: SavedReport) => { if (record.archived) { setMessage('Restore the archived report before editing it.'); return; } change(record.definition); setEditing({ id: record.id, version: record.version }); setRun(null); identify(record.id); };
+  const selectSaved = (record: SavedReport) => { if (record.archived) { setMessage('Restore the archived report before editing it.'); return; } change(record.definition); setEditing({ id: record.id, version: record.version }); setRun(null); identify(record.id); setEditorOpen(false); setRunRequest({ definition: record.definition, scopeKey }); };
   const savedDefinition = current?.value.records.find(record => record.id === editing?.id && !record.archived);
   const dashboardReady = Boolean(savedDefinition && JSON.stringify(savedDefinition.definition) === JSON.stringify(definition));
   const save = async (record?: SavedReport, archive?: boolean) => {
@@ -99,12 +113,7 @@ export function ReportsPage() {
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not save this report.'); }
     finally { setBusy(''); }
   };
-  const execute = async () => {
-    setBusy('run'); setError(''); setMessage(''); setRun(null); setPage(0); setDrillGroup(null);
-    try { const result = await executeWorkspaceReport(scope, parseReportDefinition(definition), scopeKey); setRun(result); }
-    catch (failure) { setError(failure instanceof Error ? failure.message : 'Report source unavailable.'); }
-    finally { setBusy(''); }
-  };
+  const execute = async () => { setRunRequest({ definition, scopeKey }); };
   const download = async () => {
     if (!visibleRun) return;
     setBusy('export'); setError('');
@@ -133,14 +142,27 @@ export function ReportsPage() {
       {message && <p role="status" className="rounded-lg bg-tint-blue-bg p-3 text-sm text-ink">{message}</p>}
       {!current ? <p>{busy || authLoading ? 'Loading reports…' : 'Reload the library to try again.'}</p> : <>
         <p className="rounded-lg bg-tint-blue-bg p-3 text-sm text-ink">{current.value.message}</p>
-        <section className="grid min-w-0 gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
-          <aside className="min-w-0 rounded-panel bg-white shadow-panel p-4"><h2 className="font-bold text-ink">Start from a template</h2>
+        {visibleRun && <section className="order-1 min-w-0 rounded-panel bg-white shadow-panel p-5" data-testid="report-result">
+          <h2 className="text-lg font-bold text-ink">{visibleRun.definition.name}</h2><MetricBasisNote /><p className="mt-2 text-sm text-muted">{visibleRun.rows.length} matching records from {visibleRun.sourceCount} loaded source records · {visibleRun.money.currency} · run {visibleRun.runAt}</p>
+          <p className="mt-1 text-xs text-muted">{visibleRun.grain}. {visibleRun.sourceStatus} Timezone: {visibleRun.timezone}; planning FX {visibleRun.money.ratesAsOf}, workspace overrides captured.</p>
+          {definition.dataset === 'collections' && <p className="mt-2 text-xs text-muted">Only quotes linked by ID are used; legacy name-only quotes are excluded. Open a row’s source deal or <Link className="font-semibold text-brand-blue" to={moneyViewHref('collections')}>open Collections</Link> to manage payments.</p>}
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{visibleRun.definition.metrics.map(key => <div key={key} className="rounded-lg bg-canvas p-3"><p className="text-xs text-muted">{reportMetricDefinitions[key].label}</p><p className="mt-1 font-bold text-ink">{metricLabel(key, visibleRun.totals[key])}</p></div>)}</div>
+          <div className="my-4 flex flex-wrap gap-2"><button type="button" className={button} disabled={Boolean(busy)} onClick={() => void download()}>Export CSV pack</button><button type="button" className={secondary} disabled={!printAllowed || Boolean(busy)} onClick={() => { assertReportScope(scope); window.print(); }}>Print / save PDF</button>{activeGroup && <button type="button" className={secondary} onClick={() => { setDrillGroup(null); setPage(0); }}>Back to summary</button>}</div>
+          {!printAllowed && <p className="mb-3 text-xs text-muted">Print supports up to 8 detail columns and 2,000 rows/groups. Reduce columns or use grouped summary; CSV includes every matching row.</p>}
+          {activeGroup && <p className="mb-3 text-sm font-semibold text-ink">Source records: {activeGroup.labels.join(' / ') || 'All matching records'}</p>}
+          <p className="mb-2 text-xs text-muted">Preview {count ? page * REPORT_PREVIEW_LIMIT + 1 : 0}–{Math.min((page + 1) * REPORT_PREVIEW_LIMIT, count)} of {count} {detailView ? 'records' : 'groups'}. Export uses the full filtered result.</p>
+          <div className="min-w-0 overflow-x-auto">{detailView ? <DetailTable rows={preview} definition={visibleRun.definition} /> : <SummaryTable groups={groups} definition={visibleRun.definition} onGroup={key => { setDrillGroup(key); setPage(0); }} />}</div>
+          {!count && <p className="mt-3 text-sm text-muted">No matching records. Change the filters and run again.</p>}
+          <div className="mt-3 flex items-center gap-3"><button className={secondary} disabled={page === 0} onClick={() => setPage(value => value - 1)}>Previous page</button><button className={secondary} disabled={(page + 1) * REPORT_PREVIEW_LIMIT >= count} onClick={() => setPage(value => value + 1)}>Next page</button></div>
+        </section>}
+        <section className="order-2 grid min-w-0 gap-4 lg:grid-cols-[16rem_minmax(0,1fr)]">
+          <aside className="min-w-0 rounded-panel bg-white shadow-panel p-4"><h2 className="font-bold text-ink">Choose a business question</h2><div className="mt-3 flex flex-col gap-2">{reportQuestions.map(question => <button key={question.id} className={secondary} disabled={Boolean(busy)} onClick={() => { const draft = question.definition(); change(draft); setEditing(null); identify('new'); setEditorOpen(false); setRunRequest({ definition: draft, scopeKey }); }}>{question.label}</button>)}</div><h3 className="mt-5 text-sm font-semibold">Other templates</h3>
             <div className="mt-3 flex flex-col gap-2">{(['portfolio', 'collections'] as const).map(key => <button key={key} className={secondary} disabled={Boolean(busy)} onClick={() => { change(reportTemplate(key)); setEditing(null); setRun(null); identify('new'); }}>{reportTemplate(key).name}</button>)}</div>
             <h2 className="mt-5 font-bold text-ink">Saved reports</h2><label className="mt-2 flex min-h-11 items-center gap-2 text-xs"><input type="checkbox" checked={archived} onChange={event => setArchived(event.target.checked)} />Archived reports only</label>
             <ul className="mt-3 space-y-3">{current.value.records.filter(record => record.archived === archived).map(record => <li key={record.id} className="break-words rounded-lg border border-line p-3"><button className="text-left text-sm font-semibold text-brand-blue" disabled={Boolean(busy)} onClick={() => selectSaved(record)}>{record.definition.name}</button><p className="mt-1 text-xs text-muted">{record.definition.dataset} · version {record.version}</p><button className="mt-2 text-xs font-semibold text-gray-600" disabled={Boolean(busy)} onClick={() => void save(record, !record.archived)}>{record.archived ? 'Restore report' : 'Archive report'}</button></li>)}</ul>
             {!current.value.records.some(record => record.archived === archived) && <p className="mt-3 text-sm text-muted">No saved reports here yet.</p>}
           </aside>
-          <fieldset disabled={Boolean(busy) || linkBlocked} className="flex min-w-0 flex-col gap-4 rounded-panel bg-white shadow-panel p-5">
+<details open={editorOpen} onToggle={event => setEditorOpen(event.currentTarget.open)} className="min-w-0"><summary className="min-h-11 cursor-pointer rounded-panel bg-white p-4 font-semibold shadow-panel">Customize filters, columns and saved report</summary><fieldset disabled={Boolean(busy) || linkBlocked} className="flex min-w-0 flex-col gap-4 rounded-panel bg-white shadow-panel p-5">
             <legend className="sr-only">Report builder</legend><h2 className="font-bold text-ink">{editing ? 'Edit saved report' : 'Customize report'}</h2>
             <label className={fieldLabelClass}>Report name<input className={control} value={definition.name} maxLength={200} onChange={event => change({ ...definition, name: event.target.value })} /></label>
             <label className={fieldLabelClass}>Purpose<textarea className={control} value={definition.description} maxLength={2000} onChange={event => change({ ...definition, description: event.target.value })} /></label>
@@ -166,26 +188,14 @@ export function ReportsPage() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2">{[0, 1].map(index => <label key={index} className="text-sm">Group {index + 1}<select aria-label={`Group ${index + 1}`} className={control} value={definition.groupBy[index] || ''} disabled={index === 1 && !definition.groupBy.length} onChange={event => { const groupBy = [...definition.groupBy]; if (!event.target.value) groupBy.splice(index); else groupBy[index] = event.target.value as ReportField; change({ ...definition, groupBy }); }}><option value="">No grouping</option>{fields.filter(key => reportFields[key].type !== 'number').map(key => <option key={key} value={key}>{reportFields[key].label}</option>)}</select></label>)}</div>
             <div><h3 className="font-semibold text-ink">Measures</h3><div className="mt-2 flex flex-wrap gap-4">{metrics.map(key => <label key={key} className="flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={definition.metrics.includes(key)} onChange={event => change({ ...definition, metrics: event.target.checked ? [...definition.metrics, key] : definition.metrics.filter(metric => metric !== key) })} />{reportMetricDefinitions[key].label}</label>)}</div></div>
-            <p className="text-xs text-muted">Amounts use reporting currency except Original value. Partial totals show missing records. Won value is not cash; win rate needs 3 decided deals. Collections use recorded receipts and planning schedules; missing dates do not mean not overdue.</p>
+            <p className="text-xs text-muted">Amounts use reporting currency except Original value. Partial totals show missing records. Won value is not cash; win rate needs 3 decided deals. Confirmed overdue requires stated terms and a recorded trigger date; planning balances remain separate until confirmed.</p>
             <div className="flex flex-wrap gap-2"><button type="button" className={button} onClick={() => void execute()}>Run report</button><button type="button" className={secondary} onClick={() => void save()}>{editing ? 'Save changes' : 'Save report'}</button><button type="button" className={secondary} onClick={() => { setEditing(null); setRun(null); change({ ...definition, name: `${definition.name} (copy)` }); identify('new'); }}>Duplicate as new report</button></div>
             {dashboardReady && !busy ? <Link className="inline-flex min-h-11 items-center self-start font-semibold text-brand-blue" to={`/app/dashboards?${new URLSearchParams({ dashboard: 'new', report: editing!.id })}`}>Create dashboard from this report</Link> : <p className="text-xs text-muted">Save this report before using it in a dashboard. Dashboard widgets use the saved definition.</p>}
-          </fieldset>
+          </fieldset></details>
         </section>
         {busy === 'run' && <p role="status">Loading current report sources…</p>}
         {run && !visibleRun && <p className="text-sm text-tint-amber-ink">Configuration changed. Run the report again to preview or export.</p>}
-        {visibleRun && <section className="min-w-0 rounded-panel bg-white shadow-panel p-5" data-testid="report-result">
-          <h2 className="text-lg font-bold text-ink">{visibleRun.definition.name}</h2><p className="mt-2 text-sm text-muted">{visibleRun.rows.length} matching records from {visibleRun.sourceCount} loaded source records · {visibleRun.money.currency} · run {visibleRun.runAt}</p>
-          <p className="mt-1 text-xs text-muted">{visibleRun.grain}. {visibleRun.sourceStatus} Timezone: {visibleRun.timezone}; planning FX {visibleRun.money.ratesAsOf}, workspace overrides captured.</p>
-          {definition.dataset === 'collections' && <p className="mt-2 text-xs text-muted">Only quotes linked by ID are used; legacy name-only quotes are excluded. Open a row’s source deal or <Link className="font-semibold text-brand-blue" to={moneyViewHref('collections')}>open Collections</Link> to manage payments.</p>}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{visibleRun.definition.metrics.map(key => <div key={key} className="rounded-lg bg-canvas p-3"><p className="text-xs text-muted">{reportMetricDefinitions[key].label}</p><p className="mt-1 font-bold text-ink">{metricLabel(key, visibleRun.totals[key])}</p></div>)}</div>
-          <div className="my-4 flex flex-wrap gap-2"><button type="button" className={button} disabled={Boolean(busy)} onClick={() => void download()}>Export CSV pack</button><button type="button" className={secondary} disabled={!printAllowed || Boolean(busy)} onClick={() => { assertReportScope(scope); window.print(); }}>Print / save PDF</button>{activeGroup && <button type="button" className={secondary} onClick={() => { setDrillGroup(null); setPage(0); }}>Back to summary</button>}</div>
-          {!printAllowed && <p className="mb-3 text-xs text-muted">Print supports up to 8 detail columns and 2,000 rows/groups. Reduce columns or use grouped summary; CSV includes every matching row.</p>}
-          {activeGroup && <p className="mb-3 text-sm font-semibold text-ink">Source records: {activeGroup.labels.join(' / ') || 'All matching records'}</p>}
-          <p className="mb-2 text-xs text-muted">Preview {count ? page * REPORT_PREVIEW_LIMIT + 1 : 0}–{Math.min((page + 1) * REPORT_PREVIEW_LIMIT, count)} of {count} {detailView ? 'records' : 'groups'}. Export uses the full filtered result.</p>
-          <div className="min-w-0 overflow-x-auto">{detailView ? <DetailTable rows={preview} definition={visibleRun.definition} /> : <SummaryTable groups={groups} definition={visibleRun.definition} onGroup={key => { setDrillGroup(key); setPage(0); }} />}</div>
-          {!count && <p className="mt-3 text-sm text-muted">No matching records. Change the filters and run again.</p>}
-          <div className="mt-3 flex items-center gap-3"><button className={secondary} disabled={page === 0} onClick={() => setPage(value => value - 1)}>Previous page</button><button className={secondary} disabled={(page + 1) * REPORT_PREVIEW_LIMIT >= count} onClick={() => setPage(value => value + 1)}>Next page</button></div>
-        </section>}
+
       </>}
     </div>
     {visibleRun && printAllowed && createPortal(<article className="report-print"><h1>{visibleRun.definition.name}</h1><p>{visibleRun.definition.description}</p><p>{visibleRun.grain} · {visibleRun.rows.length} records · {visibleRun.money.currency}</p><p>Run: {visibleRun.runAt}; timezone {visibleRun.timezone}; planning FX {visibleRun.money.ratesAsOf} with captured overrides.</p><p>{visibleRun.sourceStatus}</p><p>Scope: {visibleRun.definition.population}; filters ({visibleRun.definition.filterMode}): {JSON.stringify(visibleRun.definition.filters)}. Current run; not historical reconstruction.</p><ul>{visibleRun.definition.metrics.map(key => <li key={key}>{reportMetricDefinitions[key].label}: {metricLabel(key, visibleRun.totals[key])}</li>)}</ul>{visibleRun.definition.view === 'summary' ? <SummaryTable groups={visibleRun.groups} definition={visibleRun.definition} /> : <DetailTable rows={visibleRun.rows} definition={visibleRun.definition} links={false} />}<footer>Missing values are shown as —; partial sums exclude them. Won value is not cash or accounting revenue. Payment dates are planning schedules with confidence shown in the dataset. Full run definition/rates accompany the CSV pack.</footer></article>, document.body)}

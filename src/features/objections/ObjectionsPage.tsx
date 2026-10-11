@@ -376,7 +376,7 @@ export function ObjectionsPage() {
           )
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[1000px] table-fixed border-collapse text-left">
+            <table data-work-table className="w-full min-w-[1000px] table-fixed border-collapse text-left">
               <colgroup>
                 <col className="w-[31%]" />
                 <col className="w-[128px]" />

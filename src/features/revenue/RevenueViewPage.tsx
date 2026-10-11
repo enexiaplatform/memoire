@@ -255,7 +255,7 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
               label="Active pipeline"
               value={formatBaseMoney(revenue.activePipeline, true)}
               tone="blue"
-              detail="Every open deal, including unqualified Leads"
+              detail="Active qualified Opportunities; Leads stay separate until qualified"
             />
             <RevenueMetric label="At risk" value={formatBaseMoney(revenue.atRiskRevenue, true)} tone={revenue.atRiskRevenue ? 'red' : 'green'} detail="Contract exposure at risk; Collections shows cash still owed" />
             {/* Pipeline metrics, on a page that also carries an order book -

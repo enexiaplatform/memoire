@@ -363,7 +363,7 @@ function NodeRow({
         )}
         {health && (
           <span className="text-[11px] font-bold text-gray-400">
-            {health.known}/{health.total} known
+            {health.known}/{health.total} recorded
           </span>
         )}
         {node.updatedAt && (

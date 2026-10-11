@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { clearSampleDataset, SAMPLE_DATA_UPDATED_EVENT, isSampleDataLoaded } from '../../utils/sampleData';
+import { clearSampleDataset, loadSampleDataset, SAMPLE_DATA_UPDATED_EVENT, isSampleDataLoaded } from '../../utils/sampleData';
+import { RecordDrawer } from '../ui/RecordDrawer';
 import { clearDemoWorkspaceMode } from '../../lib/demoMode';
 
 export function DemoModeBanner() {
   const navigate = useNavigate();
   const [demoActive, setDemoActive] = useState(() => isSampleDataLoaded());
+  const [confirmAction, setConfirmAction] = useState<'reset' | 'exit' | null>(null), [error, setError] = useState('');
 
   useEffect(() => {
     const refresh = () => setDemoActive(isSampleDataLoaded());
@@ -17,14 +19,11 @@ export function DemoModeBanner() {
     };
   }, []);
 
-  if (!demoActive) return null;
+  if (!demoActive && !confirmAction && !error) return null;
 
   const resetDemo = () => {
-    const confirmed = window.confirm('Reset demo data in this browser? This only removes records marked as demo/sample and does not delete cloud data or user records.');
-    if (!confirmed) return;
-    clearSampleDataset();
-    setDemoActive(false);
-    window.location.reload();
+    try { clearSampleDataset(); loadSampleDataset(); setConfirmAction(null); window.location.reload(); }
+    catch { setError('The demo could not be reset. Export a browser backup and check available storage before retrying.'); }
   };
 
   /**
@@ -44,8 +43,6 @@ export function DemoModeBanner() {
    * (see services/localWorkspaceOwner).
    */
   const exitDemo = () => {
-    const confirmed = window.confirm('Exit demo mode and clear sample demo data from this browser? Only records marked as demo/sample are removed. Cloud data will not be changed.');
-    if (!confirmed) return;
     clearSampleDataset();
     clearDemoWorkspaceMode();
     setDemoActive(false);
@@ -56,20 +53,21 @@ export function DemoModeBanner() {
     <section className="no-print border-b border-amber-200 bg-amber-50 px-4 py-3 text-sm shadow-sm">
       <div className="flex w-full max-w-none flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
         <p className="font-semibold text-amber-900">
-          Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+          {demoActive ? 'Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.' : 'Demo reset needs attention. Check the message before retrying.'}
         </p>
         <div className="flex flex-wrap gap-2">
           <Link to="/signup" className="rounded-full bg-amber-900 px-3 py-1.5 text-xs font-bold text-white hover:bg-amber-950">
             Create account
           </Link>
-          <button type="button" onClick={resetDemo} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100">
+          <button type="button" onClick={() => { setError(''); setConfirmAction('reset'); }} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100">
             Reset demo
           </button>
-          <button type="button" onClick={exitDemo} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100">
+          <button type="button" onClick={() => { setError(''); setConfirmAction('exit'); }} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-100">
             Exit demo
           </button>
         </div>
       </div>
+      {confirmAction && <RecordDrawer eyebrow="Demo workspace" title={confirmAction === 'reset' ? 'Reset demo data?' : 'Exit demo?'} label="Confirm demo action" onClose={() => setConfirmAction(null)} footer={<div className="flex gap-3"><button type="button" className="min-h-11 rounded-full border border-line px-4 text-sm font-semibold" onClick={() => setConfirmAction(null)}>Keep this demo</button><button type="button" className="min-h-11 rounded-full bg-brand-blue px-4 text-sm font-semibold text-white" onClick={confirmAction === 'reset' ? resetDemo : exitDemo}>{confirmAction === 'reset' ? 'Reset demo data' : 'Exit demo and clear samples'}</button></div>}><p className="text-sm">{confirmAction === 'reset' ? 'Replace the sample examples with the current complete demo, including Brand links and recorded receipts.' : 'Remove sample examples and return to the home page.'} Your personal records and cloud data are preserved.</p>{error && <p role="alert" className="mt-3 text-sm text-red-700">{error}</p>}</RecordDrawer>}
     </section>
   );
 }

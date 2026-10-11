@@ -5,7 +5,8 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../../auth/authContext';
 import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
 import { loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
-import { loadPortfolio, savePortfolio, type PortfolioLoad, type PortfolioScope } from '../../services/portfolioStore';
+import { loadPortfolio, savePortfolio, registerLegacyBrand, type PortfolioLoad, type PortfolioScope } from '../../services/portfolioStore';
+import { brandKey } from '../../utils/brandIdentity';
 import { portfolioAssignments, portfolioKinds, portfolioNodes, suggestPortfolioNode, type PortfolioNodeData } from '../../domain/portfolio/portfolioCatalog';
 import { buildPortfolioFacts, capturePortfolioMoneyBasis, summarizePortfolio } from '../../domain/portfolio/portfolioAnalytics';
 import { EXCHANGE_RATES_CHANGED_EVENT, REPORTING_CURRENCY_CHANGED_EVENT } from '../../utils/money';
@@ -64,10 +65,20 @@ export function PortfolioPage() {
   }, [current, requestedDeal, scopeKey]);
   const records = useMemo(() => current?.catalog.records || [], [current]);
   const nodes = useMemo(() => portfolioNodes(records), [records]);
+  const registerBrand = async (name: string) => {
+    if (!current) return;
+    setBusy(true); setError('');
+    try {
+      const catalog = await registerLegacyBrand(scope, name, current.workspace.opportunities);
+      setLoaded(previous => previous?.scope === scopeKey ? { ...previous, catalog } : previous);
+    } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not link this Brand.'); }
+    finally { setBusy(false); }
+  };
   const money = capturePortfolioMoneyBasis(current?.workspace.opportunities.map(row => row.currency) || []);
   const facts = useMemo(() => current ? buildPortfolioFacts({ opportunities: current.workspace.opportunities,
     outcomes: current.workspace.opportunityOutcomes, records, money, sample }) : [], [current, records, money, sample]);
   const totals = summarizePortfolio(facts);
+  const unlinkedBrands = [...new Set(facts.filter(row => !row.brandId && row.originalBrand.trim()).map(row => row.originalBrand.trim()))];
   const moneyLabel = (amount: number | null) => amount === null ? 'Unavailable' : new Intl.NumberFormat('en', { style: 'currency', currency: money.currency, maximumFractionDigits: 0 }).format(amount);
   const apply = async (id: string, state: Parameters<typeof savePortfolio>[1]['state'], expectedVersion: number) => {
     setBusy(true); setError('');
@@ -101,6 +112,14 @@ export function PortfolioPage() {
       </div>
       <p className="text-xs text-muted">Current pipeline and all-time won/lost outcomes. Partial totals exclude missing amounts/rates. Planning FX dated {money.ratesAsOf}, with workspace overrides. Won value is not cash or accounting revenue. {totals.unmapped} qualified deals have no portfolio classification.</p>
       {facts.some(row => row.qualified && row.originalBrand.trim()) && <details className="rounded-panel bg-white shadow-panel p-4" onToggle={event => setShowOriginalBrands(event.currentTarget.open)}><summary className="min-h-11 cursor-pointer py-2 font-semibold text-ink">Check original brand text before classification</summary><p className="mb-3 text-sm text-muted">Original deal text can differ from accepted catalog classifications. Use this reading to find naming gaps; Reports and Dashboards use the catalog IDs you confirm below.</p>{showOriginalBrands && <BrandPerformancePanel />}</details>}
+      {unlinkedBrands.length > 0 && <section className="rounded-panel bg-white shadow-panel p-5">
+        <h2 className="font-bold text-ink">Brands awaiting catalog links</h2>
+        <p className="mt-1 text-sm text-muted">Accept each name to create a Brand or link to its existing name/alias. Includes Leads. Similar names stay separate.</p>
+        <ul className="mt-3 space-y-2">{unlinkedBrands.map(name => <li key={name} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line p-3">
+          <span>{name} · {facts.filter(row => !row.brandId && brandKey(row.originalBrand) === brandKey(name)).length} records</span>
+          <button type="button" disabled={busy} className={ghostPillClass} onClick={() => void registerBrand(name)}>{suggestPortfolioNode(records, 'brand', name) ? 'Link records' : 'Add Brand and link records'}</button>
+        </li>)}</ul>
+      </section>}
       <section className="grid min-w-0 gap-5 lg:grid-cols-2">
         <form className="flex flex-col gap-3 rounded-panel bg-white shadow-panel p-5" onSubmit={async event => {
           event.preventDefault();

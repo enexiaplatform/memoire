@@ -164,25 +164,24 @@ export function getMeddicLiteDefenseAnswer(review: MeddicLiteReview) {
 }
 
 function reviewMetrics(opportunity: CrmLiteOpportunity, activities: SalesActivityRecord[]): MeddicLiteFieldReview {
-  const buyingSignals = dedupe(activities.flatMap((activity) => activity.buyingSignals || []));
-  const timelineSignals = dedupe(activities.flatMap((activity) => activity.timelineSignals || []));
-  const evidence: string[] = [];
-  if (opportunity.estimatedValue) evidence.push(`Estimated value: ${formatCurrencyAmount(opportunity.estimatedValue, opportunity.currency)}.`);
-  if (hasStrongSignal(opportunity.evidence)) evidence.push(firstSentence(opportunity.evidence));
-  if (buyingSignals.length > 0) evidence.push(`Buying signals: ${buyingSignals.slice(0, 3).join(', ')}.`);
-  if (timelineSignals.length > 0) evidence.push(`Timeline signals: ${timelineSignals.slice(0, 2).join(', ')}.`);
-
-  const hasMetric = Boolean(opportunity.estimatedValue || buyingSignals.length > 0 || hasStrongSignal(opportunity.evidence));
-  const hasImpact = businessImpactTerms.test(opportunity.evidence) || businessImpactTerms.test(opportunity.productOrSolution);
+  const impactRows = dedupe([opportunity.evidence || '', ...activities.map(activity => activity.summary || '')])
+    .flatMap(text => text.split(/\n|(?<=[.!?])\s+/u))
+    .filter(text => businessImpactTerms.test(text));
+  const quantified = impactRows.filter(text => /\d+(?:[.,]\d+)?\s*(?:%|percent|hours?|minutes?|days?|units?|samples?|batches?)|\bfrom\s+\d+.{0,35}\bto\s+\d+/iu.test(text)
+    || /(?:savings?|save[ds]?|tiết kiệm|cost reduction).{0,40}\d+(?:[.,]\d+)?\s*(?:USD|VND|SGD|EUR)/iu.test(text));
+  const confirmed = quantified.some(text => /\bconfirmed\b|\bvalidated\b|\bagreed\b|xác nhận|đã thống nhất/iu.test(text)
+    && !/\b(?:not|unconfirmed|unvalidated|unagreed)\b|chưa xác nhận/iu.test(text));
+  const evidence = impactRows.slice(0, 4);
+  if (opportunity.estimatedValue) evidence.push(`Deal value (not a customer impact metric): ${formatCurrencyAmount(opportunity.estimatedValue, opportunity.currency)}.`);
 
   return {
     key: 'metrics',
     label: 'Metrics',
-    status: hasMetric && hasImpact ? 'Strong' : hasMetric ? 'Partial' : 'Missing',
+    status: confirmed ? 'Strong' : impactRows.length > 0 ? 'Partial' : 'Missing',
     evidence: evidence.length > 0 ? evidence : ['No measurable business impact or value proof captured yet.'],
     gaps: [
-      !hasMetric ? 'No measurable business impact captured.' : '',
-      !hasImpact ? 'Business impact is not explicit.' : '',
+      quantified.length === 0 ? 'Customer impact needs a quantified baseline or target; deal value does not establish it.' : '',
+      !confirmed ? 'Record who confirmed the measurable customer impact and its source.' : '',
     ].filter(Boolean),
     recommendedQuestions: [
       'What measurable business impact does the customer expect from this project?',
@@ -555,10 +554,6 @@ function categoryRank(category: MeddicLiteDealCategory) {
   }[category];
 }
 
-function hasStrongSignal(value: string) {
-  return /confirmed|approved|budget|po|procurement owner|decision maker|timeline|completed|requested|technical evaluation|validation/i.test(value);
-}
-
 /**
  * Compiled once. The list is fixed, so building seven regexes per call only
  * ever produced the same seven - and this runs for every opportunity on Today,
@@ -592,5 +587,5 @@ function escapeRegExp(value: string) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-const businessImpactTerms = /roi|impact|cost|saving|save|reduce|increase|capacity|throughput|compliance|approval|budget|risk|sla|downtime|efficiency|revenue|margin/i;
+const businessImpactTerms = /\b(?:savings?|save[ds]?|reduc(?:e[ds]?|ing|tion)|increas(?:e[ds]?|ing)|throughput|downtime|efficiency|return on investment|roi|business impact)\b|giảm|tiết kiệm|năng suất/iu;
 const criteriaTerms = /criteria|proof|validation|compliance|compare|evaluation|requirement|iq|oq|pq|sla|throughput|technical/i;

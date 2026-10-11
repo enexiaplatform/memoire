@@ -1,3 +1,4 @@
+import { MetricBasisNote } from '../../components/common/MetricBasisNote';
 import { controlClass, fieldLabelClass, primaryPillClass, ghostPillClass } from '../../components/ui/daylightStyles';
 import { PageHeader } from '../../components/layout/PageFrame';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -15,7 +16,7 @@ import { dashboardDimensions, dashboardFromReport, newDashboard, parseDashboardD
 import { barGroups, measureText, widgetError, type DashboardRun } from '../../domain/dashboards/dashboardEngine';
 import type { SavedDashboard } from '../../domain/dashboards/dashboardRecord';
 import { reportFields, reportMetricDefinitions } from '../../domain/reports/reportDefinition';
-import { reportCsv, reportMetadata, type ReportGroup, type ReportRun } from '../../domain/reports/reportEngine';
+import { reportCsv, reportMetadata, reportMetricContributors, type ReportGroup, type ReportRun } from '../../domain/reports/reportEngine';
 const control = `${controlClass} mt-1.5`;
 const primary = `${primaryPillClass} min-h-11`;
 const secondary = `${ghostPillClass} min-h-11`;
@@ -51,32 +52,44 @@ export function DashboardsPage() {
   const requestedReport = params.get('report') || '', handledSelection = useRef('');
   const [library, setLibrary] = useState<{ scopeKey: string; boards: DashboardLibrary; reports: ReportLibrary; nodes: PortfolioNode[] } | null>(null);
   const [definition, setDefinition] = useState<DashboardDefinition>(newDashboard), [editing, setEditing] = useState<{ id: string; version: number } | null>(null);
-  const [run, setRun] = useState<DashboardRun | null>(null), [stale, setStale] = useState(false), [openEditor, setOpenEditor] = useState(true), [archived, setArchived] = useState(false);
+  const [run, setRun] = useState<DashboardRun | null>(null), [stale, setStale] = useState(false), [openEditor, setOpenEditor] = useState(false), [archived, setArchived] = useState(false);
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [message, setMessage] = useState(''), [reload, setReload] = useState(0), [detailPage, setDetailPage] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 640px)').matches);
+  const [runRequest, setRunRequest] = useState<{definition: DashboardDefinition; scopeKey: string} | null>(null);
+  const [contributorsOnly, setContributorsOnly] = useState(true);
+  useEffect(() => {
+    if (!runRequest || runRequest.scopeKey !== scopeKey) return;
+    let cancelled = false;
+    setBusy('run'); setError('');
+    void executeWorkspaceDashboard(scope, runRequest.definition, scopeKey)
+      .then(next => { if (!cancelled) { setRun(next); setStale(false); setOpenEditor(false); } })
+      .catch(failure => { if (!cancelled) { setStale(true); setError(failure instanceof Error ? failure.message : 'Refresh failed.'); } })
+      .finally(() => { if (!cancelled) setBusy(''); });
+    return () => { cancelled = true; };
+  }, [runRequest, scope, scopeKey]);
   const selectionKey = JSON.stringify([scopeKey, requested, requestedReport, reload]);
   useEffect(() => { const media = window.matchMedia('(min-width: 640px)'), adapt = () => setFiltersOpen(media.matches); media.addEventListener('change', adapt); return () => media.removeEventListener('change', adapt); }, []);
   useEffect(() => {
     if (loading || handledSelection.current === selectionKey) return;
     let cancelled = false;
-    setLibrary(null); setRun(null); setEditing(null); setDefinition(newDashboard()); setError(''); setMessage(''); setBusy('library');
+    setLibrary(null); setRun(null); setRunRequest(null); setEditing(null); setDefinition(newDashboard()); setError(''); setMessage(''); setBusy('library');
     void Promise.all([loadSavedDashboards(scope), loadSavedReports(scope), loadPortfolio(scope)]).then(([boards, reports, catalog]) => {
       if (cancelled) return;
       setLibrary({ scopeKey, boards, reports, nodes: portfolioNodes(catalog.records) });
       handledSelection.current = selectionKey;
       const record = requested === 'new' ? undefined : requested ? boards.records.find(row => row.id === requested) : boards.records.find(row => !row.archived);
       if (requested && requested !== 'new' && (!record || record.archived)) { setError('This dashboard is unavailable or archived. Choose an active dashboard or restore it.'); return; }
-      if (record) { setDefinition(record.definition); setEditing({ id: record.id, version: record.version }); }
+      if (record) { const draft = params.get('dashboardFilters') ? parseDashboardDefinition({ ...record.definition, filters: JSON.parse(params.get('dashboardFilters')!) }) : record.definition; setDefinition(record.definition); setEditing({ id: record.id, version: record.version }); setRunRequest({ definition: draft, scopeKey }); }
       else if (requestedReport) {
         const report = reports.records.find(row => row.id === requestedReport && !row.archived);
         if (!report) { setError('This source report is unavailable or archived. Choose an active saved report.'); return; }
-        setDefinition(dashboardFromReport(report, `widget-${crypto.randomUUID()}`));
-        setMessage('Dashboard draft prepared from your saved report. Review or refresh it, then save when ready.');
+        const draft = dashboardFromReport(report, `widget-${crypto.randomUUID()}`); setDefinition(draft); setRunRequest({ definition: draft, scopeKey });
+        setMessage('Dashboard preview prepared from your saved report. Save when ready.');
       }
     }).catch(failure => { if (!cancelled) setError(failure instanceof Error ? failure.message : 'Dashboard library unavailable.'); })
       .finally(() => { if (!cancelled) setBusy(''); });
     return () => { cancelled = true; };
-  }, [scope, scopeKey, loading, requested, requestedReport, reload, selectionKey]);
+  }, [scope, scopeKey, loading, requested, requestedReport, reload, selectionKey, params]);
   const current = library?.scopeKey === scopeKey ? library : null;
   const filterParam = params.get('dashboardFilters');
   const effective = useMemo(() => {
@@ -92,12 +105,12 @@ export function DashboardsPage() {
     const next = new URLSearchParams(params), values = filters.filter(row => row.field !== field);
     if (value !== '') values.push({ field, id: value === '__unassigned__' ? null : value });
     next.set('dashboardFilters', JSON.stringify(values));
-    next.delete('widget'); next.delete('group'); setParams(next); setDetailPage(0);
+    next.delete('widget'); next.delete('group'); setParams(next); setDetailPage(0); if (effective) setRunRequest({ definition: { ...effective, filters: values }, scopeKey });
   };
   const select = (record: SavedDashboard) => {
     const next = new URLSearchParams(params); next.set('dashboard', record.id); next.delete('report'); next.delete('dashboardFilters'); next.delete('widget'); next.delete('group');
     handledSelection.current = JSON.stringify([scopeKey, record.id, '', reload]); setParams(next);
-    setDefinition(record.definition); setEditing({ id: record.id, version: record.version }); setRun(null); setOpenEditor(true);
+    setDefinition(record.definition); setEditing({ id: record.id, version: record.version }); setRun(null); setOpenEditor(false); setRunRequest({ definition: record.definition, scopeKey });
   };
   const save = async (record?: SavedDashboard, archive?: boolean) => {
     setBusy('save'); setError(''); setMessage('');
@@ -112,13 +125,7 @@ export function DashboardsPage() {
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Dashboard was not saved.'); }
     finally { setBusy(''); }
   };
-  const execute = async () => {
-    if (!effective) return;
-    setBusy('run'); setError(''); setMessage(''); clearDetail();
-    try { const next = await executeWorkspaceDashboard(scope, effective, scopeKey); setDefinition(next.definition); setRun(next); setStale(false); setOpenEditor(false); }
-    catch (failure) { setStale(true); setError(failure instanceof Error ? failure.message : 'Refresh failed.'); }
-    finally { setBusy(''); }
-  };
+  const execute = async () => { if (effective) { clearDetail(); setRunRequest({ definition: effective, scopeKey }); } };
   const download = async () => {
     if (!visible || stale) return;
     setBusy('export'); setError('');
@@ -142,7 +149,9 @@ export function DashboardsPage() {
   const selectedGroup = selectedRun?.groups.find(group => group.key === params.get('group'));
   const invalidGroup = Boolean(selectedRun && params.has('group') && !selectedGroup);
   const selectedIds = selectedGroup ? new Set(selectedGroup.sourceIds) : null;
-  const detailRows = selectedRun?.rows.filter(row => !selectedIds || selectedIds.has(row.id)) || [];
+  const scopedRows = selectedRun?.rows.filter(row => !selectedIds || selectedIds.has(row.id)) || [];
+  const contributingRows = selectedWidget ? reportMetricContributors(selectedWidget.metric, scopedRows) : scopedRows;
+  const detailRows = contributorsOnly ? contributingRows : scopedRows;
   const detailRef=useRef<HTMLElement>(null);
   useEffect(()=>{
     if(selectedRun&&selectedWidget&&!invalidGroup){detailRef.current?.focus();detailRef.current?.scrollIntoView({block:'start'});}
@@ -161,8 +170,8 @@ export function DashboardsPage() {
         <button className={secondary} disabled={Boolean(busy) || !visible || stale} onClick={() => void download()}>Export dashboard data</button>
       </div>
       <details open={filtersOpen} onToggle={event => setFiltersOpen(event.currentTarget.open)} className="rounded-panel bg-white shadow-panel p-4"><summary className="min-h-11 cursor-pointer py-3 text-sm font-semibold text-ink">Portfolio filters · {filters.length ? filters.map(item => `${dashboardDimensions[item.field]}: ${item.id === null ? 'Unassigned' : current.nodes.find(node => node.id === item.id)?.name || 'Missing entry'}`).join(' / ') : 'All products and units'}</summary><section aria-label="Dashboard filters" className="grid min-w-0 gap-3 sm:grid-cols-2 lg:grid-cols-4">{(Object.keys(dashboardDimensions) as DashboardDimension[]).map(field => { const selected = filters.find(f => f.field === field), nodes = current.nodes.filter(node => node.kind === kinds[field]); return <label key={field} className={`min-w-0 ${fieldLabelClass}`}>{dashboardDimensions[field]} filter<select aria-label={`${dashboardDimensions[field]} filter`} className={control} disabled={Boolean(busy)} value={selected ? selected.id === null ? '__unassigned__' : selected.id : ''} onChange={event => filter(field, event.target.value)}><option value="">All</option><option value="__unassigned__">Unassigned</option>{selected?.id && !nodes.some(node => node.id === selected.id) && <option value={selected.id}>Missing catalog entry ({selected.id})</option>}{nodes.map(node => <option key={node.id} value={node.id}>{node.name}{node.status === 'retired' ? ' (retired)' : ''} · {node.id.slice(-8)}</option>)}</select></label>; })}</section></details>
-      {visible ? <section data-testid="dashboard-results" className="space-y-4" aria-busy={busy === 'run'}>
-        <div><h3 className="text-lg font-bold text-ink">{visible.definition.name}</h3><p className="mt-1 break-words text-sm text-muted">{visible.definition.description}</p><p className="mt-1 text-xs text-muted">Captured {visible.runAt} · manual refresh · current classification · filters apply before each report's own conditions.</p>{(stale || busy === 'run') && <p role="status" className="mt-2 font-semibold text-tint-amber-ink">{busy === 'run' ? 'Refreshing. Previous captured results remain visible.' : 'Refresh failed. These are previous results; export is disabled until refresh succeeds.'}</p>}</div>
+      <MetricBasisNote />{visible ? <section data-testid="dashboard-results" className="space-y-4" aria-busy={busy === 'run'}>
+        <div><h3 className="text-lg font-bold text-ink">{visible.definition.name}</h3><p className="mt-1 break-words text-sm text-muted">{visible.definition.description}</p><p className="mt-1 text-xs text-muted">Captured {visible.runAt} · current classification · refresh captures current sources · filters apply before each report's own conditions.</p>{(stale || busy === 'run') && <p role="status" className="mt-2 font-semibold text-tint-amber-ink">{busy === 'run' ? 'Refreshing. Previous captured results remain visible.' : 'Refresh failed. These are previous results; export is disabled until refresh succeeds.'}</p>}</div>
         <div className="grid min-w-0 items-start gap-4 lg:grid-cols-2">{visible.definition.widgets.map(widget => {
           const result = visible.results.find(row => row.reportId === widget.reportId), problem = widgetError(widget, result), source = result?.run;
           return <article key={widget.id} data-testid="dashboard-widget" className={`min-w-0 rounded-panel bg-white shadow-panel p-5 ${widget.type === 'metric' ? '' : 'lg:col-span-2'}`}>
@@ -177,7 +186,7 @@ export function DashboardsPage() {
           </article>;
         })}</div>
       </section> : definition.widgets.length ? <p role="status" className="rounded-lg bg-canvas p-4 text-sm">Refresh to show the current dashboard configuration. Previous results do not represent these settings.</p> : <p className="rounded-lg bg-canvas p-4 text-sm">Add a widget from a saved report to start. <Link className="font-semibold text-brand-blue" to="/app/reports">Create a report</Link></p>}
-      {invalidGroup && <p role="alert">This group is not in the current results. <button className={secondary} onClick={() => clearDetail()}>Close invalid selection</button></p>}{selectedRun && selectedWidget && !invalidGroup && <section ref={detailRef} tabIndex={-1} aria-label="Dashboard source records" data-testid="dashboard-detail" className="scroll-mt-24 min-w-0 rounded-panel bg-white shadow-panel p-4"><div className="flex flex-wrap justify-between gap-2"><h3 className="font-bold text-ink">{selectedWidget.title} · {selectedGroup?.labels.join(' / ') || 'All matching records'}</h3><button className={secondary} onClick={() => clearDetail()}>Close source records</button></div><p className="my-3 text-sm">{detailRows.length} source records · same captured run</p><p className="mb-3 text-xs text-muted">{selectedRun.definition.dataset === 'opportunities' ? 'Full report rows for this selection. Qualified pipeline counts Active deals; Won value counts Won deals.' : 'Full order rows for this selection. Receipts and balances follow the recorded payments and planning schedule.'}</p><div className="overflow-x-auto"><table className="report-table w-full text-left text-sm"><thead><tr>{selectedRun.definition.columns.map(column => <th key={column.field}>{column.label}</th>)}<th>Source</th></tr></thead><tbody>{detailRows.slice(detailPage * 100, (detailPage + 1) * 100).map(row => <tr key={row.id}>{selectedRun.definition.columns.map(column => <td key={column.field}>{text(row.values[column.field])}</td>)}<td><Link className="inline-block min-h-11 py-3 font-semibold text-brand-blue" to={row.href}>Open deal</Link></td></tr>)}</tbody></table></div><div className="mt-3 flex flex-wrap items-center gap-2 text-xs"><button className={secondary} disabled={!detailPage} onClick={() => setDetailPage(p => p - 1)}>Previous records</button><span>{detailRows.length ? detailPage * 100 + 1 : 0}–{Math.min((detailPage + 1) * 100, detailRows.length)} of {detailRows.length} records</span><button className={secondary} disabled={(detailPage + 1) * 100 >= detailRows.length} onClick={() => setDetailPage(p => p + 1)}>Next records</button></div></section>}
+      {invalidGroup && <p role="alert">This group is not in the current results. <button className={secondary} onClick={() => clearDetail()}>Close invalid selection</button></p>}{selectedRun && selectedWidget && !invalidGroup && <section ref={detailRef} tabIndex={-1} aria-label="Dashboard source records" data-testid="dashboard-detail" className="scroll-mt-24 min-w-0 rounded-panel bg-white shadow-panel p-4"><label className="my-3 flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={contributorsOnly} onChange={event => { setContributorsOnly(event.target.checked); setDetailPage(0); }} />Only records contributing to {selectedWidget ? reportMetricDefinitions[selectedWidget.metric].label : 'this measure'} ({contributingRows.length} of {scopedRows.length} in scope)</label><div className="flex flex-wrap justify-between gap-2"><h3 className="font-bold text-ink">{selectedWidget.title} · {selectedGroup?.labels.join(' / ') || 'All matching records'}</h3><button className={secondary} onClick={() => clearDetail()}>Close source records</button></div><p className="my-3 text-sm">{detailRows.length} source records · same captured run</p><p className="mb-3 text-xs text-muted">{selectedRun.definition.dataset === 'opportunities' ? 'Full report rows for this selection. Qualified pipeline counts Active deals; Won value counts Won deals.' : 'Full order rows for this selection. Receipts and balances follow the recorded payments and planning schedule.'}</p><div className="overflow-x-auto"><table className="report-table w-full text-left text-sm"><thead><tr>{selectedRun.definition.columns.map(column => <th key={column.field}>{column.label}</th>)}<th>Source</th></tr></thead><tbody>{detailRows.slice(detailPage * 100, (detailPage + 1) * 100).map(row => <tr key={row.id}>{selectedRun.definition.columns.map(column => <td key={column.field}>{text(row.values[column.field])}</td>)}<td><Link className="inline-block min-h-11 py-3 font-semibold text-brand-blue" to={row.href}>Open deal</Link></td></tr>)}</tbody></table></div><div className="mt-3 flex flex-wrap items-center gap-2 text-xs"><button className={secondary} disabled={!detailPage} onClick={() => setDetailPage(p => p - 1)}>Previous records</button><span>{detailRows.length ? detailPage * 100 + 1 : 0}–{Math.min((detailPage + 1) * 100, detailRows.length)} of {detailRows.length} records</span><button className={secondary} disabled={(detailPage + 1) * 100 >= detailRows.length} onClick={() => setDetailPage(p => p + 1)}>Next records</button></div></section>}
       <details open={openEditor} onToggle={event => setOpenEditor(event.currentTarget.open)} className="rounded-panel bg-white shadow-panel p-4"><summary className="min-h-11 cursor-pointer py-3 font-bold text-ink">Customize dashboard</summary><fieldset disabled={Boolean(busy)} className="mt-3 min-w-0 space-y-4">
         <label className={fieldLabelClass}>Dashboard name<input className={control} value={definition.name} onChange={event => change({ ...definition, name: event.target.value })} /></label><label className={fieldLabelClass}>Dashboard purpose<textarea className={control} value={definition.description} onChange={event => change({ ...definition, description: event.target.value })} /></label>
         {!activeReports.length && <p className="text-sm">No active saved reports. <Link className="font-semibold text-brand-blue" to="/app/reports">Create and save a report first.</Link></p>}

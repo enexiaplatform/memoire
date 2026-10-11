@@ -1,0 +1,7 @@
+import { parseReportDefinition, reportTemplate, type ReportDefinition } from './reportDefinition.ts';
+export const reportQuestions: { id: string; label: string; definition: () => ReportDefinition }[] = [
+  { id: 'brand', label: 'How is each Brand performing?', definition: () => reportTemplate('portfolio') },
+  { id: 'next', label: 'Which deals need a next action?', definition: () => parseReportDefinition({ ...reportTemplate('portfolio'), name: 'Deals without a next action', description: 'Current active qualified opportunities with no recorded next action.', view: 'details', filters: [{ field: 'status', operator: 'equals', value: 'Active' }, { field: 'nextAction', operator: 'empty', value: null }] }) },
+  { id: 'leads', label: 'Where are my Leads coming from?', definition: () => parseReportDefinition({ ...reportTemplate('portfolio'), name: 'Leads by source', description: 'Prequalification records grouped by their recorded source; excluded from qualified pipeline.', population: 'leads', groupBy: ['leadSource'], metrics: ['recordCount'], columns: [{ field: 'account', label: 'Account' }, { field: 'opportunity', label: 'Lead' }, { field: 'leadSource', label: 'Source' }, { field: 'nextAction', label: 'Next action' }] }) },
+  { id: 'cash', label: 'Which payments need attention?', definition: () => reportTemplate('collections') },
+];

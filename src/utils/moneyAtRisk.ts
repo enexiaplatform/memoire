@@ -45,6 +45,7 @@ import {
 export const moneyRiskKinds = [
   'payment-promise-missed',
   'invoice-overdue',
+  'payment-date-unconfirmed',
   'deposit-overdue',
   'delivered-not-invoiced',
   'won-no-po',
@@ -56,6 +57,7 @@ export type MoneyRiskKind = (typeof moneyRiskKinds)[number];
 export const moneyRiskLabels: Record<MoneyRiskKind, string> = {
   'payment-promise-missed': 'Payment promise missed',
   'invoice-overdue': 'Invoice overdue',
+  'payment-date-unconfirmed': 'Payment date needs confirmation',
   'deposit-overdue': 'Deposit overdue',
   'delivered-not-invoiced': 'Delivered, not invoiced',
   'won-no-po': 'Won, no PO',
@@ -136,7 +138,7 @@ export function buildMoneyAtRisk(input: {
     const orderValue = unpriced ? null : order.amountBase;
 
     // ---- the invoice is late: receivables owns lateness
-    if (receivable && !receivable.settled && receivable.daysOverdue !== null && receivable.daysOverdue > 0) {
+    if (receivable && milestone('invoice')?.done && receivable.confirmedOverdueBase > 0 && !receivable.settled && receivable.confirmedDaysOverdue !== null && receivable.confirmedDaysOverdue > 0) {
       items.push({
         ...common,
         id: `invoice-overdue:${order.opportunityId}`,
@@ -145,14 +147,20 @@ export function buildMoneyAtRisk(input: {
         // Collections dates an order with no agreed term from the order itself, and
         // counts it - so this does too, and says the date was assumed rather than
         // letting "past due" read as a term the customer agreed to.
-        what: `${receivable.overdueBase > 0 ? formatCompactBaseAmount(receivable.overdueBase) : 'Payment'} is ${receivable.daysOverdue} ${receivable.daysOverdue === 1 ? 'day' : 'days'} past due${receivable.termConfidence === 'assumed' ? ' - no payment term is recorded, so it is counted from the order date' : receivable.paymentTerm ? ` on ${receivable.paymentTerm}` : ''}.`,
+        what: `${receivable.confirmedOverdueBase > 0 ? formatCompactBaseAmount(receivable.confirmedOverdueBase) : 'Payment'} is ${receivable.confirmedDaysOverdue} ${receivable.confirmedDaysOverdue === 1 ? 'day' : 'days'} past due${receivable.termConfidence === 'assumed' ? ' - no payment term is recorded, so it is counted from the order date' : receivable.paymentTerm ? ` on ${receivable.paymentTerm}` : ''}.`,
         why: 'Money that is late gets later. Every week unchased is working capital you are lending the customer.',
         action: `Chase payment with ${order.accountName}`,
-        ...exposure(unpriced ? null : receivable.overdueBase),
-        daysLate: receivable.daysOverdue,
-        severity: receivable.daysOverdue > 30 ? 'critical' : 'high',
+        ...exposure(unpriced ? null : receivable.confirmedOverdueBase),
+        daysLate: receivable.confirmedDaysOverdue,
+        severity: receivable.confirmedDaysOverdue > 30 ? 'critical' : 'high',
         basis: 'Collections: the oldest unpaid instalment is past its due date.',
       });
+    }
+    if (receivable && !receivable.settled && receivable.plannedOverdueBase > 0) {
+      items.push({ ...common, id: `payment-date-unconfirmed:${order.opportunityId}`, kind: 'payment-date-unconfirmed',
+        label: moneyRiskLabels['payment-date-unconfirmed'], what: 'The planning schedule is past its estimated date; the due date is not confirmed.',
+        why: 'A collection request needs agreed terms and the actual trigger date.', action: 'Confirm PO, payment terms and trigger date',
+        ...exposure(null), daysLate: 0, severity: 'medium', basis: 'Planning dates; excluded from confirmed invoice overdue exposure.' });
     }
 
     // ---- the deposit step is late: the order book owns the dated step

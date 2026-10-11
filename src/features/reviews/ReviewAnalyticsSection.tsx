@@ -1,3 +1,4 @@
+import { MetricBasisNote } from '../../components/common/MetricBasisNote';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode, Ref } from 'react';
 import { Link } from 'react-router-dom';
@@ -175,6 +176,7 @@ export function ReviewAnalyticsSection() {
 
   return (
     <div className="flex w-full max-w-none flex-col gap-5">
+      <MetricBasisNote />
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
           <h2 className="text-xl font-bold tracking-tight text-ink">The whole business, and how you are working it.</h2>
@@ -244,7 +246,7 @@ export function ReviewAnalyticsSection() {
           <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Profit and cash">
             <KpiCard label="Collected revenue" value={formatCompactCurrencyAmount(model.money.collectedRevenueBase, model.reportingCurrency)} sub="Cash actually received" tone="positive" />
             <KpiCard label="Money out (paid)" value={formatCompactCurrencyAmount(model.money.paidExpensesBase, model.reportingCurrency)} sub="Expenses settled" tone={model.money.paidExpensesBase > 0 ? 'warn' : 'default'} />
-            <KpiCard label="Realized profit" value={formatCompactCurrencyAmount(model.money.realizedProfitBase, model.reportingCurrency)} sub="Collected − paid out" tone={model.money.realizedProfitBase >= 0 ? 'positive' : 'warn'} />
+            <KpiCard label="Recorded net cash flow" value={formatCompactCurrencyAmount(model.money.realizedProfitBase, model.reportingCurrency)} sub="Collected − paid out" tone={model.money.realizedProfitBase >= 0 ? 'positive' : 'warn'} />
             <KpiCard
               label={model.money.cashOnHandBase === null ? 'Projected net flow' : 'Cash on hand'}
               value={formatCompactCurrencyAmount(model.money.cashOnHandBase === null ? model.money.projectedDeltaBase : model.money.cashOnHandBase, model.reportingCurrency)}
@@ -711,7 +713,7 @@ function addDashboardCsvFiles(zip: JSZip, model: MasterDashboardModel) {
     ['Deals lost', model.outcomes.lost.count],
     [`Collected revenue (${model.reportingCurrency})`, Math.round(model.money.collectedRevenueBase)],
     [`Money out, paid (${model.reportingCurrency})`, Math.round(model.money.paidExpensesBase)],
-    [`Realized profit (${model.reportingCurrency})`, Math.round(model.money.realizedProfitBase)],
+    [`Recorded net cash flow (${model.reportingCurrency})`, Math.round(model.money.realizedProfitBase)],
     [`Projected net flow (${model.reportingCurrency})`, Math.round(model.money.projectedDeltaBase)],
     [`Cash on hand (${model.reportingCurrency})`, model.money.cashOnHandBase === null ? 'n/a (set opening balance)' : Math.round(model.money.cashOnHandBase)],
   ]));

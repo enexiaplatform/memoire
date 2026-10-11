@@ -55,7 +55,7 @@ import {
   assert.match(review, /to="\/app\/products"/, 'Review links to the standalone owner of product performance');
 
   const field = readFileSync('src/features/opportunities/OpportunitiesPage.tsx', 'utf8');
-  assert.ok(field.includes('Brand / principal'), 'and the deal editor must still be where a brand is set');
+  assert.ok(field.includes('<BrandSelect'), 'the deal editor chooses a linked catalog Brand or Others');
 }
 
 // 2. Deals with no brand are named, never absorbed. A rollup that quietly hides

@@ -4,6 +4,7 @@ import { normalizeEntityName } from './accountIdentity.ts';
 import { normalizeMeddicRole } from './meddicStakeholderMap.ts';
 import { sumMoney } from './money.ts';
 import { sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import { selectQualifiedPipeline } from './leadIdentity.ts';
 
 /**
  * Who you know at each customer, laid out against the roles a decision needs.
@@ -81,7 +82,7 @@ export function buildRoleCoverageMatrix(input: {
   // is the point - an account with an open deal and nobody named is the worst
   // row on the page, and building rows from people alone would leave it out.
   input.stakeholders.forEach((person) => { rowFor(person.accountName || '')?.people.push(person); });
-  input.opportunities
+  selectQualifiedPipeline(input.opportunities)
     .filter((opportunity) => opportunity.status === 'Active')
     .forEach((opportunity) => { rowFor(opportunity.accountName || '')?.deals.push(opportunity); });
 

@@ -1,0 +1,417 @@
+[
+  {
+    "number": "01",
+    "title": "Welcome, currency, chọn worked example",
+    "note": "Dùng được; demo chưa đầy đủ F16.",
+    "images": [
+      "01-onboarding.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "02",
+    "title": "Today desktop",
+    "note": "Cần sửa diễn giải money và Lead forecast; giảm lặp.",
+    "images": [
+      "02-today.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "03",
+    "title": "Plan upcoming/commitments",
+    "note": "Dùng được; đối chiếu identity công việc F08.",
+    "images": [
+      "03-plan.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "04",
+    "title": "Lead queue desktop",
+    "note": "Dùng được; bảng cắt cột hành động.",
+    "images": [
+      "04-leads.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "05",
+    "title": "New Lead/Brand picker",
+    "note": "Dùng được; Customer nên đứng trước Brand.",
+    "images": [
+      "05-new-lead.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "06",
+    "title": "Accounts list/orphan names",
+    "note": "Có repair; canonical links và cột next move cần cải thiện.",
+    "images": [
+      "06-accounts.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "07",
+    "title": "Account overview, People, Memory, Coverage",
+    "note": "Nhiều context tốt; tabs/chất lượng contact cần rõ hơn.",
+    "images": [
+      "07-account-detail.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "08",
+    "title": "Opportunities list",
+    "note": "Filters mạnh; readiness/population cần thống nhất.",
+    "images": [
+      "08-opportunities.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "09",
+    "title": "Opportunity drawer, readiness, MEDDIC",
+    "note": "Cần sửa P1; 41 fields, nội dung 6.407 px.",
+    "images": [
+      "09-opportunity-detail.jpg",
+      "09b-readiness.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "10",
+    "title": "Money Orders/at risk",
+    "note": "Cần rõ commitment và cơ sở overdue.",
+    "images": [
+      "10-money-orders.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "11",
+    "title": "Collections",
+    "note": "Có assumption label; confirmed/planned cần tách tổng.",
+    "images": [
+      "11-money-collections.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "12",
+    "title": "Margin thiếu cost",
+    "note": "Empty state đúng; chưa test nhập cost trong audit.",
+    "images": [
+      "12-margin-empty.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "13",
+    "title": "Weekly Review",
+    "note": "Có vòng tuần tốt; nhiều nguồn work/brief cần gom.",
+    "images": [
+      "13-review.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "14",
+    "title": "Learning & Analytics",
+    "note": "Cần sửa untouched và cash/profit.",
+    "images": [
+      "14-analytics.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "15",
+    "title": "Products & Brands",
+    "note": "Bản local có catalog linking; demo catalog trống.",
+    "images": [
+      "15-products.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "16",
+    "title": "Reports builder",
+    "note": "Chạy được; cần result-first.",
+    "images": [
+      "16-reports.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "17",
+    "title": "Run/save report",
+    "note": "7/10 records, pipeline khớp 189.230,77 USD; nguồn rõ.",
+    "images": [
+      "17-report-result.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "18",
+    "title": "Report → Dashboard",
+    "note": "Handoff dùng được; preview cần tự refresh.",
+    "images": [
+      "18-dashboard.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "19",
+    "title": "Dashboard drill-down",
+    "note": "Truy nguồn được; contributing rows cần riêng.",
+    "images": [
+      "19-dashboard-sources.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "20",
+    "title": "Capture note/learning/recent",
+    "note": "Preview tốt; quá nhiều nội dung phụ.",
+    "images": [
+      "20-capture.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "21",
+    "title": "Capture tiếng Việt",
+    "note": "Thiếu touch/next action/date; P1 với cách dùng hiện tại.",
+    "images": [
+      "21-capture-vietnamese.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "22",
+    "title": "Capture tiếng Anh đối chứng",
+    "note": "Nhận cuộc gọi, next action, ngày đúng ở ví dụ này.",
+    "images": [
+      "22-capture-english.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "23",
+    "title": "Search Apex",
+    "note": "Trả đúng Account và hai deal; dùng được.",
+    "images": [
+      "23-search.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "24",
+    "title": "Ask Anh/Việt",
+    "note": "Anh trả một deal; tiếng Việt không được hỗ trợ tốt; cần scope rõ.",
+    "images": [
+      "24-ask.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "25",
+    "title": "Workspace Settings",
+    "note": "Currency/sync/storage rõ; cloud không được thử.",
+    "images": [
+      "25-settings.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "26",
+    "title": "Export/Restore screen",
+    "note": "Preview/guard hiện rõ; restore và file export chưa chạy.",
+    "images": [
+      "26-export.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "27",
+    "title": "Quote Orion",
+    "note": "PO Pending, payment Not due; lệch diễn giải với Today.",
+    "images": [
+      "27-quote.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "28",
+    "title": "Stakeholder role matrix",
+    "note": "Gap/action tốt; table overflow và confirmed-role cần rõ.",
+    "images": [
+      "28-stakeholders.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "29",
+    "title": "Bàn phím trong Stakeholder modal",
+    "note": "Focus thoát modal; P1, có DOM probe bổ sung ảnh.",
+    "images": [
+      "29-keyboard.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "30",
+    "title": "Objection ledger",
+    "note": "Required proof/age hữu ích; cần cột action dễ đọc.",
+    "images": [
+      "30-objections.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "31",
+    "title": "Playbook",
+    "note": "Nội dung tái dùng được; 1/1 chưa nên gọi proven.",
+    "images": [
+      "31-playbook.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "32",
+    "title": "Assets/starter packs",
+    "note": "Library dùng được; version/approval/source cần rõ.",
+    "images": [
+      "32-assets.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "33",
+    "title": "Vault Library/map",
+    "note": "Quan hệ có ích; recorded khác confirmed.",
+    "images": [
+      "33-vault.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "34",
+    "title": "Portfolio Coverage",
+    "note": "Demo thiếu catalog; empty state nên dẫn tạo/classify Brand.",
+    "images": [
+      "34-coverage.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "35",
+    "title": "Route Activity → Analytics",
+    "note": "Có route alias; phát hiện account coverage gap.",
+    "images": [
+      "35-activity.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "36",
+    "title": "Plan History",
+    "note": "Lịch/links dùng được; parsed text và confirmed link dễ nhầm.",
+    "images": [
+      "36-history.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "37",
+    "title": "Today 390 × 844",
+    "note": "Không tràn trang quan sát; cần cuộn nhiều trước action.",
+    "images": [
+      "37-mobile-today.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "38",
+    "title": "Leads 390 × 844",
+    "note": "Thẻ responsive tốt; hành động nằm dưới nội dung khá dài.",
+    "images": [
+      "38-mobile-leads.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "39",
+    "title": "New Lead 390 × 844",
+    "note": "Sticky save tốt; trường chính cần ưu tiên.",
+    "images": [
+      "39-mobile-lead-form.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "40",
+    "title": "Reports 390 × 844",
+    "note": "Layout co được; thư viện/builder trước kết quả.",
+    "images": [
+      "40-mobile-reports.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "41",
+    "title": "Must-win work",
+    "note": "Empty state hoạt động; demo và import hướng dẫn chưa đủ.",
+    "images": [
+      "41-must-win.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "42",
+    "title": "Review coordination/sharing/statements",
+    "note": "Có guard/phạm vi; UX còn nhiều reference kỹ thuật; chưa share thật.",
+    "images": [
+      "42-advanced-review.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "43",
+    "title": "External source intake",
+    "note": "Unverified input rõ; cần mapping wizard; không nhập nguồn thật.",
+    "images": [
+      "43-source-intake.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "44",
+    "title": "Login",
+    "note": "Form quan sát được; cloud/OAuth chặn bởi cấu hình môi trường.",
+    "images": [
+      "44-login.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "45",
+    "title": "Signup",
+    "note": "Tách demo rõ; signup/email verification chưa chạy.",
+    "images": [
+      "45-signup.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  },
+  {
+    "number": "46",
+    "title": "Landing",
+    "note": "Định vị rõ; copy về sharing cần phù hợp capability hiện tại.",
+    "images": [
+      "46-landing.jpg"
+    ],
+    "scope": "Current local demo observation; see report for source evidence and untested flows"
+  }
+]

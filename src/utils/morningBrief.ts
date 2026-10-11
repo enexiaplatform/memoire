@@ -66,8 +66,8 @@ export function buildMorningBrief(input: MorningBriefInput): MorningBrief {
   const topNudge = nudges.find(unclaimed);
 
   const headline = urgent.length > 0
-    ? `${urgent.length} ${urgent.length === 1 ? 'deal needs' : 'deals need'} attention before anything else.`
-    : 'No deals are at risk this morning. Use today to build momentum.';
+    ? `${urgent.length} priority ${urgent.length === 1 ? 'flag needs' : 'flags need'} attention before anything else.`
+    : 'No urgent flags in the recorded data this morning. Use today to build momentum.';
 
   const focus: string[] = [];
   if (topNudge) {

@@ -31,8 +31,8 @@ export function getCommercialCheckpointRisk(
   today = todayDateKey(),
 ): CommercialCheckpointRisk {
   if (quote.status !== 'Accepted') return null;
-  if (quote.paymentStatus !== 'Paid' && isPast(quote.paymentDueDate, today)) return 'Payment overdue';
-  if (quote.deliveryStatus !== 'Delivered' && isPast(quote.expectedDeliveryDate, today)) return 'Delivery overdue';
+  if (quote.poStatus === 'Received' && quote.deliveryStatus === 'Delivered' && quote.paymentStatus === 'Due' && isPast(quote.paymentDueDate, today)) return 'Payment overdue';
+  if (quote.poStatus === 'Received' && quote.deliveryStatus !== 'Delivered' && isPast(quote.expectedDeliveryDate, today)) return 'Delivery overdue';
   if (quote.poStatus === 'Pending') return 'PO follow-up';
   return null;
 }

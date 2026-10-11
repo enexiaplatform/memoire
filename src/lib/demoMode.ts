@@ -43,7 +43,7 @@ export const missingSupabaseMessage =
   supabaseAnonKey.includes('placeholder');
 
 export const SUPABASE_ENV_ERROR =
-  'Real Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env. Demo mode is disabled unless VITE_ENABLE_DEMO_MODE=true.';
+  'Cloud sign-in is unavailable on this deployment. The workspace connection needs to be restored before you retry.';
 
 export function createDemoUser(email = 'admin@memoire.local', displayName = 'Local Admin') {
   return {

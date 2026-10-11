@@ -6,6 +6,7 @@ import { formatCompactCurrencyAmount } from './money.ts';
 import type { DailyExecutionDecision } from './dailyExecution';
 import type { RevenueActionItem, RevenueRiskKind } from './revenueView';
 import { buildOpportunitySalesFlowGuidance } from './salesFlowGuidance.ts';
+import { selectQualifiedPipeline } from './leadIdentity.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 import { compareBusinessDateDesc,
   compareSafeBusinessDate, isBusinessDateInRange, isBusinessDateOverdue, isValidBusinessDate, todayDateKey, toLocalDateKey, timestampToLocalDateKey } from './safeDate.ts';
@@ -325,7 +326,7 @@ function buildDailyTimeblocks({
 }
 
 export function buildSalesFlowCommandActions(opportunities: CrmLiteOpportunity[]): CommandActionItem[] {
-  return opportunities
+  return selectQualifiedPipeline(opportunities)
     .filter((opportunity) => opportunity.status === 'Active')
     .map((opportunity): CommandActionItem => {
       const guidance = buildOpportunitySalesFlowGuidance(opportunity);

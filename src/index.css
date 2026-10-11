@@ -8,6 +8,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Keep the primary row action reachable when a business table scrolls. */
+table[data-work-table] > thead > tr > th:last-child,
+table[data-work-table] > tbody > tr > td:last-child:not([colspan]) {
+  position: sticky;
+  right: 0;
+  z-index: 12;
+  background: #fff;
+  box-shadow: -2px 0 4px rgb(15 23 42 / 6%);
+}
+table[data-work-table] > thead > tr > th:last-child { background: #f9fafb; z-index: 20; }
+table[data-work-table] > thead > tr > th:first-child,
+table[data-work-table] > tbody > tr > th:first-child:not([colspan]),
+table[data-work-table] > tbody > tr > td:first-child:not([colspan]) {
+  position: sticky;
+  left: 0;
+  z-index: 13;
+  background: #fff;
+  box-shadow: 2px 0 4px rgb(15 23 42 / 6%);
+}
+table[data-work-table] > thead > tr > th:first-child { background: #f9fafb; z-index: 21; }
+
 :root {
   --navy: #1B2B3A;
   --navy-light: #243447;

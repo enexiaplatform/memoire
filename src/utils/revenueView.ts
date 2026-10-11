@@ -14,6 +14,7 @@ import { buildMoneyFlow } from './moneyFlow.ts';
 import { buildQuotedOpportunityIds } from './opportunityResolution.ts';
 import { isBusinessDateOverdue, todayDateKey } from './safeDate.ts';
 import { hasScheduledNextAction } from './nextAction.ts';
+import { selectQualifiedPipeline } from './leadIdentity.ts';
 
 export type RevenueRiskKind =
   | 'Weak pipeline'
@@ -153,15 +154,15 @@ export function buildRevenueView({
       return { ...quote,
         poStatus: order.milestones.find(m => m.key === 'contract')?.done ? 'Received' as const : quote.poStatus,
         deliveryStatus: order.milestones.find(m => m.key === 'delivery')?.done ? 'Delivered' as const : quote.deliveryStatus,
-        paymentStatus: collection.settled ? 'Paid' as const : 'Due' as const,
-        paymentDueDate: collection.installments.find(installment => !installment.settled && installment.dueDate)?.dueDate || quote.paymentDueDate,
+        paymentStatus: collection.settled ? 'Paid' as const : collection.installments.some(installment => !installment.settled && installment.dateBasis === 'confirmed') ? 'Due' as const : 'Not due' as const,
+        paymentDueDate: collection.installments.find(installment => !installment.settled && installment.dateBasis === 'confirmed' && installment.dueDate)?.dueDate || '',
         amount: collection.settled ? order.amount : collection.valueUnavailable ? null : convertMoney(collection.outstandingBase, getReportingCurrency(), order.currency as SupportedCurrency),
       };
     });
   const canonicalFlow = book ? buildMoneyFlow({ opportunities, quotes: rawQuotes, receivableRecords, milestoneRecords }) : null;
   const laneTotal = (stage: string, fallback: number) => canonicalFlow?.lanes.find(lane => lane.stage === stage)?.totalBase ?? fallback;
   const won = sumOpportunities(opportunities.filter((opportunity) => opportunity.status === 'Won'));
-  const activePipeline = sumOpportunities(opportunities.filter((opportunity) => opportunity.status === 'Active'));
+  const activePipeline = sumOpportunities(selectQualifiedPipeline(opportunities).filter((opportunity) => opportunity.status === 'Active'));
   const quoted = sumQuotes(quotes.filter((quote) => quote.status === 'Sent' || quote.status === 'Revised'));
   const pendingPo = sumQuotes(quotes.filter((quote) => getQuoteCommercialStage(quote) === 'Pending PO'));
   const pendingDelivery = sumQuotes(quotes.filter((quote) => getQuoteCommercialStage(quote) === 'Pending delivery'));
@@ -219,7 +220,7 @@ function buildQuoteRevenueRisks(quotes: QuoteRecord[]): RevenueActionItem[] {
 }
 
 function buildPipelineRevenueRisks(opportunities: CrmLiteOpportunity[], quotedOpportunityIds: Set<string>): RevenueActionItem[] {
-  return opportunities
+  return selectQualifiedPipeline(opportunities)
     .filter((opportunity) => opportunity.status === 'Active')
     .filter((opportunity) => !quotedOpportunityIds.has(opportunity.id))
     .flatMap((opportunity) => {

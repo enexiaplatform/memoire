@@ -2427,8 +2427,8 @@ function ActivityCard({
               : activity.linkStatus}
           </p>
           <div className="mt-3 grid grid-cols-1 gap-2 text-sm md:grid-cols-2">
-            <ActivityFact label="Account" value={activity.accountName || 'Not captured'} />
-            <ActivityFact label="Opportunity" value={activity.opportunityName || 'Not captured'} />
+            <ActivityFact label="Account" value={activity.linkedAccountName || activity.accountName || 'Not captured'} />
+            <ActivityFact label="Opportunity" value={activity.linkedOpportunityName || activity.opportunityName || 'Not captured'} />
             <ActivityFact label="Contact" value={activity.contactName || activity.stakeholderName || 'Not captured'} />
             <ActivityFact label="Next action" value={activity.nextAction || 'Not captured'} />
             <ActivityFact label="Due date" value={formatSafeBusinessDate(activity.dueDate)} />

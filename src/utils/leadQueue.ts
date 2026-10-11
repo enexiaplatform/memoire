@@ -6,6 +6,7 @@ import type { AccountMemoryRecord } from '../services/accountStore.ts';
 import type { OpportunityOutcomeReasonCategory } from '../services/opportunityOutcomeStore.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 import { activitiesForOpportunityStrict } from './activityIndex.ts';
+import { getStakeholdersForOpportunity } from './stakeholderGraph.ts';
 import { hasScheduledNextAction } from './nextAction.ts';
 import {
   classifyOpportunitySilence,
@@ -533,14 +534,13 @@ export function buildLeadQueue(input: LeadQueueInput): LeadQueue {
   const rows = selectLeads(input.opportunities, disqualifiedLeadIds(input.opportunityOutcomes)).map((opportunity): LeadRow => {
     const linked = activitiesForOpportunityStrict(opportunity, activities);
     const accountKey = normalizeEntityName(opportunity.accountName || '');
-    const leadStakeholders = stakeholders.filter((stakeholder) => (
-      stakeholder.opportunityId === opportunity.id
-      || (accountKey && normalizeEntityName(stakeholder.accountName || '') === accountKey)
-    ));
-    const leadObjections = objections.filter((objection) => (
-      objection.opportunityId === opportunity.id
-      || (accountKey && normalizeEntityName(objection.accountName || '') === accountKey)
-    ));
+    const leadStakeholders = getStakeholdersForOpportunity(stakeholders, opportunity);
+    const leadObjections = objections.filter((objection) => {
+      if (objection.opportunityId) return objection.opportunityId === opportunity.id;
+      if (objection.opportunityName) return normalizeEntityName(objection.opportunityName) === normalizeEntityName(opportunity.opportunityName)
+        && Boolean(accountKey && normalizeEntityName(objection.accountName || '') === accountKey);
+      return Boolean(accountKey && normalizeEntityName(objection.accountName || '') === accountKey);
+    });
     const qualification = qualifyLeadEvidence({
       opportunity,
       activities: linked,

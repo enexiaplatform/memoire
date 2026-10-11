@@ -1,0 +1,11 @@
+UI observation transcript — 2026-10-11, isolated local demo
+Recorded from the returned browser tool text for the Received statement preview. This is a transcription, not a full DOM export.
+
+From: Demo seller · To: Demo Apex Labs
+Promise: QA demo: send the validation documents
+Responsible: You · Due: 2026-10-11 · open
+Evidence supplied: None
+This is the issuer’s claim. Receiving it does not accept it as your own fact.
+
+Receive statement was disabled before confirmation.
+No Receive statement or Issue statement action was performed.

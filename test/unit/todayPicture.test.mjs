@@ -130,6 +130,7 @@ describe('overdue cash', () => {
       reportingCurrency: 'VND',
       totalOutstandingBase: 1_000,
       totalOverdueBase: 600,
+      confirmedOverdueBase: 600,
       totalReceivedBase: 0,
       expectedNext30Base: 0,
       openCount: 3,
@@ -143,12 +144,12 @@ describe('overdue cash', () => {
         { bucket: '90+', label: '', count: 1, amountBase: 150 },
       ],
       orders: [
-        { opportunityId: 'a', accountName: 'A', settled: false, overdueBase: 400, daysOverdue: 95 },
-        { opportunityId: 'b', accountName: 'B', settled: false, overdueBase: 200, daysOverdue: 12 },
+        { opportunityId: 'a', accountName: 'A', settled: false, overdueBase: 400, daysOverdue: 95, confirmedOverdueBase: 400, confirmedDaysOverdue: 95, installments: [{overdue: true, dateBasis: 'confirmed', daysOverdue: 70, outstandingBase: 250}, {overdue: true, dateBasis: 'confirmed', daysOverdue: 95, outstandingBase: 150}] },
+        { opportunityId: 'b', accountName: 'B', settled: false, overdueBase: 200, daysOverdue: 12, confirmedOverdueBase: 200, confirmedDaysOverdue: 12, installments: [{overdue: true, dateBasis: 'confirmed', daysOverdue: 12, outstandingBase: 200}] },
         { opportunityId: 'c', accountName: 'C', settled: false, overdueBase: 0, daysOverdue: null },
         { opportunityId: 'd', accountName: 'D', settled: true, overdueBase: 0, daysOverdue: null },
       ],
-      worstOverdue: { opportunityId: 'a', accountName: 'A', overdueBase: 400, daysOverdue: 95 },
+      worstOverdue: { opportunityId: 'a', accountName: 'A', overdueBase: 400, daysOverdue: 95, confirmedOverdueBase: 400, confirmedDaysOverdue: 95 },
     };
     const picture = summariseOverdueCash(receivables);
     assert.equal(picture.overdueBase, 600);

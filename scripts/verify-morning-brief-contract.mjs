@@ -60,7 +60,7 @@ function makeActivity(patch = {}) {
     activities: [makeActivity()],
     waitingFollowUps: 2,
   });
-  assert.equal(brief.headline, '2 deals need attention before anything else.');
+  assert.equal(brief.headline, '2 priority flags need attention before anything else.');
   assert.ok(brief.focus.some((line) => line.includes('Deal going silent')));
   assert.ok(brief.focus.some((line) => line.includes('1 customer touch yesterday')));
   assert.ok(brief.focus.some((line) => line.includes('2 sent follow-ups are still waiting')));
@@ -78,7 +78,7 @@ function makeActivity(patch = {}) {
 // 2. Calm state: honest headline, default questions, no invented urgency.
 {
   const brief = buildMorningBrief({ today, nudges: [], activities: [], waitingFollowUps: 0 });
-  assert.equal(brief.headline, 'No deals are at risk this morning. Use today to build momentum.');
+  assert.equal(brief.headline, 'No urgent flags in the recorded data this morning. Use today to build momentum.');
   assert.ok(brief.focus.some((line) => line.includes('No touches captured yesterday')));
   assert.equal(brief.questions.length >= 2, true);
   assert.ok(brief.questions.every((question) => question.href.startsWith('/app/ask?question=')));

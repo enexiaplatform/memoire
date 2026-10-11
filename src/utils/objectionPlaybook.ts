@@ -112,13 +112,13 @@ function buildHeadline(insights: ObjectionPlaybookInsight[], totalObjections: nu
   if (totalObjections === 0) return 'Capture objections as they come up and Memoire will learn what works for you.';
   const costly = insights.find((insight) => insight.dealsLostTo > 0);
   if (costly) {
-    return `${costly.objectionType} objections have cost you ${costly.dealsLostTo} ${costly.dealsLostTo === 1 ? 'deal' : 'deals'}. Your proven responses are below.`;
+    return `${costly.objectionType} objections have cost you ${costly.dealsLostTo} ${costly.dealsLostTo === 1 ? 'deal' : 'deals'}. Your recorded responses are below; inspect their outcomes before reusing them.`;
   }
   const strongest = [...insights]
     .filter((insight) => insight.resolved > 0)
     .sort((a, b) => b.resolutionRate - a.resolutionRate)[0];
   if (strongest) {
-    return `You resolve ${strongest.objectionType} objections most reliably (${formatObjectionResolutionRate(strongest)}). Reuse what worked.`;
+    return `The highest recorded resolution rate is ${strongest.objectionType} (${formatObjectionResolutionRate(strongest)}). This is a sample of ${strongest.total} records; it does not establish reliability.`;
   }
   return 'No objections resolved yet. Log the resolution note when one closes - that becomes your playbook.';
 }

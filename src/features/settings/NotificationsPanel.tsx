@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Mail } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../hooks/useAuth';
 import { isSupabaseConfigured } from '../../lib/demoMode';
+import { notificationPreferenceMatches } from '../../utils/notificationPreferenceReceipt';
 
 /**
  * Where the operator decides what reaches them when the app is closed.
@@ -33,6 +34,9 @@ export function NotificationsPanel() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false), [reload, setReload] = useState(0);
+  const sessionGeneration = useRef(0);
   /**
    * Whether this deployment can actually send one.
    *
@@ -47,6 +51,7 @@ export function NotificationsPanel() {
   const browserOffset = -new Date().getTimezoneOffset();
 
   useEffect(() => {
+    setSenderReady(null);
     if (!user || !isSupabaseConfigured) return;
     let active = true;
     void fetch('/api/health', { headers: { accept: 'application/json' } })
@@ -62,6 +67,8 @@ export function NotificationsPanel() {
 
   useEffect(() => {
     let active = true;
+    sessionGeneration.current += 1;
+    setSaving(false); setLoading(true); setLoadFailed(false); setPreferences(DEFAULTS); setError(''); setMessage('');
     if (!user || !isSupabaseConfigured) {
       setLoading(false);
       return () => { active = false; };
@@ -74,7 +81,7 @@ export function NotificationsPanel() {
       .maybeSingle()
       .then(({ data, error: loadError }) => {
         if (!active) return;
-        if (loadError) setError('Could not read your notification settings.');
+        if (loadError || !data) { setError('Could not read your notification settings. Reload them before making changes.'); setLoadFailed(true); }
         if (data) {
           setPreferences({
             daily: Boolean(data.daily_digest_enabled),
@@ -84,21 +91,23 @@ export function NotificationsPanel() {
           });
         }
         setLoading(false);
-      });
+      }, () => { if (active) { setError('Could not read your notification settings.'); setLoadFailed(true); setLoading(false); } });
 
-    return () => { active = false; };
-  }, [browserOffset, user]);
+    return () => { active = false; sessionGeneration.current += 1; };
+  }, [browserOffset, user, reload]);
 
   const save = async (next: Preferences) => {
-    setPreferences(next);
+    if (saving || loading || loadFailed) return;
     setMessage('');
     setError('');
     if (!user) return;
+    setSaving(true);
+    const generation = sessionGeneration.current;
 
     // The offset is always taken from the browser on save rather than kept from
     // whatever it was: somebody who moved country should get their new morning,
     // and nobody is going to come here to update a number.
-    const { error: saveError } = await supabase
+    const { data: savedProfile, error: saveError } = await supabase
       .from('user_profiles')
       .update({
         daily_digest_enabled: next.daily,
@@ -106,14 +115,17 @@ export function NotificationsPanel() {
         digest_send_hour: next.hour,
         digest_utc_offset_minutes: browserOffset,
       })
-      .eq('id', user.id);
+      .eq('id', user.id).select('id, daily_digest_enabled, weekly_review_enabled, digest_send_hour, digest_utc_offset_minutes').maybeSingle().then(result => result, () => ({ data: null, error: new Error('Save unavailable') }));
 
-    if (saveError) {
-      setError('That did not save. Your notification settings are unchanged.');
+    if (generation !== sessionGeneration.current) return;
+    setSaving(false);
+    if (saveError || !notificationPreferenceMatches(savedProfile, { ...next, userId: user.id, offsetMinutes: browserOffset })) {
+      setError('Could not confirm the save. Reload notification settings before retrying.');
       return;
     }
+    setPreferences({ ...next, offsetMinutes: browserOffset });
     setMessage(next.daily || next.weekly
-      ? `Saved. Sending at ${formatHour(next.hour)} your time.`
+      ? senderReady === true ? `Preference saved for ${formatHour(next.hour)} your time. Delivery depends on the scheduled sender.` : 'Preference saved. Email delivery is not confirmed on this deployment.'
       : 'Saved. Memoire will not email you.');
   };
 
@@ -149,7 +161,7 @@ export function NotificationsPanel() {
           {senderReady === false && (
             <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-sm leading-6 text-amber-900 ring-1 ring-amber-200">
               Sending is not configured on this deployment yet, so turning these on will record your preference and
-              nothing will arrive. Your settings are kept and start working the moment it is.
+              nothing will arrive. Your preferences are kept; delivery needs a configured scheduled sender.
             </p>
           )}
 
@@ -158,14 +170,14 @@ export function NotificationsPanel() {
               label="Daily digest"
               description="What is past due, which live deals have gone quiet, and which quotes are past a promised date."
               checked={preferences.daily}
-              disabled={loading}
+              disabled={loading || saving || loadFailed}
               onChange={(checked) => save({ ...preferences, daily: checked })}
             />
             <Toggle
               label="Monday review"
               description="What closed last week and what is still open, so the week starts against a number rather than a feeling."
               checked={preferences.weekly}
-              disabled={loading}
+              disabled={loading || saving || loadFailed}
               onChange={(checked) => save({ ...preferences, weekly: checked })}
             />
           </div>
@@ -175,7 +187,7 @@ export function NotificationsPanel() {
               <span className="font-semibold text-ink">Send at</span>
               <select
                 value={preferences.hour}
-                disabled={loading}
+                disabled={loading || saving || loadFailed}
                 onChange={(event) => save({ ...preferences, hour: Number(event.target.value) })}
                 className="rounded-lg border border-gray-300 bg-white px-2 py-1.5 text-sm font-semibold text-ink"
               >
@@ -186,11 +198,13 @@ export function NotificationsPanel() {
               <span className="text-gray-500">
                 your time ({formatOffset(browserOffset)})
               </span>
+              <span className="text-xs text-gray-500">Uses your current UTC offset. Save again after a timezone or daylight-saving change.</span>
             </label>
           )}
 
-          {message && <p className="mt-3 text-sm font-semibold text-emerald-700">{message}</p>}
-          {error && <p className="mt-3 text-sm font-semibold text-red-700">{error}</p>}
+          {message && <p role="status" className="mt-3 text-sm font-semibold text-emerald-700">{message}</p>}
+          {error && <p role="alert" className="mt-3 text-sm font-semibold text-red-700">{error}</p>}
+          <button type="button" disabled={loading || saving} className="mt-3 min-h-11 text-sm font-semibold text-brand-blue" onClick={() => setReload(value => value + 1)}>Reload notification settings</button>
 
           <p className="mt-3 text-xs leading-5 text-gray-400">
             Every email carries a one-click way to stop it, and neither one contains a tracking pixel. What they say

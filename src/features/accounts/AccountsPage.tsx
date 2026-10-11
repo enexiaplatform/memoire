@@ -1266,7 +1266,7 @@ function AccountMasterTable({
           `relative` it carries is for. See index.css for why the header sticks
           to this element rather than to the page. */}
       <div className="record-table-scroller">
-        <table className="w-full min-w-[1240px] border-collapse text-left text-sm">
+        <table data-work-table="true" className="w-full min-w-[1240px] border-collapse text-left text-sm">
           <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>
               {/* Ten columns, of which four described the record and four

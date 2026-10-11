@@ -30,6 +30,7 @@ export function ProfileTab() {
   if (!isAuthenticated) {
     return (
       <section className="rounded-panel bg-white p-6 shadow-panel">
+
         <h2 className="text-lg font-bold text-ink">Your profile</h2>
         <p className="mt-2 max-w-xl text-sm leading-6 text-gray-500">
           You are working in this browser without an account, so there is no profile to name yet. Sign in and your name
@@ -57,6 +58,7 @@ export function ProfileTab() {
 
   return (
     <section className="rounded-panel bg-white p-6 shadow-panel">
+      {user && <details className="rounded-lg border border-line p-3 text-sm"><summary className="cursor-pointer font-semibold">Account reference for shared workspaces</summary><p className="mt-2 break-all text-xs">{user.id}</p><p className="mt-1 text-xs text-muted">Give this reference to a workspace owner to receive an invitation. Access starts only after you accept.</p></details>}
       <h2 className="text-lg font-bold text-ink">Your profile</h2>
       <p className="mt-1 max-w-2xl text-sm leading-6 text-gray-500">
         How Memoire refers to you — in the sidebar, on a brief you share with a manager, and at the top of your daily

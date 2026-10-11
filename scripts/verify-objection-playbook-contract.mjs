@@ -133,7 +133,7 @@ function makeLostOutcome(patch = {}) {
 
 // 6. UI contract: the learning section ships on the Playbook page with copy export.
 const playbookPage = readFileSync(new URL('../src/features/playbook/SalesPlaybookPage.tsx', import.meta.url), 'utf8');
-for (const marker of ['ObjectionLearningSection', 'What worked against objections', 'buildObjectionPlaybook', 'Your proven responses', 'generateObjectionPlaybookMarkdown', 'Copy proven responses']) {
+for (const marker of ['ObjectionLearningSection', 'What worked against objections', 'buildObjectionPlaybook', 'Responses with recorded outcomes', 'generateObjectionPlaybookMarkdown', 'Copy recorded responses']) {
   assert.ok(playbookPage.includes(marker), `SalesPlaybookPage missing marker: ${marker}`);
 }
 

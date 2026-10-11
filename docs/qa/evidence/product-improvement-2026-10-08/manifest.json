@@ -1,0 +1,256 @@
+{
+  "date": "2026-10-08",
+  "completedDate": "2026-10-09",
+  "timezone": "Asia/Saigon",
+  "environment": "Local browser-only demo; cloud disabled",
+  "sourceCommit": "e72d04b",
+  "includesUncommittedBrandChanges": true,
+  "steps": 46,
+  "featurePoints": 90,
+  "findings": 20,
+  "sourceCandidates": 3,
+  "targetedTests": {
+    "pass": 103,
+    "fail": 0,
+    "suites": 29
+  },
+  "untouchedProductionData": true,
+  "observations": "UI images plus source review and synthetic domain probes; cloud flows remain unverified",
+  "images": [
+    {
+      "filename": "01-onboarding.jpg",
+      "bytes": 71951,
+      "sha256": "5fb7fc92d3916486e10751f07fa52f30453159ea7b3d88db544c1fed1adeb7ed"
+    },
+    {
+      "filename": "02-today.jpg",
+      "bytes": 91495,
+      "sha256": "db03e71cfe737051f13293e1d710e4d56aafe3a4cea05b572cf5a6fde0224677"
+    },
+    {
+      "filename": "03-plan.jpg",
+      "bytes": 96484,
+      "sha256": "e6db7ff0e0bd36fdb2f9b91844e9501347b7150b6c1fbeff33a66c8674513044"
+    },
+    {
+      "filename": "04-leads.jpg",
+      "bytes": 110824,
+      "sha256": "20c03a11915e2b7f20a18fede569cda496b3a10299a463a6d47ba1488595f978"
+    },
+    {
+      "filename": "05-new-lead.jpg",
+      "bytes": 104379,
+      "sha256": "ee89ffad29c3332ae246f87a9ba0dadd2939f666f87e43b06ddbc00bbb0c2e0f"
+    },
+    {
+      "filename": "06-accounts.jpg",
+      "bytes": 119316,
+      "sha256": "76b4d9e208f01e0dd94c770335a768c18e76cd20f67605d9da1b245f4aa29dc0"
+    },
+    {
+      "filename": "07-account-detail.jpg",
+      "bytes": 104665,
+      "sha256": "49224bc2d015ff1f1a410e20cad8a6f0ac442224d442ef4108c3068755a77c2c"
+    },
+    {
+      "filename": "08-opportunities.jpg",
+      "bytes": 106475,
+      "sha256": "d460f3c60275ca0034b49d8487df735d5b460cf623a5bad8ca4e5a388913ca8d"
+    },
+    {
+      "filename": "09-opportunity-detail.jpg",
+      "bytes": 118698,
+      "sha256": "160ede33298b6780f56c2a2b2546848d7a2e6ba8aa5ba344112747b4a1028b0d"
+    },
+    {
+      "filename": "09b-readiness.jpg",
+      "bytes": 115863,
+      "sha256": "5ccf272cf59ace3dc6c474e115c0b5f58c0a6243cfe36c682693cbfdbdd77d46"
+    },
+    {
+      "filename": "10-money-orders.jpg",
+      "bytes": 107625,
+      "sha256": "caf4ab42cabe0081d079f5ea3a001f758516303fb6f111e53302e7eb443e9b99"
+    },
+    {
+      "filename": "11-money-collections.jpg",
+      "bytes": 96629,
+      "sha256": "96952c921194ed5955ff5404aab86341134854429915b608aa2c3db8d887a3f0"
+    },
+    {
+      "filename": "12-margin-empty.jpg",
+      "bytes": 105030,
+      "sha256": "04078207c6a58be06a7858da45cb98b5713d11ad4726abc75e21064562dcb0c8"
+    },
+    {
+      "filename": "13-review.jpg",
+      "bytes": 107232,
+      "sha256": "ac21072bc39b3eebf786570cdb4ca8499cecf6e1aafacc4a339e465ab0926b96"
+    },
+    {
+      "filename": "14-analytics.jpg",
+      "bytes": 104029,
+      "sha256": "954d7614206199d2fa551f0eafebe11da2716c376857437999852a729580b9c0"
+    },
+    {
+      "filename": "15-products.jpg",
+      "bytes": 89003,
+      "sha256": "845db7c5e3756748f001860998e5b0841cea46162cd44f36b8aa71d0bf5f6857"
+    },
+    {
+      "filename": "16-reports.jpg",
+      "bytes": 88824,
+      "sha256": "450daf9d3d38efdbac340f07c51bc2d1c116e6dd2ece3bfec2b4e18d9d62f528"
+    },
+    {
+      "filename": "17-report-result.jpg",
+      "bytes": 95029,
+      "sha256": "69150790045042007713ee5bbd4dc24c68c034ac72331efa04a054ec6ca0604c"
+    },
+    {
+      "filename": "18-dashboard.jpg",
+      "bytes": 90870,
+      "sha256": "dcf929540b80920fd9d2ab9d3b9bc07e79ffc4d8232310d1871fef1178343b62"
+    },
+    {
+      "filename": "19-dashboard-sources.jpg",
+      "bytes": 94488,
+      "sha256": "dee5db5f2e050d8f18457474679270d3134ccac00510cbcecf8d7c161ea3d1c7"
+    },
+    {
+      "filename": "20-capture.jpg",
+      "bytes": 92119,
+      "sha256": "8daee5f2de79a9cbdecbe5e0383e23ee730b5c150bfcbd8a92fb33c95bb3d979"
+    },
+    {
+      "filename": "21-capture-vietnamese.jpg",
+      "bytes": 85407,
+      "sha256": "3f7839737ed3acce92271257ae4e425fa176740d047a9372b47d411c50a12258"
+    },
+    {
+      "filename": "22-capture-english.jpg",
+      "bytes": 96681,
+      "sha256": "87a31911f51a9d06bdad53fc1f69e694e39293265195d8b16022b64abb78d683"
+    },
+    {
+      "filename": "23-search.jpg",
+      "bytes": 73927,
+      "sha256": "7c6c5f220a6d3d74222765c751cf847d5e43737d02ff754eaa5cf06405f06f41"
+    },
+    {
+      "filename": "24-ask.jpg",
+      "bytes": 85677,
+      "sha256": "b064d7f91be51c4958ec73a62a83a4cf32e2ab832cec5422fafc6d9506c78253"
+    },
+    {
+      "filename": "25-settings.jpg",
+      "bytes": 102049,
+      "sha256": "fd6bd36c177c3c0dc2e05f66b1f9c27a6beeae86813600135be19f947da4bf05"
+    },
+    {
+      "filename": "26-export.jpg",
+      "bytes": 96685,
+      "sha256": "6b3219f40be5a3e2d01a7c610604a81105a39e3b3fdbec9f06fd69c435f6b39a"
+    },
+    {
+      "filename": "27-quote.jpg",
+      "bytes": 85804,
+      "sha256": "66b9673f485fcc0a0db3bb252c479062b7f87074fd031487d89f45f1022b6445"
+    },
+    {
+      "filename": "28-stakeholders.jpg",
+      "bytes": 100193,
+      "sha256": "c3e8f16c0050f3784fa8d0e8d15ee9d68e6c7e7f3a21040bfd7e544fdd7ce5b2"
+    },
+    {
+      "filename": "29-keyboard.jpg",
+      "bytes": 96049,
+      "sha256": "83db8df6b485470594be62ce7196e52d52d3c39825bfad1412fe7464167ea608"
+    },
+    {
+      "filename": "30-objections.jpg",
+      "bytes": 100532,
+      "sha256": "173261a0efc9bdca84feefa8a1e465a52e9d856a21a947059e845904e1ae401e"
+    },
+    {
+      "filename": "31-playbook.jpg",
+      "bytes": 99209,
+      "sha256": "e1aa16228ff0e080d1c83976af42fcb635b704c583c680c06487971af1fc00b4"
+    },
+    {
+      "filename": "32-assets.jpg",
+      "bytes": 123571,
+      "sha256": "a31224003047f3618965a922f7739a569bd28b62b54dd99ddd2750aedeeab02e"
+    },
+    {
+      "filename": "33-vault.jpg",
+      "bytes": 86923,
+      "sha256": "33511b89685bb9b55eeb278d6211b45271478ee0c0cd698e37056d71cce04c11"
+    },
+    {
+      "filename": "34-coverage.jpg",
+      "bytes": 75844,
+      "sha256": "57f22c752d19a8af135e5735bac8baaacf043d373d2375e7a3763e9e9537cad1"
+    },
+    {
+      "filename": "35-activity.jpg",
+      "bytes": 104040,
+      "sha256": "08c22a30471ef700d0766589b3972fb592fb513852cbc3e425867803e53ac880"
+    },
+    {
+      "filename": "36-history.jpg",
+      "bytes": 92988,
+      "sha256": "37324869e319f3460b2b33d3c5f96e750f226129de593a9daea108b03d09cd23"
+    },
+    {
+      "filename": "37-mobile-today.jpg",
+      "bytes": 41449,
+      "sha256": "9b4dab6ef6406593c56e02330355c32762d28889c66291cdb1258ee6c2ffb918"
+    },
+    {
+      "filename": "38-mobile-leads.jpg",
+      "bytes": 41374,
+      "sha256": "f6ee804b6d53ee0c723fb411dad782c12d92962d60e0cde8115788b7391d1ed7"
+    },
+    {
+      "filename": "39-mobile-lead-form.jpg",
+      "bytes": 32397,
+      "sha256": "66d4778362341107ada3bc7ac5998b451ef558c6d49e44909fbfacbe72a23e25"
+    },
+    {
+      "filename": "40-mobile-reports.jpg",
+      "bytes": 34682,
+      "sha256": "4336876b1b90174734c41db207836017914181b2956d1660efe3c18dda0ea12c"
+    },
+    {
+      "filename": "41-must-win.jpg",
+      "bytes": 76632,
+      "sha256": "ae84257201d8d89c570e865764240ba93e45a540a189c0a345ff0803823d8726"
+    },
+    {
+      "filename": "42-advanced-review.jpg",
+      "bytes": 93336,
+      "sha256": "d7393c234574ad1b1de8d363fac3df4e2f7589dfde2ca2f216d2b158a676ee0f"
+    },
+    {
+      "filename": "43-source-intake.jpg",
+      "bytes": 76564,
+      "sha256": "0063c7f4be4f9e9d920b79179d301189b4294a7902f0bc304d02fe936d5ec01f"
+    },
+    {
+      "filename": "44-login.jpg",
+      "bytes": 38224,
+      "sha256": "8067e618225cb362d42db737b554bf375432adb9cdfe37b3c562e90fc290c919"
+    },
+    {
+      "filename": "45-signup.jpg",
+      "bytes": 47287,
+      "sha256": "7b76fbdebce0994f729a412b36c2b9bf971d02587e2bfa7933e0eeeb06ba39d4"
+    },
+    {
+      "filename": "46-landing.jpg",
+      "bytes": 109137,
+      "sha256": "19bf9427bb9239da69c4c50add46ce4f134d6698a49b85bc3383519965957277"
+    }
+  ]
+}

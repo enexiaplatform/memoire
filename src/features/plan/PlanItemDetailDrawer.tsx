@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { useModalDrawer } from '../../hooks/useModalDrawer';
 import { Link } from 'react-router-dom';
 import { AlertTriangle, Lock, Trash2, X } from 'lucide-react';
 import { buildPlanLinkOptions, planLinkKindLabel, type PlanItem, type PlanLinkOption } from '../../utils/weeklyPlan';
@@ -54,6 +55,7 @@ export function PlanItemDetailDrawer({
   onSave,
   onDelete,
   onClose,
+  relatedWork = [], linkedWorkCount = 0, onLinkWork, onUnlinkWork,
 }: {
   item: PlanItem;
   draft: PlanItemEditDraft;
@@ -68,19 +70,15 @@ export function PlanItemDetailDrawer({
   onSave: () => void;
   onDelete?: () => void;
   onClose: () => void;
+  relatedWork?: PlanItem[]; linkedWorkCount?: number;
+  onLinkWork?: (other: PlanItem) => void; onUnlinkWork?: () => void;
 }) {
   const [opened] = useState(() => draft);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [contactMenuOpen, setContactMenuOpen] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
-  useEffect(() => {
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
-  }, [onClose]);
+  const { ref: drawerRef } = useModalDrawer({ onClose, label: 'Plan item detail' });
 
   const policy = planItemEditPolicy(item);
   const set = (patch: Partial<PlanItemEditDraft>) => onDraftChange({ ...draft, ...patch });
@@ -128,6 +126,7 @@ export function PlanItemDetailDrawer({
         className="absolute inset-0 bg-navy/40"
       />
       <aside
+        ref={drawerRef} tabIndex={-1}
         role="dialog"
         aria-modal="true"
         aria-label="Plan item detail"
@@ -157,6 +156,7 @@ export function PlanItemDetailDrawer({
           className="flex min-h-0 flex-1 flex-col"
         >
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-4">
+            {['deal', 'capture', 'personal'].includes(item.kind) && (relatedWork.length > 0 || linkedWorkCount > 0) && <details className="rounded-lg border border-line p-3"><summary className="cursor-pointer text-sm font-semibold">Same work recorded elsewhere?</summary><p className="mt-2 text-xs text-muted">Confirm only when both entries describe the same commitment. Linking keeps one plan item and its source records. Different actions remain separate.</p>{relatedWork.map(other => <div key={other.id} className="mt-3 text-sm"><p>{other.label} · {formatSafeBusinessDate(other.date)} · {other.kind}</p><button type="button" disabled={saving} className="mt-1 min-h-11 font-semibold text-brand-blue" onClick={() => onLinkWork?.(other)}>Confirm this is the same work</button></div>)}{linkedWorkCount > 0 && <button type="button" className="mt-2 min-h-11 text-sm font-semibold text-brand-blue" onClick={onUnlinkWork}>Show {linkedWorkCount} linked entries separately again</button>}</details>}
             {/* Only where there is something to save. On an obligation this
                 promised a write the drawer cannot make, which is worse than
                 saying nothing - the locked note below is the honest answer. */}

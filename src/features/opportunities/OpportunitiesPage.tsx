@@ -131,6 +131,7 @@ import { useWorkspaceRefresh } from '../../hooks/useWorkspaceRefresh';
 import { type AccountMemoryRecord } from '../../services/accountStore';
 import { type AccountMergeRecord } from '../../services/accountMergeStore';
 import { SuggestInput } from '../../components/common/SuggestInput';
+import { BrandSelect } from '../../components/common/BrandSelect';
 import { RecordStamp } from '../../components/common/RecordStamp';
 import { buildAccountAliasIndex, resolveAccountName, type AccountAliasIndex } from '../../utils/accountAliases';
 import {
@@ -1051,6 +1052,7 @@ export function OpportunitiesPage() {
 
     setSaveState('saving');
     setMessage('Saving opportunity...');
+    try {
     const result = panelMode === 'edit' && editingOpportunity
       ? await updateOpportunity(editingOpportunity, form, dataUserId)
       : await createOpportunity(form, dataUserId, { source: sampleDataActive ? 'demo' : 'user', isSample: sampleDataActive });
@@ -1064,6 +1066,10 @@ export function OpportunitiesPage() {
     setForm(opportunityToForm(result.opportunity));
     setSaveState(result.warning ? 'error' : 'saved');
     setMessage(result.warning || (result.mode === 'cloud' ? 'Synced to your account.' : 'Saved locally in this browser.'));
+    } catch (error) {
+      setSaveState('error');
+      setMessage(error instanceof Error ? error.message : 'Could not save this opportunity. Try again.');
+    }
   };
 
   const handleSaveOpportunityOutcome = async (opportunity: CrmLiteOpportunity, draft: OpportunityOutcomeDraft) => {
@@ -2683,7 +2689,7 @@ function OpportunityMasterTable({
           A 110px page offset inside a horizontally scrolling wrapper pinned it
           over the first rows instead. */}
       <div className="record-table-scroller">
-        <table className="w-full border-collapse text-left text-sm" style={{ minWidth }}>
+        <table data-work-table="true" className="w-full border-collapse text-left text-sm" style={{ minWidth }}>
           <thead className="sticky top-0 z-10 bg-gray-50 text-[11px] font-bold uppercase tracking-wide text-gray-500">
             <tr>
               <OpportunitySortableHeader label="Deal" sortKey="account" activeKey={sortKey} direction={sortDirection} onSort={onSort} className="sticky left-0 z-20 border-r border-line bg-gray-50" />
@@ -2736,7 +2742,7 @@ function OpportunityMasterTable({
 
               {group.rows.map((row) => {
                 const { opportunity, quality, closePeriod } = row;
-                const flow = buildOpportunitySalesFlowGuidance(opportunity);
+                const flow = buildOpportunitySalesFlowGuidance(opportunity, row.qualification);
                 const quiet = row.silence.status === 'silent' || row.silence.status === 'at-risk';
                 return (
                   <tr
@@ -3122,12 +3128,7 @@ function OpportunityPanel({
     onChange({ ...form, [key]: value });
   };
   const currentOpportunity = editingOpportunity ? { ...editingOpportunity, ...form } : null;
-  // Principals already in the workspace, so the second deal for a line spells
-  // it the same way as the first - a brand typed two ways is two brands in
-  // every rollup that reads it.
-  const brandOptions = Array.from(new Set(
-    allOpportunities.map((opportunity) => (opportunity.brand || '').trim()).filter(Boolean),
-  )).sort((a, b) => a.localeCompare(b));
+  const qualifiedForm = !isLeadStage(form.stage);
 
   // The account field is the deal's only link to a customer, so it offers what
   // the workspace knows instead of trusting the seller to spell it the same way
@@ -3239,7 +3240,7 @@ function OpportunityPanel({
       <aside ref={drawerRef} {...dialogProps} className="fixed bottom-0 right-0 top-16 z-50 w-full overflow-y-auto border-l border-line bg-white p-5 shadow-2xl sm:max-w-[760px]">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">{mode === 'add' ? 'Add Opportunity' : 'Edit Opportunity'}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.18em] text-brand-blue">{mode === 'add' ? (qualifiedForm ? 'Add Opportunity' : 'Add Lead') : (qualifiedForm ? 'Edit Opportunity' : 'Edit Lead')}</p>
           <h2 className="mt-2 text-xl font-bold text-ink">
             {mode === 'add' ? 'New deal record' : editingOpportunity?.opportunityName}
           </h2>
@@ -3274,7 +3275,7 @@ function OpportunityPanel({
           Five questions in the order a seller asks them, and the reason the
           drawer no longer opens on a form of twenty fields: a deal is something
           you read before it is something you edit. */}
-      {mode === 'edit' && currentOpportunity && (
+      {mode === 'edit' && currentOpportunity && qualifiedForm && (
         <DealFirstThingHead
           snapshot={buildCommercialJourneySnapshot({
             ...moneyRecords,
@@ -3306,8 +3307,14 @@ function OpportunityPanel({
         />
       )}
 
+      {!qualifiedForm && <p className="mt-4 rounded-lg border border-line p-3 text-sm text-gray-600">This is a Lead. Record the contact, need and next step here; qualify it before including it in pipeline, forecast or MEDDIC analysis.</p>}
+      <section className="mt-4 rounded-lg bg-blue-50 p-4" aria-label="Next customer step">
+        <h3 className="mb-3 text-sm font-bold text-ink">Next customer step</h3>
+        <TextArea label="Next action" value={form.nextAction} onChange={(value) => update('nextAction', value)} />
+        <Field label="Next action date" type="date" value={form.nextActionDate} onChange={(value) => update('nextActionDate', value)} />
+      </section>
       {mode === 'edit' && editingOpportunity && !isLeadStage(editingOpportunity.stage) && (
-        <CommercialStatePanel key={editingOpportunity.id} opportunity={editingOpportunity} accounts={accounts} userId={dataUserId} sampleDataActive={sampleDataActive} activities={linkedActivities} />
+        <details className="mt-4 rounded-lg border border-line p-3"><summary className="cursor-pointer text-sm font-semibold">Advanced commercial analysis · forecast, scenarios and obligations</summary><CommercialStatePanel key={editingOpportunity.id} opportunity={editingOpportunity} accounts={accounts} userId={dataUserId} sampleDataActive={sampleDataActive} activities={linkedActivities} /></details>
       )}
 
       {/* What changed. The canonical delta, scoped to this deal - an
@@ -3315,7 +3322,7 @@ function OpportunityPanel({
           this one. Renders nothing when nothing was observed, which is honest:
           a "no changes" card every time you open a quiet deal is noise. */}
       {mode === 'edit' && currentOpportunity && (
-        <div className="mt-5">
+        <details className="mt-4 rounded-lg border border-line p-3"><summary className="cursor-pointer text-sm font-semibold">Recent changes and history</summary><div className="mt-5">
           <DealSectionLabel label="What changed" hint="Observed since a fortnight ago" />
           <DeltaPanel
             subject={{
@@ -3325,14 +3332,14 @@ function OpportunityPanel({
               accountName: currentOpportunity.accountName,
             }}
           />
-        </div>
+        </div></details>
       )}
 
-      {currentOpportunity && (
+      {currentOpportunity && qualifiedForm && (
         <>
           {mode === 'edit' && <DealSectionLabel label="Best move" hint="One action, and why this one" />}
           <OpportunitySalesFlowCard
-            guidance={buildOpportunitySalesFlowGuidance(currentOpportunity)}
+            guidance={buildOpportunitySalesFlowGuidance(currentOpportunity, scoreDealQualification({ opportunity: currentOpportunity, stakeholders, objections, activities: linkedActivities, quotes }))}
             onUseAsNextAction={(action) => onChange({ ...form, nextAction: action })}
           />
         </>
@@ -3340,9 +3347,9 @@ function OpportunityPanel({
 
       {/* Read from `form`, not from the saved record, so it answers about what
           is on screen right now. */}
-      {mode === 'edit' && form.status === 'Active' && <WhyThisDealIsFlagged form={form} />}
+      {mode === 'edit' && form.status === 'Active' && qualifiedForm && <WhyThisDealIsFlagged form={form} />}
 
-      {mode === 'edit' && currentOpportunity && (
+      {mode === 'edit' && currentOpportunity && qualifiedForm && (
         <>
           <DealSectionLabel label="MEDDIC" hint="Scored from the records, letter by letter - record the thing to raise it" />
           <MeddicInsightPanel
@@ -3380,14 +3387,14 @@ function OpportunityPanel({
             onUse={(name) => { update('accountName', name); setAccountFieldLeft(true); }}
           />
         </div>
-        <Field label="Opportunity" value={form.opportunityName} onChange={(value) => update('opportunityName', value)} required />
+        <Field label={qualifiedForm ? 'Opportunity' : 'Lead'} value={form.opportunityName} onChange={(value) => update('opportunityName', value)} required />
 
         {/* The ladder, drawn. A stage is a position on a route, and a dropdown
             renders that as eleven words in a list - you cannot see that
             Proposal is two steps from Procurement, or that a deal has not moved
             since Discovery. The bar is also the faster control: moving a deal
             on is one tap on the step ahead of it. */}
-        <StageProgress stage={form.stage} status={form.status} onPick={changeStage} />
+        {qualifiedForm && <StageProgress stage={form.stage} status={form.status} onPick={changeStage} />}
 
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <SelectField
@@ -3402,13 +3409,13 @@ function OpportunityPanel({
             options={opportunityStatuses}
             onChange={(value) => onChange({ ...form, status: value, stage: stageForStatus(value, form.stage) })}
           />
-          <div>
+          {qualifiedForm && <div>
             <ProbabilityField
               value={form.pipelineProbability ?? null}
               onChange={(value) => update('pipelineProbability', value)}
             />
             <ProbabilityNotice form={form} />
-          </div>
+          </div>}
           <Field
             label="Estimated value"
             type="number"
@@ -3442,7 +3449,7 @@ function OpportunityPanel({
             value={form.expectedClosePeriod}
             onChange={(value) => update('expectedClosePeriod', value)}
           />
-          <Field label="Next action date" type="date" value={form.nextActionDate} onChange={(value) => update('nextActionDate', value)} />
+
         </div>
 
 
@@ -3467,17 +3474,13 @@ function OpportunityPanel({
           onChange={(value) => update('productOrSolution', value)}
           options={productOptions}
         />
-        {mode === 'edit' && editingOpportunity && !isLeadStage(editingOpportunity.stage) && <p className="text-sm text-gray-500">Classifications feed Reports and Dashboards. <Link className="inline-flex min-h-11 items-center font-semibold text-brand-blue" to={`/app/products?opportunityId=${encodeURIComponent(editingOpportunity.id)}`}>Classify this deal</Link><span className="block text-xs">Save any deal changes before opening classification.</span></p>}
+        {mode === 'edit' && editingOpportunity && <p className="text-sm text-gray-500">Classifications feed Reports and Dashboards. <Link className="inline-flex min-h-11 items-center font-semibold text-brand-blue" to={`/app/products?opportunityId=${encodeURIComponent(editingOpportunity.id)}`}>Classify this record</Link><span className="block text-xs">Save any changes before opening classification.</span></p>}
         {/* The principal whose line this deal sells. It arrived with the CSV
             import and had no way in by hand, so a deal added manually could
             never join a brand - which made the brand rollup a report on the
             import rather than on the business. */}
-        <Field
-          label="Brand / principal"
-          value={form.brand || ''}
-          onChange={(value) => update('brand', value)}
-          suggestions={brandOptions}
-        />
+        <BrandSelect value={form.brand || ''} catalogId={form.brandCatalogId} opportunityId={editingOpportunity?.id}
+          onChange={(brand, brandCatalogId) => onChange({ ...form, brand, brandCatalogId })} />
         <SuggestInput
           label="Decision maker"
           value={form.decisionMaker}
@@ -3502,7 +3505,7 @@ function OpportunityPanel({
           onUseAsNextAction={(action) => onChange({ ...form, nextAction: action })}
         />
         <TextArea label="Technical criteria" value={form.technicalCriteria} onChange={(value) => update('technicalCriteria', value)} />
-        <TextArea label="Next action" value={form.nextAction} onChange={(value) => update('nextAction', value)} />
+
         <TextArea label="Evidence" value={form.evidence} onChange={(value) => update('evidence', value)} />
         <TextArea label="Missing context" value={form.missingContext} onChange={(value) => update('missingContext', value)} />
         <TextArea label="Objection debt" value={form.objectionDebt} onChange={(value) => update('objectionDebt', value)} />
@@ -3512,7 +3515,7 @@ function OpportunityPanel({
             evidence is "Hope-based", and the review brief groups deals by the
             recommendation - which makes a mis-set one expensive, and a
             not-understood one mis-set by definition. */}
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {qualifiedForm && <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <SelectField
             label="Forecast evidence"
             hint="How much of this value the customer has actually confirmed. Hope-based and Unsupported are discounted on Revenue."
@@ -3527,9 +3530,9 @@ function OpportunityPanel({
             options={decisionRecommendations}
             onChange={(value) => update('decisionRecommendation', value)}
           />
-        </div>
+        </div>}
 
-        {currentOpportunity && (
+        {currentOpportunity && qualifiedForm && (
           <ForecastCallPanel
             opportunity={currentOpportunity}
             objections={objections}
@@ -3542,7 +3545,7 @@ function OpportunityPanel({
         )}
       </div>
 
-      {mode === 'edit' && (
+      {mode === 'edit' && qualifiedForm && (
         <details className="mt-5 rounded-xl border border-line bg-gray-50/60 p-4">
           <summary className="cursor-pointer text-sm font-bold text-ink">
             Full deal analysis — stakeholders, MEDDIC, quotes, objections, action plan, retro, assets, activity
@@ -3666,7 +3669,7 @@ function OpportunityPanel({
           className="inline-flex items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-60"
         >
           <Save className="h-4 w-4" />
-          {saveState === 'saving' ? 'Saving...' : 'Save Opportunity'}
+          {saveState === 'saving' ? 'Saving...' : qualifiedForm ? 'Save Opportunity' : 'Save Lead'}
         </button>
         {onDelete && (
           <button
@@ -3778,7 +3781,7 @@ function OpportunitySalesFlowCard({
             <GitBranch className="h-4 w-4 text-brand-blue" />
             <p className="text-xs font-bold uppercase tracking-wide">Sales flow checkpoint</p>
             <Badge label={guidance.step.label} tone="blue" />
-            <Badge label={guidance.status} tone={tone} />
+            <Badge label={guidance.status === 'Ready to advance' ? 'Checkpoint recorded' : guidance.status} tone={tone} />
           </div>
           <h3 className="mt-2 text-base font-bold text-ink">{guidance.suggestedAction}</h3>
           <p className="mt-1 text-sm leading-6 text-gray-600">{guidance.reason}</p>
@@ -5166,7 +5169,7 @@ function WhyThisDealIsFlagged({ form }: { form: OpportunityFormInput }) {
       <div className="mt-4 flex items-start gap-2 rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-2.5">
         <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-600" />
         <p className="text-xs font-semibold leading-5 text-emerald-900">
-          Nothing here puts this deal on the watch-list. Save to clear it everywhere.
+          The recorded forecast flags are clear. Review buying evidence above before advancing or defending the forecast.
         </p>
       </div>
     );

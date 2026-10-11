@@ -1,5 +1,6 @@
 import type { CrmLiteOpportunity, OpportunityStage } from '../services/opportunityStore';
 import { sanitizeBusinessDate } from './safeDate.ts';
+import type { DealQualification } from './dealQualificationScore.ts';
 
 export type SalesFlowCheckpointStatus = 'Needs action' | 'Ready to advance' | 'Completed' | 'Paused' | 'Closed';
 
@@ -46,10 +47,14 @@ const stageToStepId: Record<OpportunityStage, string> = {
   'On hold': 'qualification',
 };
 
-export function buildOpportunitySalesFlowGuidance(opportunity: CrmLiteOpportunity): OpportunitySalesFlowGuidance {
+export function buildOpportunitySalesFlowGuidance(opportunity: CrmLiteOpportunity, qualification?: DealQualification): OpportunitySalesFlowGuidance {
   const stepIndex = Math.max(0, salesFlowSteps.findIndex((step) => step.id === stageToStepId[opportunity.stage]));
   const step = salesFlowSteps[stepIndex];
   const missingCheckpoints = getMissingCheckpoints(opportunity, step.id);
+  if (qualification && opportunity.status === 'Active') {
+    missingCheckpoints.push(...qualification.blockers.map(blocker => `buying evidence: ${blocker.label}`));
+    if (qualification.stageGap > 0) missingCheckpoints.push(`buying evidence beyond ${qualification.evidenceStage}`);
+  }
   const nextStepLabel = salesFlowSteps[stepIndex + 1]?.label || 'Delivery and payment follow-up';
   const status = getCheckpointStatus(opportunity, missingCheckpoints);
   const suggestedAction = getSuggestedAction(opportunity, step.id, missingCheckpoints);
@@ -144,7 +149,8 @@ function getSuggestedAction(opportunity: CrmLiteOpportunity, stepId: string, mis
   if (opportunity.status === 'On hold' || opportunity.stage === 'On hold') return 'Confirm the reactivation trigger, owner, and review date.';
   if (opportunity.isStageInferred) return 'Confirm the current stage and latest customer milestone.';
   if (stepId === 'handoff') return 'Confirm delivery, payment, and customer handoff ownership.';
-  if (missing.length === 0) return `Confirm the checkpoint outcome with the customer and move to the next stage.`;
+  if (missing.length === 0) return 'Confirm buying evidence with the customer before deciding the next stage.';
+  if (missing.some(gap => gap.startsWith('buying evidence'))) return `Confirm ${missing.filter(gap => gap.startsWith('buying evidence')).join('; ')} before advancing.`;
 
   const firstGap = missing[0];
   const actions: Record<string, string> = {
@@ -176,5 +182,5 @@ function buildReason(
   if (status === 'Paused') return 'The deal is paused. Keep a dated reactivation trigger instead of an open-ended follow-up.';
   if (status === 'Completed') return 'Commercial commitment is recorded; keep delivery and payment ownership visible.';
   if (missing.length > 0) return `Before advancing, confirm ${missing.slice(0, 2).join(' and ')}${missing.length > 2 ? `, plus ${missing.length - 2} more` : ''}.`;
-  return `${step.outcome} The deal is ready to move toward ${nextStepLabel}.`;
+  return `The recorded ${step.label} checkpoint fields are complete. Confirm customer buying evidence before moving toward ${nextStepLabel}.`;
 }

@@ -712,12 +712,12 @@ function WeeklyReviewSection({
         <ActivityTimelinePanel activities={periodActivities} periodLabel={period.label} />
       </ReviewFold>
 
-      <CommercialReviewBriefPanel
+      <ReviewFold title="Full commercial brief" hint="The supporting reading behind this period’s priorities"><CommercialReviewBriefPanel
         brief={commercialReviewBrief}
         onCopy={copyCommercialReviewBrief}
         copyMessage={commercialCopyMessage}
         loading={loadingActivities}
-      />
+      /></ReviewFold>
 
       {periodObjections.length > 0 && (
         <section className="rounded-lg border border-amber-200 bg-amber-50/70 p-5 shadow-sm">

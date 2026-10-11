@@ -95,7 +95,7 @@ export function derivePlanCommitments(input: DerivedInput): CommercialCommitment
   // A promise ticked off on the Plan is kept, and must not come back here as
   // an open one.
   const settledKeys = new Set(
-    planItems.filter((item) => item.derivedKey && item.done).map((item) => item.derivedKey as string),
+    planItems.filter((item) => item.done).flatMap((item) => [item.derivedKey, ...(item.linkedDerivedKeys || [])].filter((key): key is string => Boolean(key))),
   );
 
   const fromCaptures = activities
@@ -138,12 +138,31 @@ export function derivePlanCommitments(input: DerivedInput): CommercialCommitment
       isSample: item.isSample,
     }));
 
+  // The operator's explicit work groups apply to the promise reading as well
+  // as the board. Keep the chosen primary wording and one stable identity.
+  const linked = new Map<string, PlanRecord>();
+  planItems.filter(item => !item.__deleted && !item.done && isRealRecord(item, input.includeSampleRecords))
+    .forEach(item => (item.linkedDerivedKeys || []).forEach(key => linked.set(key, item)));
+  const grouped = new Map<string, CommercialCommitment>();
+  const captureKeys = new Set(fromCaptures.map(item => item.id.slice(PLAN_COMMITMENT_ID_PREFIX.length)));
+  for (const commitment of fromCaptures) {
+    const key = commitment.id.slice(PLAN_COMMITMENT_ID_PREFIX.length), primary = linked.get(key);
+    if (!primary) { grouped.set(key, commitment); continue; }
+    if (!primary.derivedKey) continue; // Its personal plan item already owns the promise.
+    if (captureKeys.has(primary.derivedKey)) continue; // The primary capture is already in this reading.
+    if (!grouped.has(primary.derivedKey)) grouped.set(primary.derivedKey, commitmentFrom({
+      id: primary.derivedKey, sourceId: primary.id, text: primary.label, dueDate: primary.date,
+      accountName: primary.tag, opportunityId: primary.derivedKey.startsWith('deal:') ? primary.derivedKey.slice(5, -11) : commitment.opportunityId || null,
+      createdAt: primary.createdAt, updatedAt: primary.updatedAt, isSample: primary.isSample,
+    }));
+  }
+
   // The Plan board already refuses to show the same promise twice - "the
   // operator already planned this by hand - keep their words, drop ours" - and
   // a panel that lists what the Plan hides is the same disagreement this file
   // exists to end. Written by hand wins, on the same customer and the same day.
   const byHand = new Set(fromPlan.map((commitment) => promiseKey(commitment)));
-  return [...fromPlan, ...fromCaptures.filter((commitment) => !byHand.has(promiseKey(commitment)))]
+  return [...fromPlan, ...[...grouped.values()].filter((commitment) => !byHand.has(promiseKey(commitment)))]
     // Oldest promise first, because that is the one that has been waiting
     // longest and the panel renders them in the order it is handed.
     .sort((left, right) => left.currentDueDate.localeCompare(right.currentDueDate));

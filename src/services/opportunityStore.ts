@@ -12,6 +12,7 @@ import { loadAccounts } from './accountStore.ts';
 import { canonicalAccountId } from '../utils/canonicalAccountLink.ts';
 import { accountKey } from '../utils/accountIdentity.ts';
 import { captureLocalWorkspaceScope } from './localWorkspaceOwner.ts';
+import { prepareOpportunityBrand, linkOpportunityBrand, type PortfolioScope } from './portfolioStore.ts';
 
 export const OPPORTUNITY_STORAGE_KEY = 'memoire.opportunities.v1';
 
@@ -133,7 +134,7 @@ export interface CrmLiteOpportunity {
   storageMode: 'local' | 'cloud';
 }
 
-export type OpportunityFormInput = Omit<CrmLiteOpportunity, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'storageMode' | 'source' | 'isSample'>;
+export type OpportunityFormInput = Omit<CrmLiteOpportunity, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'storageMode' | 'source' | 'isSample'> & { brandCatalogId?: string };
 
 type OpportunityRow = {
   id: string;
@@ -236,6 +237,36 @@ export async function createOpportunity(
   input: OpportunityFormInput,
   userId: string | null | undefined,
   workspace: OpportunityWorkspaceTag,
+) {
+  const sample = workspace.isSample || workspace.source === 'demo';
+  return writeOpportunityWithBrand(input, { userId: sample ? null : userId || null, sampleDataActive: sample },
+    clean => createOpportunityRecord(clean, userId, workspace));
+}
+
+async function writeOpportunityWithBrand(input: OpportunityFormInput, scope: PortfolioScope,
+  write: (input: OpportunityFormInput) => Promise<{ opportunity: CrmLiteOpportunity; mode: 'local' | 'cloud'; warning?: string }>, opportunityId?: string, previousBrand?: string) {
+  const sameWorkspace = captureLocalWorkspaceScope();
+  const selection = await prepareOpportunityBrand(scope, input, opportunityId, previousBrand);
+  if (!sameWorkspace()) throw new Error('Workspace changed before saving.');
+  const clean = { ...input, brand: selection.brand };
+  delete clean.brandCatalogId;
+  const result = await write(clean);
+  try {
+    if (!sameWorkspace()) throw new Error('Workspace changed.');
+    const catalog = await linkOpportunityBrand(scope, result.opportunity, { ...selection,
+      preserveOriginal: input.brandCatalogId === undefined && previousBrand !== undefined && previousBrand.trim() === selection.brand });
+    if (catalog?.cloud === 'unavailable') result.warning = [result.warning, catalog.message].filter(Boolean).join(' ');
+  } catch {
+    reportWorkspaceSyncError();
+    result.warning = [result.warning, 'Deal saved, but the Brand link could not be saved. Open Products & Brands to repair this link; do not create the deal again.'].filter(Boolean).join(' ');
+  }
+  return result;
+}
+
+async function createOpportunityRecord(
+  input: OpportunityFormInput,
+  userId: string | null | undefined,
+  workspace: OpportunityWorkspaceTag,
 ): Promise<{ opportunity: CrmLiteOpportunity; mode: 'local' | 'cloud'; warning?: string }> {
   const sameWorkspace = captureLocalWorkspaceScope();
   const normalized = normalizeOpportunityInput(input);
@@ -277,6 +308,16 @@ export async function createOpportunity(
 }
 
 export async function updateOpportunity(
+  opportunity: CrmLiteOpportunity,
+  input: OpportunityFormInput,
+  userId?: string | null,
+) {
+  const sample = opportunity.isSample === true || opportunity.source === 'demo';
+  return writeOpportunityWithBrand(input, { userId: sample ? null : userId || null, sampleDataActive: sample },
+    clean => updateOpportunityRecord(opportunity, clean, userId), opportunity.id, opportunity.brand || '');
+}
+
+async function updateOpportunityRecord(
   opportunity: CrmLiteOpportunity,
   input: OpportunityFormInput,
   userId?: string | null

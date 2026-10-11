@@ -37,6 +37,7 @@ import {
   buildCaptureDerivedKey,
   buildDealDerivedKey,
   buildPlanBoard,
+  linkPlanWork,
   buildPlanLinkOptions,
   createPlanItemToggleRecord,
   createDismissedSuggestionRecord,
@@ -1440,6 +1441,10 @@ export function WeeklyPlanPage({
             ? () => { removePersonalItem(detailItem.id); closeDetail(); }
             : undefined}
           onClose={closeDetail}
+          relatedWork={board.days.flatMap(day => day.items).filter(item => item.derivedKey && item.derivedKey !== detailItem.derivedKey && item.tag === detailItem.tag && ['deal', 'capture'].includes(item.kind))}
+          linkedWorkCount={records.find(record => (detailItem.kind === 'personal' ? record.id === detailItem.id : record.derivedKey === detailItem.derivedKey))?.linkedDerivedKeys?.length || 0}
+          onLinkWork={other => { try { setRecords(savePlanItem(linkPlanWork(detailItem, other, records, { source: sampleDataActive ? 'demo' : 'user', isSample: sampleDataActive }))); closeDetail(); setBoardMessage('These source actions now count as one plan item. Source records and their wording are preserved.'); } catch (failure) { setDetailError(failure instanceof Error ? failure.message : 'Could not link work.'); } }}
+          onUnlinkWork={() => { const record = records.find(row => (detailItem.kind === 'personal' ? row.id === detailItem.id : row.derivedKey === detailItem.derivedKey)); if (record) { setRecords(savePlanItem({ ...record, linkedDerivedKeys: [], updatedAt: new Date().toISOString() })); closeDetail(); } }}
         />
       )}
     </div>

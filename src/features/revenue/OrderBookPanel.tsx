@@ -140,7 +140,7 @@ export function OrderBookPanel({
             <h2 className="text-lg font-bold text-ink">Order book</h2>
           </div>
           <p className="mt-1 max-w-2xl text-sm text-gray-500">
-            Deals the customer has committed to ({COMMIT_PROBABILITY_THRESHOLD}%+, procurement, or won), each one
+            Expected orders ({COMMIT_PROBABILITY_THRESHOLD}%+, procurement, or won); Contract / PO confirms the order, each one
             followed from contract to cash. Status comes from what the records already prove; tick the steps no
             document will ever prove. Stage totals show full order value; Collections shows receipts and remaining cash to collect.
           </p>
@@ -173,7 +173,7 @@ export function OrderBookPanel({
 
       {book.orders.length === 0 ? (
         <p className="m-5 rounded-lg border border-dashed border-line bg-gray-50 px-4 py-5 text-sm text-gray-500">
-          No committed orders yet. When a deal reaches {COMMIT_PROBABILITY_THRESHOLD}% probability, enters procurement,
+          No expected orders yet. When a deal reaches {COMMIT_PROBABILITY_THRESHOLD}% probability, enters procurement,
           or is won, it lands here with its road to cash laid out.
         </p>
       ) : (

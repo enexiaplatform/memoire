@@ -117,9 +117,10 @@ describe('money at risk derives from the canonical engines', () => {
     // date, and still counts it - it is what to chase. This list gives the same
     // number and says where the date came from.
     const result = risk({ opportunities: [won('k', { closedOn: '2026-09-10' })], milestones: [tick('k', 'contract', '2026-09-10')] });
-    const item = result.items.find((entry) => entry.kind === 'invoice-overdue');
+    const item = result.items.find((entry) => entry.kind === 'payment-date-unconfirmed');
     assert.ok(item);
-    assert.match(item.what, /no payment term/);
+    assert.match(item.what, /not confirmed/);
+    assert.equal(kinds(result).includes('invoice-overdue'), false);
   });
 
   test('a healthy book has nothing at risk', () => {

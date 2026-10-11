@@ -85,7 +85,8 @@ export function buildMoneyFlow(input: MoneyFlowInput): MoneyFlow {
       const stage: MoneyFlowStage = collection.settled ? 'Paid'
         : order.orderStage === 'To confirm' ? 'Pending PO'
           : order.orderStage === 'To deliver' ? 'Pending delivery' : 'Pending payment';
-      const receiptRisk = collection.overdueBase > 0 ? 'Payment overdue' : '';
+      const receiptRisk = collection.confirmedOverdueBase > 0 ? 'Payment overdue'
+        : collection.plannedOverdueBase > 0 ? 'Planning payment date passed · confirm terms and trigger' : '';
       return { id: `order-${order.opportunityId}`, accountName: order.accountName, label: order.orderName,
         amount: stage === 'Paid' ? order.amount : collection.valueUnavailable ? null : convertMoney(collection.outstandingBase, getReportingCurrency(), order.currency as SupportedCurrency),
         currency: order.currency, stage, stuck: !collection.settled && Boolean(receiptRisk || order.overdue || order.stalled),

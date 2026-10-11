@@ -1,6 +1,6 @@
-import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { useModalDrawer } from '../../hooks/useModalDrawer';
 
 /**
  * A record opened in full, from the right edge.
@@ -31,36 +31,13 @@ export function RecordDrawer({
   footer: ReactNode;
   children: ReactNode;
 }) {
-  const panelRef = useRef<HTMLElement | null>(null);
-  const closeRef = useRef(onClose);
-
-  useEffect(() => {
-    closeRef.current = onClose;
-  }, [onClose]);
-
-  useEffect(() => {
-    const previous = document.activeElement as HTMLElement | null;
-    panelRef.current?.focus();
-    const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') closeRef.current();
-    };
-    window.addEventListener('keydown', closeOnEscape);
-    // The page behind a drawer must not scroll under the wheel meant for the form.
-    const { body } = document;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = 'hidden';
-    return () => {
-      window.removeEventListener('keydown', closeOnEscape);
-      body.style.overflow = previousOverflow;
-      previous?.focus?.();
-    };
-  }, []);
+  const { ref: drawerRef } = useModalDrawer({ onClose, label });
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end">
       <button type="button" aria-label={`Close ${label}`} onClick={onClose} className="absolute inset-0 bg-ink/40" />
       <aside
-        ref={panelRef}
+        ref={drawerRef}
         tabIndex={-1}
         role="dialog"
         aria-modal="true"

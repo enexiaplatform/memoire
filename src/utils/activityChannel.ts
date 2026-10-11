@@ -225,7 +225,7 @@ const CHANNEL_PATTERNS: { channel: ActivityChannel; pattern: RegExp }[] = [
   },
   {
     channel: 'Phone call',
-    pattern: /(\bphone call\b|\bcalled\b|\bover the phone\b|\bby phone\b|\bhotline\b|\bgoi dien\b|\bdien thoai\b|\bgoi cho\b)/iu,
+    pattern: /(\bphone call\b|\bcalled\b|\bover the phone\b|\bby phone\b|\bhotline\b|\bgoi dien\b|\bdien thoai\b|\bgoi cho\b|\bda goi\b)/iu,
   },
   {
     channel: 'Email / message',

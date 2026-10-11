@@ -17,6 +17,8 @@ import { useEscapeToClose } from './useEscapeToClose';
  */
 export function useModalDrawer({ onClose, label, enabled = true }: { onClose: () => void; label: string; enabled?: boolean }) {
   const ref = useRef<HTMLElement>(null);
+  const openerRef = useRef<HTMLElement | null>(null);
+  const activeRef = useRef(false);
 
   useEscapeToClose(onClose, enabled);
 
@@ -25,14 +27,23 @@ export function useModalDrawer({ onClose, label, enabled = true }: { onClose: ()
   // next Tab starts again from the top of the page.
   useEffect(() => {
     if (!enabled) return;
-    const opener = document.activeElement as HTMLElement | null;
+    activeRef.current = true;
+    // StrictMode replays effects while the dialog is already focused. Keep
+    // the original trigger rather than treating its own Close button as one.
+    if (!openerRef.current) openerRef.current = document.activeElement as HTMLElement | null;
     const node = ref.current;
     if (node) {
       const first = node.querySelector<HTMLElement>(FOCUSABLE);
       (first || node).focus({ preventScroll: true });
     }
     return () => {
-      if (opener && document.contains(opener)) opener.focus({ preventScroll: true });
+      activeRef.current = false;
+      queueMicrotask(() => {
+        if (activeRef.current) return;
+        const opener = openerRef.current;
+        if (opener && document.contains(opener)) opener.focus({ preventScroll: true });
+        openerRef.current = null;
+      });
     };
   }, [enabled]);
 
@@ -45,7 +56,11 @@ export function useModalDrawer({ onClose, label, enabled = true }: { onClose: ()
 
       const focusable = Array.from(node.querySelectorAll<HTMLElement>(FOCUSABLE))
         .filter((element) => element.offsetParent !== null || element === document.activeElement);
-      if (focusable.length === 0) return;
+      if (focusable.length === 0) {
+        event.preventDefault();
+        node.focus();
+        return;
+      }
 
       const first = focusable[0];
       const last = focusable[focusable.length - 1];
@@ -54,7 +69,7 @@ export function useModalDrawer({ onClose, label, enabled = true }: { onClose: ()
       if (event.shiftKey && (active === first || !node.contains(active))) {
         event.preventDefault();
         last.focus();
-      } else if (!event.shiftKey && active === last) {
+      } else if (!event.shiftKey && (active === last || !node.contains(active))) {
         event.preventDefault();
         first.focus();
       }
@@ -72,7 +87,21 @@ export function useModalDrawer({ onClose, label, enabled = true }: { onClose: ()
     if (!enabled) return;
     const previous = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previous; };
+    // Make siblings along the portal path unavailable without disabling the
+    // dialog itself. Preserve pre-existing inert state for nested dialogs.
+    const hidden: { node: HTMLElement; inert: boolean }[] = [];
+    let child: HTMLElement | null = ref.current;
+    while (child?.parentElement) {
+      for (const sibling of Array.from(child.parentElement.children)) {
+        if (sibling instanceof HTMLElement && sibling !== child && !['SCRIPT', 'STYLE'].includes(sibling.tagName)) {
+          if (sibling.matches('button[aria-label^="Close"]')) continue;
+          hidden.push({ node: sibling, inert: sibling.inert }); sibling.inert = true;
+        }
+      }
+      if (child.parentElement === document.body) break;
+      child = child.parentElement;
+    }
+    return () => { hidden.forEach(({ node, inert }) => { node.inert = inert; }); document.body.style.overflow = previous; };
   }, [enabled]);
 
   return {

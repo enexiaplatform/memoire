@@ -1,0 +1,24 @@
+{
+  "accountWithLinkedTouchListedUntouched": [
+    {
+      "name": "Audit Customer",
+      "href": "/app/accounts?accountName=Audit%20Customer",
+      "reason": "account"
+    }
+  ],
+  "metricsWithSellerValueAndGenericProductOnly": {
+    "key": "metrics",
+    "label": "Metrics",
+    "status": "Strong",
+    "evidence": [
+      "Estimated value: 12,000 USD."
+    ],
+    "gaps": [],
+    "recommendedQuestions": [
+      "What measurable business impact does the customer expect from this project?",
+      "What happens if this problem is not solved this quarter?"
+    ]
+  },
+  "procurementWithoutPOConsideredCommitted": true,
+  "ninetyPercentWithoutPOConsideredCommitted": true
+}

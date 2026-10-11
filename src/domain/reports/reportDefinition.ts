@@ -21,7 +21,7 @@ export const reportFields = {
   orderRef: field('Order reference', 'text', orders), orderStage: field('Order stage', 'text', orders),
   orderDate: field('Order anchor date', 'date', orders), nextDueDate: field('Next payment due', 'date', orders),
   received: field('Recorded receipts', 'number', orders), outstanding: field('Outstanding', 'number', orders),
-  overdue: field('Overdue balance', 'number', orders), overpaid: field('Overpayment', 'number', orders),
+  plannedOverdue: field('Planning dates to confirm', 'number', orders), overdue: field('Confirmed overdue balance', 'number', orders), overpaid: field('Overpayment', 'number', orders),
   termConfidence: field('Payment schedule confidence', 'text', orders), valueUnavailable: field('Money data incomplete', 'boolean', orders),
 } as const;
 export type ReportField = keyof typeof reportFields;
@@ -33,7 +33,7 @@ export const reportMetricDefinitions = {
   orderValue: { label: 'Order value', datasets: orders, version: 1 },
   received: { label: 'Recorded receipts', datasets: orders, version: 1 },
   outstanding: { label: 'Outstanding', datasets: orders, version: 1 },
-  overdue: { label: 'Overdue balance', datasets: orders, version: 1 },
+  overdue: { label: 'Confirmed overdue balance', datasets: orders, version: 2 },
 } as const;
 export type ReportMetric = keyof typeof reportMetricDefinitions;
 export type ReportOperator = 'equals' | 'contains' | 'gte' | 'lte' | 'empty' | 'notEmpty';
@@ -103,8 +103,8 @@ export function reportTemplate(key: 'portfolio' | 'collections'): ReportDefiniti
     population: 'qualified', columns: columns('account', 'opportunity', 'brand', 'status', 'reportingValue', 'reportingCurrency', 'nextAction'),
     filters: [], filterMode: 'all', groupBy: ['brand'], metrics: ['recordCount', 'pipeline', 'won', 'winRate'], sort: { field: 'account', direction: 'asc' }, view: 'summary',
   } : {
-    schemaVersion: 1, dataset: 'collections', datasetVersion: 1, name: 'Collections & Blockers', description: 'One committed order per row. Recorded receipts, payment schedule and source-deal blockers; current planning view.',
-    population: 'qualified', columns: columns('account', 'orderRef', 'orderStage', 'outstanding', 'overdue', 'received', 'reportingCurrency', 'nextDueDate', 'missingContext', 'nextAction'),
+    schemaVersion: 1, dataset: 'collections', datasetVersion: 1, name: 'Collections & Blockers', description: 'One expected or confirmed qualified order per row. Check order stage for PO status; confirmed overdue and planning dates are separate.',
+    population: 'qualified', columns: columns('account', 'orderRef', 'orderStage', 'outstanding', 'overdue', 'plannedOverdue', 'received', 'reportingCurrency', 'nextDueDate', 'missingContext', 'nextAction'),
     filters: [], filterMode: 'all', groupBy: ['businessUnit'], metrics: ['recordCount', 'outstanding', 'overdue', 'received'], sort: { field: 'nextDueDate', direction: 'asc' }, view: 'details',
   });
 }

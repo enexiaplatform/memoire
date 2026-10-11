@@ -283,7 +283,10 @@ describe('receivables: how late the money is', () => {
         order('small-ancient', { orderDate: '2026-01-01', paymentTerm: 'Net 0', amountBase: 10_000 }),
         order('big-recent', { orderDate: '2026-07-01', paymentTerm: 'Net 0', amountBase: 900_000 }),
       ],
-      records: [],
+      records: [
+        { opportunityId: 'small-ancient', invoicedOn: '2026-01-01', installments: [], receipts: [] },
+        { opportunityId: 'big-recent', invoicedOn: '2026-07-01', installments: [], receipts: [] },
+      ],
       today: TODAY,
     });
 

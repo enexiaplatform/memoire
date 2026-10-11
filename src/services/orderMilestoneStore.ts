@@ -12,7 +12,7 @@ import {
   sendOwedCloudJsonRecords,
 } from './cloudJsonCollectionStore';
 import { invalidateWorkspaceCollection } from './workspaceDataCache';
-import { writeLocalRecords } from './localWriteGuard.ts';
+import { requireLocalWrite, writeLocalRecords } from './localWriteGuard.ts';
 
 export const ORDER_MILESTONE_STORAGE_KEY = 'memoire.orderMilestones.v1';
 
@@ -75,10 +75,10 @@ function persistOrderMilestones(records: OrderMilestoneRecord[], syncCloud = tru
     .filter((record): record is OrderMilestoneRecord => Boolean(record));
 
   if (canUseStorage()) {
-    writeLocalRecords(ORDER_MILESTONE_STORAGE_KEY, sanitized);
+    requireLocalWrite(writeLocalRecords(ORDER_MILESTONE_STORAGE_KEY, sanitized));
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('order_milestones', sanitized);
-      invalidateWorkspaceCollection('orderMilestones');
+      invalidateWorkspaceCollection('milestoneRecords');
     }
   }
   return sanitized;

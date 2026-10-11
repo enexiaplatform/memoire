@@ -1,0 +1,300 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 5 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "5 open": "5"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 5 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - link "Back to Today":
+    - /url: /app/today
+    - text: Back to Today
+  - generic: No CRM writeback
+  - button "Discard"
+  - button "Save Activity":
+    - text: Save Activity
+- main "Memoire workspace":
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Capture
+  - heading "Paste the note. Keep the memory." [level=1]
+  - generic: Write it the way you would say it. Memoire reads it into commercial facts you confirm before anything is saved.
+  - generic "External source observations"
+  - option "email" [selected]
+  - option "calendar"
+  - option "crm"
+  - option "erp"
+  - option "csv import"
+  - generic: "Or:"
+  - button "fill in quick details"
+  - button "paste an email or thread"
+  - region "Capture a note":
+    - generic: Raw note
+    - button "Dictate note":
+      - text: Dictate
+    - textbox "Raw note" [active]:
+      - /placeholder: "Example: Met the buyer today. Need to clarify the tender timeline next week."
+      - text: Đã gọi Dr. Avery tại Apex Labs về Validation Expansion. Khách đồng ý nhận báo giá sửa đổi. Tôi sẽ gửi báo giá Tailin 12000 USD vào ngày 12/10/2026.
+    - generic: 147 characters · parsed on this device
+    - text: Activity date
+    - textbox "Activity date": 2026-10-08
+    - heading "Resolved to" [level=2]
+    - generic: Rule-based preview · all editable
+    - list:
+      - generic: AL
+      - generic "Apex Labs"
+      - generic: Matched an existing account
+      - generic: Customer
+      - generic: DA
+      - generic "Dr. Avery"
+      - generic: Named in the note
+      - generic: Person
+      - generic "Demo / technical discussion"
+      - generic: How it happened is not stated
+      - generic: Touch
+    - paragraph: Filing this under
+    - paragraph: Apex Labs
+    - paragraph: ↳ Validation Expansion
+    - button "Change deal"
+    - generic "Confirm and correct This reviewed structured draft is exactly what Save Activity will store.":
+      - generic: Confirm and correct
+      - generic: This reviewed structured draft is exactly what Save Activity will store.
+    - option "Customer meeting"
+    - option "Follow-up"
+    - option "Demo / technical discussion" [selected]
+    - option "Quote / proposal"
+    - option "Tender / procurement"
+    - option "Internal coordination"
+    - option "Objection handling"
+    - option "Admin / CRM"
+    - option "Other"
+    - option "Not stated" [selected]
+    - option "On-site visit"
+    - option "Hosted visit"
+    - option "Online meeting"
+    - option "Phone call"
+    - option "Cold outreach"
+    - option "Email / message"
+    - option "Event"
+    - option "Desk work"
+    - option "Out of office"
+    - checkbox "Log this to Activity Counts as work done, on Activity and in every figure derived from it." [checked]
+    - text: Log this to Activity
+    - generic: Counts as work done, on Activity and in every figure derived from it.
+    - paragraph:
+      - generic: On-device parsing. Structured by rules on this device - nothing is sent to an AI service. Confirm or correct every field before saving.
+    - heading "What this changes" [level=3]
+    - list:
+      - listitem: Saving adds one touch to Apex Labs's history, dated Oct 8, 2026.
+      - listitem: It is filed under Validation Expansion.
+      - listitem: Then Memoire lists the people, promises and objections it read, for you to accept one at a time.
+  - heading "Capture Learning Memory" [level=2]
+  - paragraph: Local suggestions learned from fields you corrected before saving.
+  - paragraph: Account aliases
+  - textbox "Alias":
+    - /placeholder: Alias, e.g. PME
+  - textbox "Canonical account name":
+    - /placeholder: Canonical account
+  - button "Add" [disabled]
+  - paragraph: No aliases learned yet.
+  - paragraph: Recent corrections
+  - paragraph: No corrections recorded yet.
+  - heading "Just captured" [level=2]
+  - paragraph: Your last few touches, to confirm they landed. The whole ledger lives on Activity.
+  - button "Refresh"
+  - article:
+    - generic: Customer meeting
+    - text: Oct 8, 2026
+    - generic: Local
+    - heading "Met with Dr. Avery at Apex Labs today. Need to send revised quote by Friday and follow up with procurement next Tuesday." [level=3]
+    - paragraph: "Link: Apex Labs / Validation Expansion"
+    - text: Account
+    - paragraph: Apex Labs
+    - text: Opportunity
+    - paragraph: Not captured
+    - text: Contact
+    - paragraph: Dr. Avery
+    - text: Next action
+    - paragraph: Send revised quote
+    - text: Due date
+    - paragraph: Oct 9, 2026
+    - text: Next actions
+    - list:
+      - listitem: 1. Send revised quote | Due Oct 9, 2026
+      - listitem: 2. Follow up with procurement | Due Oct 13, 2026
+    - generic: Competitors
+    - generic: Incumbent Vendor
+    - generic: Buying signals
+    - generic: Budget approved
+    - generic: Quote/commercial signal
+    - generic: Risks
+    - generic: Competitor still active
+    - generic: Procurement path needs follow-up
+    - generic: Timeline
+    - generic: Next quarter
+    - generic: customer-meeting
+    - generic: next-action
+    - generic: due-date
+    - generic: competitor
+    - generic: buying-signal
+    - generic: timeline
+    - generic: risk-signal
+    - generic: commercial-signal
+    - button "Copy":
+      - text: Copy
+    - button "Delete":
+      - text: Delete
+  - article:
+    - generic: Customer meeting
+    - text: Oct 8, 2026
+    - generic: Local
+    - heading "Orion Pharma mentioned a competing platform during procurement discussion. Need to collect differentiator evidence before procurement meeting." [level=3]
+    - paragraph: "Link: Orion Pharma / Procurement review"
+    - text: Account
+    - paragraph: Not captured
+    - text: Opportunity
+    - paragraph: Not captured
+    - text: Contact
+    - paragraph: Not captured
+    - text: Next action
+    - paragraph: Collect differentiator evidence before procurement meeting
+    - text: Due date
+    - paragraph: No due date
+    - text: Next actions
+    - list:
+      - listitem: 1. Collect differentiator evidence before procurement meeting
+    - generic: Competitors
+    - generic: Competing Platform
+    - generic: Risks
+    - generic: Procurement path needs follow-up
+    - generic: customer-meeting
+    - generic: next-action
+    - generic: competitor
+    - generic: risk-signal
+    - button "Copy":
+      - text: Copy
+    - button "Delete":
+      - text: Delete
+  - article:
+    - generic: Customer meeting
+    - text: Oct 7, 2026
+    - generic: Local
+    - heading "Called Northstar Foods lab manager. Need to send local support proof next week." [level=3]
+    - paragraph: "Link: Northstar Foods / Lab workflow"
+    - text: Account
+    - paragraph: Not captured
+    - text: Opportunity
+    - paragraph: Not captured
+    - text: Contact
+    - paragraph: Not captured
+    - text: Next action
+    - paragraph: Send local support proof
+    - text: Due date
+    - paragraph: Oct 14, 2026
+    - text: Next actions
+    - list:
+      - listitem: 1. Send local support proof | Due Oct 14, 2026
+    - generic: Risks
+    - generic: Lead time concern
+    - generic: Stated concern from the customer
+    - generic: customer-meeting
+    - generic: next-action
+    - generic: due-date
+    - generic: risk-signal
+    - button "Copy":
+      - text: Copy
+    - button "Delete":
+      - text: Delete
+  - article:
+    - generic: Delivery / fulfillment
+    - text: Oct 7, 2026
+    - generic: Local
+    - heading "Internal coordination with service and finance team for Apex Labs Validation System quote." [level=3]
+    - paragraph: "Link: Apex Labs / Validation Expansion"
+    - text: Account
+    - paragraph: Apex Labs Validation System
+    - text: Opportunity
+    - paragraph: Not captured
+    - text: Contact
+    - paragraph: Not captured
+    - text: Next action
+    - paragraph: Not captured
+    - text: Due date
+    - paragraph: No due date
+    - generic: Buying signals
+    - generic: Quote/commercial signal
+    - generic: Timeline
+    - generic: Next quarter
+    - generic: delivery
+    - generic: fulfillment
+    - generic: buying-signal
+    - generic: timeline
+    - generic: commercial-signal
+    - button "Copy":
+      - text: Copy
+    - button "Delete":
+      - text: Delete
+  - article:
+    - generic: Marketing / content
+    - text: Oct 7, 2026
+    - generic: Local
+    - heading "Published a LinkedIn case note on lab validation workflows. Two lab managers commented - follow up with both this week." [level=3]
+    - paragraph: "Link: Ignored"
+    - text: Account
+    - paragraph: Not captured
+    - text: Opportunity
+    - paragraph: Not captured
+    - text: Contact
+    - paragraph: Not captured
+    - text: Next action
+    - paragraph: With both
+    - text: Due date
+    - paragraph: No due date
+    - generic: marketing
+    - generic: content
+    - generic: next-action
+    - button "Copy":
+      - text: Copy
+    - button "Delete":
+      - text: Delete
+  - link "See all 11 in Activity":
+    - /url: /app/activity

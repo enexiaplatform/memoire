@@ -1,0 +1,140 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 4 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "4 open": "4"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 4 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - link "Back to Today":
+    - /url: /app/today
+    - text: Back to Today
+  - generic: Ask Memoire · computed from your own records, no AI service
+  - generic: 8 deals indexed
+  - button "New thread"
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Ask Memoire
+  - heading "Ask your own pipeline" [level=1]
+  - generic: Asking about
+  - tablist "Context selector":
+    - tab "All Deals"
+    - tab "Specific Account"
+    - tab "Specific Opportunity" [selected]
+  - combobox "Choose opportunity":
+    - option "Choose opportunity"
+    - option "QA brand link"
+    - option "Validation Expansion" [selected]
+    - option "Validated decontamination service renewal"
+    - option "Lab workflow"
+    - option "Procurement review"
+    - option "QC workflow"
+    - option "Second QC line"
+    - option "New microbiology lab"
+    - option "Reagent resupply"
+    - option "Line audit service"
+    - option "Allergen testing"
+    - option "LIMS expansion"
+  - 'generic "Current context: Validation Expansion"'
+  - region "Answer":
+    - paragraph: Tình trạng Apex Labs đang thế nào?
+    - 'heading "Apex Labs / Validation Expansion is at Quoted (from the money flow). Money: Quoted. Risk: No active risk signal. Last touch Oct 9, 2026." [level=2]'
+    - paragraph: Answered from your measured history (no AI involved).
+    - article:
+      - paragraph: insight
+      - heading "Where Apex Labs / Validation Expansion stands" [level=3]
+      - paragraph: Position
+      - paragraph: Quoted (money flow)
+      - paragraph: Money
+      - paragraph: Quoted
+      - paragraph: Risk
+      - paragraph: No active risk signal
+      - paragraph: Blocker
+      - paragraph: None open
+      - paragraph: Next commitment
+      - paragraph: Send revised quote and procurement checklist - Oct 16, 2026
+      - paragraph: Last touch
+      - paragraph: Oct 9, 2026 - Đã gọi Dr. Avery tại Apex Labs về Validation Expansion.
+      - paragraph: Evidence
+      - paragraph: Budget approved; Dr. Avery confirmed next-quarter project window and procurement owner.
+      - link "Open the deal":
+        - /url: /app/opportunities?opportunityId=demo-opp-apex-validation-expansion
+        - text: Open the deal
+      - link "Open Activity Ledger":
+        - /url: /app/timeline?view=history
+        - text: Open Activity Ledger
+    - generic "Structured text"
+    - paragraph: Drawn from
+    - generic: Commercial journey (stage, money flow, captured touches, objections)
+    - paragraph:
+      - generic: "Suggested next action: Send revised quote and procurement checklist - Oct 16, 2026"
+  - textbox "Find a record by name, or ask a supported question":
+    - /placeholder: Find a customer or deal by name, or ask about a deal, an account, or a week...
+  - button "Ask" [active]:
+  - complementary "Questions Memoire can answer":
+    - heading "Ask next" [level=2]
+    - button "Where is the money?"
+    - button "Which deals may go silent?"
+    - heading "Action / fix prompts" [level=3]
+    - button "Draft a follow-up"
+    - button "How should I address this objection?"
+    - button "What should I ask the customer next?"
+    - heading "What this can answer" [level=2]
+    - list:
+      - button "Who needs follow-up?"
+      - button "Where is money stuck?"
+      - button "What changed this week?"
+      - button "Summarize this account."
+      - button "Which opportunities have no next action?"
+      - button "Which commitments are overdue?"
+      - button "What am I waiting for from customers?"
+      - button "What do I owe today?"
+    - heading "Asked this visit" [level=2]
+    - button "Where do we stand? Tình trạng Apex Labs đang thế nào?"
+    - paragraph: Kept for this visit only - nothing you ask is stored.
+    - region "Private by default":
+      - heading "Private by default" [level=2]
+      - paragraph: Answers are built on this device from your captured data. Nothing is sent to an AI service, so no customer context leaves your browser.

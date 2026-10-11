@@ -961,7 +961,7 @@ function GapsPanel({
   periodLabel,
 }: {
   silent: { name: string; type: ActivityRelationType; href: string; daysSinceLast: number | null }[];
-  gaps: { name: string; href: string; reason: 'open deal' | 'account' }[];
+  gaps: { name: string; href: string; reason: 'open deal' | 'lead' | 'account' }[];
   periodLabel: string;
 }) {
   if (silent.length === 0 && gaps.length === 0) return null;

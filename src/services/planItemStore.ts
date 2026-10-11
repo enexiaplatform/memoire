@@ -92,7 +92,9 @@ function persistPlanItems(records: PlanRecord[], syncCloud = true) {
     .sort((a, b) => a.date.localeCompare(b.date));
 
   if (canUseStorage()) {
-    writeLocalRecords(PLAN_ITEM_STORAGE_KEY, sanitized);
+    const result = writeLocalRecords(PLAN_ITEM_STORAGE_KEY, sanitized);
+    if (!result.ok) throw new Error('Could not save this plan in the browser. Free storage or export a backup before retrying.');
+    invalidateWorkspaceCollection('planItems');
     if (syncCloud) {
       syncCloudJsonCollectionForCurrentUser('plan_items', sanitized);
       invalidateWorkspaceCollection('planItems');
@@ -118,6 +120,7 @@ function sanitizePlanRecord(value: unknown): PlanRecord | null {
     done: candidate.done === true,
     doneAt: typeof candidate.doneAt === 'string' ? candidate.doneAt : undefined,
     derivedKey: typeof candidate.derivedKey === 'string' ? candidate.derivedKey : undefined,
+    linkedDerivedKeys: Array.isArray(candidate.linkedDerivedKeys) ? [...new Set(candidate.linkedDerivedKeys.filter((key): key is string => typeof key === 'string' && key !== candidate.derivedKey))].slice(0, 50) : undefined,
     linkedOpportunityId: typeof candidate.linkedOpportunityId === 'string' ? candidate.linkedOpportunityId : undefined,
     linkedAccountName: typeof candidate.linkedAccountName === 'string' ? candidate.linkedAccountName : undefined,
     linkedBrand: typeof candidate.linkedBrand === 'string' ? candidate.linkedBrand : undefined,

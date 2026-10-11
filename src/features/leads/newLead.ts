@@ -6,6 +6,8 @@ import type { LeadSource } from '../../utils/leadQueue';
  */
 export type NewLeadInput = {
   accountName: string;
+  brand: string;
+  brandCatalogId?: string;
   opportunityName: string;
   contactName: string;
   contactRole: string;
@@ -17,6 +19,7 @@ export type NewLeadInput = {
 
 export const emptyNewLead: NewLeadInput = {
   accountName: '',
+  brand: '',
   opportunityName: '',
   contactName: '',
   contactRole: '',

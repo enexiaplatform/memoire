@@ -1,8 +1,9 @@
 import type { AccountMemoryRecord } from '../services/accountStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
-import { isAttached, type ActivityEntry, type ActivityOrigin, type ActivityRelationType } from './activityLedger.ts';
+import { isAttached, readOpportunityId, type ActivityEntry, type ActivityOrigin, type ActivityRelationType } from './activityLedger.ts';
 import { resolveAccountName, type AccountAliasIndex } from './accountAliases.ts';
 import { accountKey } from './accountIdentity.ts';
+import { isLeadRecord } from './leadIdentity.ts';
 import type { BusinessDomain } from './businessDomain.ts';
 import { isMoreRecentBusinessDate, sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 
@@ -73,7 +74,7 @@ export type AttachmentReading = {
 
 export type SilentSubject = { name: string; type: ActivityRelationType; href: string; daysSinceLast: number | null };
 
-export type CoverageGap = { name: string; href: string; reason: 'open deal' | 'account' };
+export type CoverageGap = { name: string; href: string; reason: 'open deal' | 'lead' | 'account' };
 
 export type ActivityAnalytics = {
   total: number;
@@ -306,36 +307,80 @@ function buildCoverageGaps(
   entries: ActivityEntry[],
   input: { opportunities?: CrmLiteOpportunity[]; accounts?: AccountMemoryRecord[]; accountAliases?: AccountAliasIndex },
 ): CoverageGap[] {
-  const touched = new Set(entries.map((entry) => accountKey(entry.relatedTo.name)));
-  const touchedOpportunities = new Set(
-    entries.filter((entry) => entry.relatedTo.type === 'opportunity').map((entry) => accountKey(entry.relatedTo.name)),
+  const opportunities = input.opportunities || [];
+  const accounts = input.accounts || [];
+  const opportunitiesById = new Map(opportunities.map((opportunity) => [opportunity.id, opportunity]));
+  const accountsById = new Map(accounts.map((account) => [account.id, account]));
+  const opportunitiesByName = new Map<string, CrmLiteOpportunity[]>();
+  opportunities.forEach((opportunity) => {
+    const key = accountKey(opportunity.opportunityName || '');
+    if (!key) return;
+    const matches = opportunitiesByName.get(key) || [];
+    matches.push(opportunity);
+    opportunitiesByName.set(key, matches);
+  });
+
+  const accountNameFor = (opportunity: CrmLiteOpportunity) => resolveAccountName(
+    (opportunity.accountId && accountsById.get(opportunity.accountId)?.accountName) || opportunity.accountName || '',
+    input.accountAliases,
   );
+  const directAccountTouches = new Set<string>();
+  const coveredAccounts = new Set<string>();
+  const touchedOpportunityIds = new Set<string>();
+  entries.forEach((entry) => {
+    if (entry.relatedTo.type === 'account') {
+      const key = accountKey(resolveAccountName(entry.relatedTo.name, input.accountAliases));
+      if (key) {
+        directAccountTouches.add(key);
+        coveredAccounts.add(key);
+      }
+      return;
+    }
+    if (entry.relatedTo.type !== 'opportunity') return;
+
+    const id = readOpportunityId(entry.relatedTo.href);
+    const nameMatches = opportunitiesByName.get(accountKey(entry.relatedTo.name)) || [];
+    // A record pointer wins over its display text. A missing/deleted pointer
+    // must not credit a different deal with the same name; older name-only
+    // rows are usable only when the name identifies exactly one deal.
+    const opportunity = id ? opportunitiesById.get(id) : nameMatches.length === 1 ? nameMatches[0] : undefined;
+    if (!opportunity) return;
+    touchedOpportunityIds.add(opportunity.id);
+    const key = accountKey(accountNameFor(opportunity));
+    if (key) coveredAccounts.add(key);
+  });
 
   const gaps: CoverageGap[] = [];
+  const accountsWithDealGaps = new Set<string>();
 
-  (input.opportunities || [])
+  opportunities
     .filter((opportunity) => opportunity.status === 'Active')
     .forEach((opportunity) => {
-      const account = resolveAccountName(opportunity.accountName || '', input.accountAliases);
-      if (touched.has(accountKey(account)) || touchedOpportunities.has(accountKey(opportunity.opportunityName || ''))) return;
+      const account = accountNameFor(opportunity);
+      const key = accountKey(account);
+      // A deal touch reaches its account, but does not mean every other deal
+      // at that account was worked. Only a direct account row keeps the
+      // existing account-wide coverage behavior.
+      if (directAccountTouches.has(key) || touchedOpportunityIds.has(opportunity.id)) return;
       gaps.push({
         name: `${account || 'Unknown account'} · ${opportunity.opportunityName || 'Deal'}`,
         href: `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`,
-        reason: 'open deal',
+        reason: isLeadRecord(opportunity) ? 'lead' : 'open deal',
       });
+      if (key) accountsWithDealGaps.add(key);
     });
 
-  (input.accounts || []).forEach((account) => {
+  accounts.forEach((account) => {
     const name = resolveAccountName(account.accountName || '', input.accountAliases);
-    if (!name || touched.has(accountKey(name))) return;
-    if (gaps.some((gap) => gap.name.startsWith(name))) return;
+    const key = accountKey(name);
+    if (!key || coveredAccounts.has(key) || accountsWithDealGaps.has(key)) return;
     gaps.push({ name, href: `/app/accounts?accountName=${encodeURIComponent(name)}`, reason: 'account' });
   });
 
   // Deals first: an untouched deal has a close date, an untouched account only
   // has potential.
   return gaps
-    .sort((left, right) => (left.reason === right.reason ? left.name.localeCompare(right.name) : left.reason === 'open deal' ? -1 : 1))
+    .sort((left, right) => ({ 'open deal': 0, lead: 1, account: 2 }[left.reason] - { 'open deal': 0, lead: 1, account: 2 }[right.reason] || left.name.localeCompare(right.name)))
     .slice(0, 8)
     .map((gap) => ({ ...gap, name: gap.name.trim() || 'Unnamed' }));
 }

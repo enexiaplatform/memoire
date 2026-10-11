@@ -1,0 +1,32 @@
+Issue a deliberately selected statement for another party. Each party keeps its own records and decides what it accepts. Party names and references are declarations; completion evidence is the issuer’s selected assertion.
+
+Promise to disclose
+Choose your promise
+QA demo: send the validation documents
+Issuing party reference
+Issuing party name
+Recipient party reference
+Recipient party name
+Public promise reference
+Include the existing completion evidence text, if this promise is completed.
+Preview external statement
+
+From: Demo seller · To: Demo Apex Labs
+
+Promise: QA demo: send the validation documents
+
+Responsible: You · Due: 2026-10-11 · open
+
+Evidence disclosed: None
+
+Recipient acceptance has not been confirmed. Only the fields shown here and their references will be disclosed.
+
+Exact statement and agreed references
+I confirm these parties and the exact promise and evidence to disclose.
+Issue statement
+Receive an external statement
+Check a trust capsule
+
+Statements are marked as sample and can be received only in sample mode.
+
+Review the exact statement before issuing it. Party references and labels are your declarations.

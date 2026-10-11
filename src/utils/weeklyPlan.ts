@@ -123,6 +123,8 @@ export type PlanRecord = {
   doneAt?: string;
   /** Set only on completion stubs for derived items. */
   derivedKey?: string;
+  /** Explicitly confirmed aliases of the same work; never inferred from wording. */
+  linkedDerivedKeys?: string[];
   linkedOpportunityId?: string;
   linkedAccountName?: string;
   /**
@@ -205,9 +207,13 @@ export function buildPlanBoard(input: {
   const liveRecords = input.records.filter((record) => record.__deleted !== true);
   const completionByKey = new Map(
     liveRecords
-      .filter((record) => record.derivedKey)
-      .map((record) => [record.derivedKey as string, record]),
+      .filter((record) => record.derivedKey || record.linkedDerivedKeys?.length)
+      .flatMap((record) => [record.derivedKey || `personal:${record.id}`, ...(record.linkedDerivedKeys || [])].map(key => [key, record] as const)),
   );
+  // Explicit grouping wins over an older standalone completion stub.
+  liveRecords.filter(record => record.derivedKey || record.linkedDerivedKeys?.length).forEach(record => {
+    (record.linkedDerivedKeys || []).forEach(key => completionByKey.set(key, record));
+  });
 
   const dealItems = buildDealItems(input.opportunities, range, today);
   const personalRecordsInRange = liveRecords
@@ -291,7 +297,13 @@ export function buildPlanBoard(input: {
     today,
   }).map((item) => withWork(item)) : [];
 
-  const allItems = [...derived.map((item) => withWork(item)), ...personal, ...carried];
+  const candidates = [...derived.map((item) => withWork(item)), ...personal, ...carried];
+  const visibleKeys = new Set(candidates.map(item => item.derivedKey || `personal:${item.id}`));
+  const allItems = candidates.filter(item => {
+    const link = item.derivedKey ? completionByKey.get(item.derivedKey) : undefined;
+    const primaryKey = link && (link.derivedKey || `personal:${link.id}`);
+    return !primaryKey || primaryKey === item.derivedKey || !visibleKeys.has(primaryKey);
+  });
   const days = buildDays(range, today).map((day) => {
     const items = allItems
       .filter((item) => item.date === day.date)
@@ -309,8 +321,8 @@ export function buildPlanBoard(input: {
     totalCount: allItems.length,
     doneCount: allItems.filter((item) => item.done).length,
     personalCount: personal.length,
-    derivedCount: derived.length,
-    captureCount: captureItems.length,
+    derivedCount: allItems.filter(item => item.kind !== 'personal').length,
+    captureCount: allItems.filter(item => item.kind === 'capture').length,
     workSplit: summarisePlanWork(allItems.map((item) => ({
       kind: item.workKind,
       brand: item.workBrand,
@@ -761,6 +773,7 @@ export function createDerivedCompletionRecord(
     done,
     doneAt: done ? now : undefined,
     derivedKey: item.derivedKey,
+    linkedDerivedKeys: existing?.linkedDerivedKeys,
     createdAt: existing?.createdAt || now,
     updatedAt: now,
     // Tagged at birth, like every other record the demo sandbox can create:
@@ -796,12 +809,22 @@ export function createPlanItemToggleRecord(
     return { ...existing, done, doneAt: done ? now : undefined, updatedAt: now };
   }
 
-  const existing = records.find((record) => record.derivedKey === item.derivedKey);
+  const existing = records.find((record) => record.derivedKey === item.derivedKey || record.linkedDerivedKeys?.includes(item.derivedKey || ''));
+  if (existing && existing.derivedKey !== item.derivedKey) return { ...existing, done, doneAt: done ? now : undefined, updatedAt: now };
   return createDerivedCompletionRecord(item, done, {
     existing,
     source: options.source,
     isSample: options.isSample,
   });
+}
+
+export function linkPlanWork(primary: PlanItem, other: PlanItem, records: PlanRecord[], options: { source?: 'demo' | 'user'; isSample?: boolean } = {}): PlanRecord {
+  if ((!primary.derivedKey && primary.kind !== 'personal') || !other.derivedKey || primary.derivedKey === other.derivedKey || !primary.tag || primary.tag !== other.tag) throw new Error('Choose two dated source actions for the same customer.');
+  const existing = records.find(record => primary.kind === 'personal' ? record.id === primary.id : record.derivedKey === primary.derivedKey);
+  const primaryKey = primary.derivedKey || `personal:${primary.id}`;
+  if (records.some(record => (record.derivedKey || `personal:${record.id}`) !== primaryKey && (record.derivedKey === other.derivedKey && record.linkedDerivedKeys?.length || record.linkedDerivedKeys?.includes(primaryKey) || record.linkedDerivedKeys?.includes(other.derivedKey!)))) throw new Error('Unlink the existing work group before changing its primary action.');
+  if (primary.kind === 'personal' && !existing) throw new Error('The primary plan record is no longer available.');
+  return { ...(primary.kind === 'personal' ? existing! : createDerivedCompletionRecord(primary, primary.done, { existing, ...options })), updatedAt: new Date().toISOString(), linkedDerivedKeys: [...new Set([...(existing?.linkedDerivedKeys || []), other.derivedKey])] };
 }
 
 /**

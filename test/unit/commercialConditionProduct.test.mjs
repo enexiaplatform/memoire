@@ -34,7 +34,7 @@ test('supported, assumption, hypothesis and conflict render distinct words and r
 test('qualified Opportunity drawer is the product entry point; Lead stays outside its default path',()=>{
   assert.equal(isLeadStage('Lead'),true); assert.equal(isLeadStage('Qualification'),false);
   const source=readFileSync(new URL('../../src/features/opportunities/OpportunitiesPage.tsx',import.meta.url),'utf8');
-  assert.match(source,/mode === 'edit' && editingOpportunity && !isLeadStage\(editingOpportunity\.stage\) && \(\s*<CommercialStatePanel/);
+  assert.match(source,/mode === 'edit' && editingOpportunity && !isLeadStage\(editingOpportunity\.stage\) && \(\s*<details[^\n]*<CommercialStatePanel/);
 });
 
 test('Opportunity cloud and edit codecs retain a canonical Account ID across name edits',()=>{

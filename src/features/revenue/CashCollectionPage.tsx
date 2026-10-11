@@ -167,7 +167,7 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
 
   const visible = summary.orders.filter((order) => {
     if (filter === 'all') return true;
-    if (filter === 'overdue') return order.overdueBase > 0;
+    if (filter === 'overdue') return order.confirmedOverdueBase > 0;
     return !order.settled;
   });
 
@@ -231,28 +231,23 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
                 here. The figure is still worth having - it is what to chase -
                 but it has to say what it rests on. */}
             <Stat
-              label="Past due"
-              value={formatCompactBaseAmount(summary.totalOverdueBase)}
-              tone={summary.totalOverdueBase > 0 ? 'red' : 'default'}
-              detail={summary.totalOverdueBase > 0
-                ? assumedOverdueBase >= summary.totalOverdueBase
-                  ? 'No terms agreed — dates assumed'
-                  : assumedOverdueBase > 0
-                    ? `${formatCompactBaseAmount(assumedOverdueBase)} of it on assumed dates`
-                    : 'Money you agreed would be here'
-                : 'Nothing late'}
+              label="Confirmed overdue"
+              value={formatCompactBaseAmount(summary.confirmedOverdueBase)}
+              tone={summary.confirmedOverdueBase > 0 ? 'red' : 'default'}
+              detail="Agreed schedule and recorded trigger date"
             />
+            <Stat label="Planning dates to confirm" value={formatCompactBaseAmount(summary.plannedOverdueBase)} detail="Estimated past due; confirm terms and trigger before chasing" />
             <Stat
-              label="Due in 30 days"
+              label="Scheduled in 30 days"
               value={formatCompactBaseAmount(summary.expectedNext30Base)}
-              detail="Including anything already late"
+              detail="Confirmed and estimated schedules, including past dates"
             />
             <Stat
-              label="Average wait"
+              label="Planning average wait"
               value={summary.averageDaysOutstanding === null ? '—' : pluralizeCount(summary.averageDaysOutstanding, 'day')}
               detail={assumedOverdueBase > 0
-                ? 'Past the due date, weighted by money'
-                : 'Past the date you agreed, weighted by money'}
+                ? 'Estimated and confirmed schedules, weighted by outstanding money'
+                : 'Estimated and confirmed schedules, weighted by outstanding money'}
             />
           </section>
 
@@ -269,8 +264,8 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
                   <p className="mt-1 text-sm leading-6 text-gray-700">
                     <span className="font-bold">{summary.worstOverdue.accountName}</span>
                     {' — '}
-                    {formatBaseCurrencyAmount(summary.worstOverdue.overdueBase)} past due
-                    {summary.worstOverdue.daysOverdue !== null ? ` by ${pluralizeCount(summary.worstOverdue.daysOverdue, 'day')}` : ''}
+                    {formatBaseCurrencyAmount(summary.worstOverdue.confirmedOverdueBase)} past due
+                    {summary.worstOverdue.confirmedDaysOverdue !== null ? ` by ${pluralizeCount(summary.worstOverdue.confirmedDaysOverdue, 'day')}` : ''}
                     {' on '}
                     {summary.worstOverdue.orderRef}.
                   </p>
@@ -304,7 +299,7 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
                       filter === option ? 'bg-navy text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                   >
-                    {option}
+                    {option === 'overdue' ? 'Confirmed overdue' : option}
                   </button>
                 ))}
               </div>
@@ -313,7 +308,7 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
             {visible.length === 0 ? (
               <p className="p-6 text-sm text-gray-500">
                 {filter === 'overdue'
-                  ? 'Nothing is past its due date. That is the whole goal of this page.'
+                  ? 'No confirmed overdue payments. Check planning dates separately before chasing.'
                   : 'Every order here has been collected in full.'}
               </p>
             ) : (
@@ -344,7 +339,7 @@ function AgingBand({ summary }: { summary: ReturnType<typeof buildReceivables> }
 
   return (
     <section className="rounded-panel bg-white shadow-panel p-5">
-      <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">How late the money is</h2>
+      <h2 className="text-sm font-bold uppercase tracking-wide text-gray-500">Planning age of outstanding payments</h2>
       <div className="mt-3 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {summary.aging.map((entry) => (
           <div
@@ -433,7 +428,7 @@ function ReceivableRow({
           </p>
         </div>
         <div className="shrink-0 text-right">
-          <p className={`text-sm font-bold ${order.overdueBase > 0 ? 'text-red-700' : 'text-ink'}`}>
+          <p className={`text-sm font-bold ${order.confirmedOverdueBase > 0 ? 'text-red-700' : order.plannedOverdueBase > 0 ? 'text-amber-800' : 'text-ink'}`}>
             {formatCompactBaseAmount(order.outstandingBase)}
           </p>
           {/* The amount above is everything still owed on the order; the date
@@ -450,7 +445,7 @@ function ReceivableRow({
               : order.settled
               ? 'Collected'
               : order.daysOverdue !== null
-                ? `${pluralizeCount(order.daysOverdue, 'day')} late`
+                ? order.confirmedOverdueBase > 0 ? `${pluralizeCount(order.confirmedDaysOverdue ?? 0, 'day')} confirmed overdue` : 'Planning date passed · confirm terms'
                 : order.nextDueDate
                   ? `${nextSliceLabel(order)} due ${formatSafeBusinessDate(order.nextDueDate)}`
                   : 'No date'}
@@ -479,13 +474,14 @@ function ReceivableRow({
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {order.installments.map((installment) => (
-                  <tr key={installment.id} className={installment.overdue ? 'bg-red-50/60' : ''}>
+                  <tr key={installment.id} className={installment.overdue ? installment.dateBasis === 'confirmed' ? 'bg-red-50/60' : 'bg-amber-50/60' : ''}>
                     <td className="py-2 pr-3 font-semibold text-ink">{installment.label}</td>
                     <td className="py-2 pr-3 text-gray-600">
                       {installment.dueDate ? formatSafeBusinessDate(installment.dueDate) : '—'}
+                      <span className="ml-2 text-[10px] font-semibold text-gray-500">{installment.dateBasis === 'confirmed' ? 'Confirmed' : installment.dateBasis === 'missing' ? 'Date missing' : 'Planning date'}</span>
                       {installment.overdue && (
-                        <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
-                          {installment.daysOverdue}d late
+                        <span className={`ml-2 rounded-full px-2 py-0.5 text-[10px] font-bold ${installment.dateBasis === 'confirmed' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-800'}`}>
+                          {installment.daysOverdue}d {installment.dateBasis === 'confirmed' ? 'late' : 'past estimate'}
                         </span>
                       )}
                     </td>

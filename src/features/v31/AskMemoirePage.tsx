@@ -1,4 +1,5 @@
 import { matchCommands } from '../../utils/commandRegistry';
+import { interpretAskQuestion } from './askLanguage';
 import { selectQualifiedPipeline, disqualifiedLeadIds, isLeadStage } from '../../utils/leadIdentity';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -277,6 +278,7 @@ export function AskMemoirePage() {
     setAskedQuestion(nextQuestion);
     setQuestion('');
     setAskedThisVisit((current) => [nextQuestion, ...current.filter((item) => item !== nextQuestion)].slice(0, 6));
+    nextQuestion = interpretAskQuestion(nextQuestion);
     setLoading(true);
     setError(null);
     setStatusMessage('');
@@ -324,6 +326,13 @@ export function AskMemoirePage() {
       // through to the normal answer path instead of guessing.
       if (insightKind === 'deal_position' && rawWorkspace) {
         const deal = resolveDealForQuestion(nextQuestion, rawWorkspace.opportunities, selectedOpportunityId);
+        if (!deal) {
+          setStatusMessage('Choose a specific opportunity to avoid mixing customer records.');
+          setAnswer({ answer: 'Chọn một Opportunity cụ thể để xem tình trạng / Choose a specific opportunity to see its position.',
+            contextUsed: ['Opportunity identity'], missingContext: ['A specific opportunity'],
+            suggestedQuestions: rawWorkspace.opportunities.filter(opportunity => !isLeadStage(opportunity.stage)).slice(0, 5).map(opportunity => `Where do we stand on ${opportunity.opportunityName}?`) });
+          return;
+        }
         if (deal) {
           setStatusMessage('Answered from your measured history (no AI involved).');
           setAnswer(answerFromDealPosition(

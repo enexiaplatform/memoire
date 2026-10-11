@@ -201,12 +201,12 @@ export function BusinessLensPage({ embedded = false }: { embedded?: boolean } = 
             />
             {/* "0 EUR" is the true answer and, on its own, a misleading one: this
                 page says 429.5K EUR was won four cards further down, and nothing
-                joins the two. Realized profit is nought here because no money
+                joins the two. Recorded net cash flow is nought here because no money
                 has been marked collected, not because the year produced none -
                 and an operator reading a bare zero beside a 3.6M pipeline
                 concludes something the records do not say. */}
             <Stat
-              label="Realized profit"
+              label="Recorded net cash flow"
               value={formatBaseCurrencyAmount(model.money.realizedProfitBase, true)}
               detail={model.money.collectedRevenueBase > 0
                 ? 'Collected, less paid costs'

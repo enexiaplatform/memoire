@@ -48,7 +48,7 @@ export function buildReportSources(input: {
       amount: order.amount, currency: order.currency, reportingValue: incomplete ? null : cash.orderValueBase,
       orderRef: order.orderRef, orderStage: order.orderStage, orderDate: sanitizeBusinessDate(order.orderDate) || null,
       nextDueDate: cash.nextDueDate || null, received: incomplete ? null : cash.receivedBase,
-      outstanding: incomplete ? null : cash.outstandingBase, overdue: incomplete ? null : cash.overdueBase,
+      outstanding: incomplete ? null : cash.outstandingBase, overdue: incomplete ? null : cash.confirmedOverdueBase, plannedOverdue: incomplete ? null : cash.plannedOverdueBase,
       overpaid: incomplete ? null : cash.overpaidBase, termConfidence: cash.termConfidence, valueUnavailable: incomplete } };
   });
   return { opportunities: opportunitiesRows, collections };

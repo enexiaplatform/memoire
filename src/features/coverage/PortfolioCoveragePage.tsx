@@ -16,6 +16,7 @@ import {
 import { formatBaseCurrencyAmount } from '../../utils/money';
 import { SkeletonCard, SkeletonScreen } from '../../components/common/Skeleton';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
+import { PORTFOLIO_UPDATED_EVENT } from '../../services/portfolioStore';
 import type { PortfolioRecord } from '../../domain/portfolio/portfolioCatalog';
 
 /**
@@ -76,17 +77,20 @@ export function PortfolioCoveragePage() {
   );
   const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>(cachedWorkspace?.accountMerges || []);
   const [portfolioRecords, setPortfolioRecords] = useState<PortfolioRecord[]>(cachedWorkspace?.portfolioRecords || []);
+  const [loadError, setLoadError] = useState(''), [reload, setReload] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    void loadSalesWorkspaceData(dataUserId).then((workspace) => {
+    const refresh = () => { void loadSalesWorkspaceData(dataUserId).then((workspace) => {
       if (cancelled) return;
       setOpportunities(workspace.opportunities);
       setAccountMerges(workspace.accountMerges);
       setPortfolioRecords(workspace.portfolioRecords || []);
-    });
-    return () => { cancelled = true; };
-  }, [dataUserId]);
+      setLoadError('');
+    }).catch(() => { if (!cancelled) setLoadError('Coverage could not be refreshed. The last reading is kept; retry before relying on it.'); }); };
+    refresh(); window.addEventListener(PORTFOLIO_UPDATED_EVENT, refresh);
+    return () => { cancelled = true; window.removeEventListener(PORTFOLIO_UPDATED_EVENT, refresh); };
+  }, [dataUserId, reload]);
 
   // A customer merged in Accounts has to be one row here. Without the merges
   // this page drew the same customer twice, splitting their squares across two
@@ -101,6 +105,7 @@ export function PortfolioCoveragePage() {
   );
 
   if (!opportunities) {
+    if (loadError) return <PageContainer><p role="alert" className="text-sm text-red-700">{loadError}</p><button className="mt-3 min-h-11 font-semibold text-brand-blue" onClick={() => setReload(value => value + 1)}>Retry coverage</button></PageContainer>;
     return (
       <SkeletonScreen label="Reading your coverage">
         <PageContainer><SkeletonCard /></PageContainer>
@@ -110,6 +115,7 @@ export function PortfolioCoveragePage() {
 
   return (
     <PageContainer>
+      {loadError && <p role="alert" className="text-sm text-red-700">{loadError} <button className="min-h-11 font-semibold text-brand-blue" onClick={() => setReload(value => value + 1)}>Retry coverage</button></p>}
       <PageHeader
         eyebrow="Accounts"
         icon={<Grid3x3 className="h-5 w-5" />}

@@ -452,7 +452,7 @@ export function StakeholdersPage() {
             )
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full min-w-[1000px] table-fixed border-collapse text-left">
+              <table data-work-table className="w-full min-w-[1000px] table-fixed border-collapse text-left">
                 <colgroup>
                   <col className="w-[230px]" />
                   {COVERAGE_ROLES.map((role) => <col key={role} />)}

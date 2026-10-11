@@ -275,10 +275,10 @@ export function resolveActivitySubject(
   aliases?: AccountAliasIndex,
 ): ActivityRelation {
   const opportunityName = (activity.linkedOpportunityName || activity.opportunityName || '').trim();
-  if (activity.linkedOpportunityId && opportunityName) {
+  if (activity.linkedOpportunityId) {
     return {
       type: 'opportunity',
-      name: opportunityName,
+      name: opportunityName || 'Deal',
       href: `/app/opportunities?opportunityId=${encodeURIComponent(activity.linkedOpportunityId)}`,
     };
   }
@@ -477,9 +477,12 @@ function planItemOrigin(item: PlanItem): ActivityOrigin {
   return 'typed';
 }
 
-function readOpportunityId(href: string) {
-  const match = /opportunityId=([^&]+)/.exec(href || '');
-  return match ? decodeURIComponent(match[1]) : '';
+export function readOpportunityId(href: string): string {
+  try {
+    return new URL(href || '', 'https://memoire.local').searchParams.get('opportunityId') || '';
+  } catch {
+    return '';
+  }
 }
 
 /** One anchor per calendar month touched by the range, earliest first. */

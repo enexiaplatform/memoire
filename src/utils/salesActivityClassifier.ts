@@ -149,7 +149,7 @@ const activityRules: { type: SalesActivityType; tags: string[]; pattern: RegExp 
   {
     type: 'Customer meeting',
     tags: ['customer-meeting'],
-    pattern: /\b(meeting|met|call|called|spoke|workshop|visited|discussion with|customer)\b/i,
+    pattern: /\b(meeting|met|call|called|spoke|workshop|visited|discussion with|customer)\b|(?:đã|da)\s+(?:gọi|goi|gặp|gap)|gọi điện|trao đổi với|đến thăm/iu,
   },
 ];
 
@@ -460,7 +460,8 @@ export function extractNextActions(rawNote: string, activityDate: string): Sales
         sourceText: limitActionSource(sourceText),
       };
     })
-    .filter((action) => action.title.length > 0);
+    .filter((action) => action.title.length > 0)
+    .concat(extractVietnameseActions(rawNote, activityDate));
 
   // The tail clause keeps its date if it is the only thing the note promised,
   // because "Send by 20 April" is still worth more than nothing; it is dropped
@@ -679,6 +680,17 @@ export function commitmentScope(rawNote: string) {
 export function extractDueDate(rawNote: string, activityDate: string) {
   const lower = rawNote.toLowerCase();
   const anchor = parseDateKey(activityDate);
+  const vietnameseDate = lower.match(/(?:ngày|vào|trước)\s+(?:ngày\s+)?(\d{1,2})\/(\d{1,2})(?:\/(\d{4}))?/u);
+  if (vietnameseDate) return sanitizeBusinessDate(`${vietnameseDate[3] || anchor.getFullYear()}-${vietnameseDate[2].padStart(2, '0')}-${vietnameseDate[1].padStart(2, '0')}`);
+  const vietnameseWeekday = lower.match(/thứ\s*(hai|ba|tư|năm|sáu|bảy|2|3|4|5|6|7)|chủ\s*nhật/u);
+  if (vietnameseWeekday) {
+    const weekdays: Record<string, string> = { hai:'monday', '2':'monday', ba:'tuesday', '3':'tuesday', tư:'wednesday', '4':'wednesday', năm:'thursday', '5':'thursday', sáu:'friday', '6':'friday', bảy:'saturday', '7':'saturday' };
+    const weekday = weekdays[vietnameseWeekday[1]] || 'sunday';
+    return /tuần sau/u.test(lower) ? nextWeekday(anchor, weekday) : upcomingWeekday(anchor, weekday);
+  }
+  if (/ngày mai/u.test(lower)) return addDays(anchor, 1);
+  if (/hôm nay/u.test(lower)) return formatDate(anchor);
+  if (/tuần sau/u.test(lower)) return addDays(anchor, 7);
 
   if (/\btoday\b/.test(lower)) return formatDate(anchor);
   if (/\btomorrow\b/.test(lower)) return addDays(anchor, 1);
@@ -706,6 +718,18 @@ export function extractDueDate(rawNote: string, activityDate: string) {
   }
 
   return '';
+}
+
+function extractVietnameseActions(rawNote: string, activityDate: string): { title: string; dueDate: string | undefined; sourceText: string }[] {
+  return rawNote.split(/(?<=[.!?;])\s+|\n+/u).flatMap(sentence => sentence.split(/\s+(?:rồi|sau đó)\s+/u))
+    .filter(sentence => !/(?:không|chưa)\s+(?:cần|phải|sẽ)/iu.test(sentence))
+    .flatMap(sentence => {
+      const match = sentence.trim().match(/^(?:[^.!?;]{1,50}\s+)?(?:sẽ|cần|phải|việc tiếp theo:?)\s+((?:gửi|gọi|chuẩn bị|xác nhận|lên lịch|đặt lịch|nhắc|cập nhật|trả lời|nộp|theo dõi)\s+.+)$/iu);
+      if (!match) return [];
+      const sourceText = match[1].trim();
+      const title = sourceText.replace(/\s+(?:(?:vào|trước|đến hạn|hạn chót)\s+(?:ngày\s+)?|ngày mai\b|hôm nay\b|tuần sau\b|thứ\s|chủ nhật\b).*$/iu, '').replace(/[.!?]+$/u, '').trim();
+      return title ? [{ title, dueDate: extractDueDate(sourceText, activityDate) || undefined, sourceText }] : [];
+    });
 }
 
 const MONTH_WORDS = [

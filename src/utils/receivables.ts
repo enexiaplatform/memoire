@@ -105,6 +105,7 @@ export type ReceivableInstallmentState = {
   overdue: boolean;
   /** How late this slice is, judged on its own due date. */
   bucket: AgingBucket;
+  dateBasis: 'confirmed' | 'planned' | 'missing';
 };
 
 /**
@@ -152,6 +153,9 @@ export type OrderReceivable = {
   outstandingBase: number;
   /** Money past its due date and still unpaid. */
   overdueBase: number;
+  confirmedOverdueBase: number;
+  confirmedDaysOverdue: number | null;
+  plannedOverdueBase: number;
   /** The oldest unpaid due date's age. Null when nothing is late. */
   daysOverdue: number | null;
   /** The next money expected, whether or not it is late yet. */
@@ -186,6 +190,8 @@ export type ReceivablesSummary = {
   openCount: number;
   totalOutstandingBase: number;
   totalOverdueBase: number;
+  confirmedOverdueBase: number;
+  plannedOverdueBase: number;
   totalReceivedBase: number;
   /** Money falling due in the next 30 days, late or not. What to plan around. */
   expectedNext30Base: number;
@@ -245,22 +251,24 @@ export function buildReceivables(input: {
     openCount: open.length,
     totalOutstandingBase,
     totalOverdueBase: open.reduce((sum, order) => sum + order.overdueBase, 0),
+    confirmedOverdueBase: open.reduce((sum, order) => sum + order.confirmedOverdueBase, 0),
+    plannedOverdueBase: open.reduce((sum, order) => sum + order.plannedOverdueBase, 0),
     totalReceivedBase: orders.reduce((sum, order) => sum + order.receivedBase, 0),
     expectedNext30Base: open.reduce((sum, order) => sum + expectedWithin(order, today, 30), 0),
     aging,
     // Most money first, then longest overdue - a small invoice that is 200 days
     // late is a bookkeeping problem, and a large one 20 days late is a business
     // problem. Sorting by age alone puts the wrong call at the top of the list.
-    worstOverdue: [...overdueOrders].sort((left, right) => (
-      right.overdueBase - left.overdueBase
-      || (right.daysOverdue ?? 0) - (left.daysOverdue ?? 0)
+    worstOverdue: [...overdueOrders].filter(order => order.confirmedOverdueBase > 0).sort((left, right) => (
+      right.confirmedOverdueBase - left.confirmedOverdueBase
+      || (right.confirmedDaysOverdue ?? 0) - (left.confirmedDaysOverdue ?? 0)
     ))[0] || null,
     averageDaysOutstanding: weightedDaysOutstanding(open, today, totalOutstandingBase),
   };
 }
 
 export function buildOneReceivable(
-  order: Pick<CommittedOrder, 'opportunityId' | 'accountName' | 'orderName' | 'orderRef' | 'orderDate' | 'amount' | 'amountBase' | 'currency' | 'paymentTerm'>,
+  order: Pick<CommittedOrder, 'opportunityId' | 'accountName' | 'orderName' | 'orderRef' | 'orderDate' | 'amount' | 'amountBase' | 'currency' | 'paymentTerm'> & Partial<Pick<CommittedOrder, 'milestones'>>,
   record: OrderReceivableRecord | undefined,
   today: string,
 ): OrderReceivable {
@@ -291,6 +299,14 @@ export function buildOneReceivable(
     deliveryDate: deliveredOn,
     invoiceDate: invoicedOn,
   });
+  const dateBasisOf = (installment: PaymentInstallment): 'confirmed' | 'planned' | 'missing' => {
+    if (!dueDateOf(installment)) return 'missing';
+    if (override.length === 0 && parsed.confidence !== 'stated') return 'planned';
+    const anchor = installment.trigger === 'invoice' ? invoicedOn
+      : installment.trigger === 'delivery' ? deliveredOn
+      : order.milestones?.find(milestone => milestone.key === 'contract')?.done ? sanitizeBusinessDate(order.orderDate) : '';
+    return anchor ? 'confirmed' : 'planned';
+  };
 
   /**
    * A slice's value in the reporting currency, which is what `dueBase` means.
@@ -320,6 +336,7 @@ export function buildOneReceivable(
     label: installment.label,
     dueDate: dueDateOf(installment),
     dueBase: dueBaseOf(installment),
+    dateBasis: dateBasisOf(installment),
   }));
 
   /**
@@ -363,6 +380,7 @@ export function buildOneReceivable(
       label: remainder.label,
       dueDate: dueDateOf(remainder),
       dueBase: orderValueBase - scheduledTotal,
+      dateBasis: 'planned' as const,
     });
   }
 
@@ -405,11 +423,13 @@ export function buildOneReceivable(
       daysOverdue: overdue ? daysLate : 0,
       overdue,
       bucket: bucketFor(overdue ? daysLate : null, entry.dueDate, today, outstandingBase),
+      dateBasis: entry.dateBasis,
     };
   });
 
   const outstandingBase = states.reduce((sum, state) => sum + state.outstandingBase, 0);
   const overdueBase = states.reduce((sum, state) => sum + (state.overdue ? state.outstandingBase : 0), 0);
+  const confirmedOverdueBase = states.reduce((sum, state) => sum + (state.overdue && state.dateBasis === 'confirmed' ? state.outstandingBase : 0), 0);
   const overdueStates = states.filter((state) => state.overdue);
   const daysOverdue = overdueStates.length > 0
     ? Math.max(...overdueStates.map((state) => state.daysOverdue))
@@ -430,6 +450,9 @@ export function buildOneReceivable(
     receivedBase,
     outstandingBase,
     overdueBase,
+    confirmedOverdueBase,
+    confirmedDaysOverdue: states.filter(state => state.overdue && state.dateBasis === 'confirmed').reduce<number | null>((max, state) => Math.max(max ?? 0, state.daysOverdue ?? 0), null),
+    plannedOverdueBase: overdueBase - confirmedOverdueBase,
     daysOverdue,
     nextDueDate: nextOpen?.dueDate || '',
     nextDueBase: nextOpen?.outstandingBase || 0,

@@ -43,6 +43,11 @@ import { NUDGE_STORAGE_KEY } from '../services/nudgeStore';
 // this group: a knowledge note is free text an operator could genuinely repeat
 // word for word, so the legacy term sweep must never see it.
 import { KNOWLEDGE_NOTE_STORAGE_KEY } from '../services/knowledgeNoteStore';
+import { TARGET_STORAGE_KEY, type CommercialTarget } from '../services/commercialKernel/targetStore';
+import { createOrderMilestoneRecord, type OrderMilestoneRecord } from './orderToCash';
+import { createOrderReceivableRecord, createPaymentReceipt, type OrderReceivableRecord } from './receivables';
+import { parsePortfolioRecord, validatePortfolioCatalog, type PortfolioRecord } from '../domain/portfolio/portfolioCatalog';
+import { requireLocalWrite, writeLocalRecords } from '../services/localWriteGuard';
 import { PORTFOLIO_STORAGE_KEY } from '../services/portfolioStore';
 import { REPORT_STORAGE_KEY } from '../services/reportStore';
 import { DASHBOARD_STORAGE_KEY } from '../services/dashboardStore';
@@ -101,6 +106,10 @@ export type SampleDataset = {
   quotes: QuoteRecord[];
   expenses: ExpenseRecord[];
   weeklyCommitments: WeeklyCommitmentSnapshot[];
+  portfolioRecords: PortfolioRecord[];
+  milestoneRecords: OrderMilestoneRecord[];
+  receivableRecords: OrderReceivableRecord[];
+  targets: (CommercialTarget & {id: string})[];
 };
 
 export function isSampleDataLoaded() {
@@ -148,6 +157,10 @@ export function loadSampleDataset(): SampleDataset {
   writeLocalArray(QUOTE_STORAGE_KEY, dataset.quotes);
   writeLocalArray(EXPENSE_STORAGE_KEY, dataset.expenses);
   writeLocalArray(WEEKLY_COMMITMENT_STORAGE_KEY, dataset.weeklyCommitments);
+  writeLocalArray(PORTFOLIO_STORAGE_KEY, dataset.portfolioRecords);
+  writeLocalArray(ORDER_MILESTONE_STORAGE_KEY, dataset.milestoneRecords);
+  writeLocalArray(ORDER_RECEIVABLE_STORAGE_KEY, dataset.receivableRecords);
+  writeLocalArray(TARGET_STORAGE_KEY, dataset.targets);
   markSampleDataLoaded();
   invalidateWorkspaceDataCache();
   if (typeof window !== 'undefined') {
@@ -198,6 +211,7 @@ export function clearSampleDataset() {
   removeSampleRecords(PORTFOLIO_STORAGE_KEY);
   removeSampleRecords(REPORT_STORAGE_KEY);
   removeSampleRecords(DASHBOARD_STORAGE_KEY);
+  removeSampleRecords(TARGET_STORAGE_KEY);
   removeSampleRecords(ACCOUNT_MERGE_STORAGE_KEY);
   removeSampleRecords(NUDGE_STORAGE_KEY);
   removeSampleRecords(CONDITION_STORAGE_KEY);
@@ -1070,6 +1084,7 @@ export function buildSampleDataset(): SampleDataset {
       createdAt: timestamp,
     }),
     sampleQuote({
+      opportunityId: 'demo-opp-northstar-reagent-resupply',
       id: 'demo-quote-northstar-reagent-paid',
       quoteId: 'Q-DEMO-NORTHSTAR-02',
       accountName: 'Northstar Foods',
@@ -1094,6 +1109,31 @@ export function buildSampleDataset(): SampleDataset {
     }),
   ];
 
+  opportunities.push(sampleOpportunity({ ...opportunities.find(row => row.id === 'demo-opp-northstar-line-audit-won')!, id: 'demo-opp-northstar-reagent-resupply', opportunityName: 'Reagent resupply', productOrSolution: 'Reagent resupply', estimatedValue: 180000000, evidence: 'PO received; reagents delivered and payment recorded.', closedOn: nineDaysAgo, createdAt: addDays(now, -16).toISOString() }));
+  quotes.push(sampleQuote({ ...quotes.find(row => row.id === 'demo-quote-northstar-reagent-paid')!, id: 'demo-quote-northstar-line-audit', opportunityId: 'demo-opp-northstar-line-audit-won', opportunityName: 'Line audit service', quoteId: 'Q-DEMO-NORTHSTAR-AUDIT', title: 'Line audit service', amount: 480000000, quoteDate: sixteenDaysAgo, notes: 'Audit completed and recorded payment received.' }));
+  const summit = opportunities.find(row => row.id === 'demo-opp-summit-diagnostics-qc-workflow')!;
+  Object.assign(summit, { stage: 'Won', status: 'Won', closedOn: sixDaysAgo, pipelineProbability: 100, decisionMaker: 'Dr. Park', budgetOwner: 'Diagnostics operations', procurementPath: 'Direct PO received', technicalCriteria: 'QC workflow accepted', evidence: 'PO received; QC workflow delivered. Payment release still outstanding.', nextAction: 'Confirm payment release date with finance', nextActionDate: yesterday, forecastEvidenceCategory: 'Defensible', decisionRecommendation: 'Defend', missingContext: '' });
+  const portfolioRecords: PortfolioRecord[] = [];
+  const catalog = (id: string, state: Record<string, unknown>) => { const record = parsePortfolioRecord({ ...state, id, schemaVersion: 1, version: 1, createdAt: timestamp, updatedAt: timestamp, source: 'demo', isSample: true, history: [] }); portfolioRecords.push(record); return id; };
+  const node = (kind: string, name: string, id: string, refs: Record<string, string> = {}) => catalog(id, { kind, name, code: '', description: 'Fictional demo catalog entry', status: 'active', parentId: null, brandId: null, groupId: null, aliases: [], ...refs });
+  const unitId = node('unit', 'Laboratory solutions', 'demo-unit-laboratory');
+  const groupId = node('group', 'Laboratory workflows', 'demo-group-workflow');
+  ['Tailin', 'Scitek', 'PMM', 'MicroView', 'Others'].forEach(name => node('brand', name, 'demo-brand-' + name.toLowerCase()));
+  opportunities.forEach((opportunity, index) => {
+    if (opportunity.stage === 'Lead' && !opportunity.productOrSolution) return;
+    const brand = ['Tailin', 'Tailin', 'Scitek', 'Scitek', 'MicroView', 'PMM', 'Scitek'][index] || 'PMM';
+    opportunity.brand = brand;
+    const brandId = 'demo-brand-' + brand.toLowerCase();
+    const productId = node('product', opportunity.productOrSolution, 'demo-product-' + opportunity.id, { brandId, groupId });
+    catalog('demo-assignment-' + opportunity.id, { kind: 'assignment', opportunityId: opportunity.id, businessUnitId: unitId, brandId, groupId, productId, originalBrand: brand, originalProduct: opportunity.productOrSolution });
+    const account = accounts.find(row => row.accountName === opportunity.accountName);
+    if (account) opportunity.accountId = account.id;
+  });
+  validatePortfolioCatalog(portfolioRecords);
+  const fulfilled = ['demo-opp-northstar-line-audit-won', 'demo-opp-northstar-reagent-resupply', summit.id];
+  const milestoneRecords = fulfilled.flatMap(opportunityId => ['contract', 'delivery', 'invoice'].map(milestone => createOrderMilestoneRecord({ opportunityId, milestone: milestone as 'contract' | 'delivery' | 'invoice', done: true, doneAt: (opportunityId === summit.id ? twoDaysAgo : nineDaysAgo) + 'T12:00:00Z', source: 'demo', isSample: true })));
+  const receivableRecords = fulfilled.map(opportunityId => createOrderReceivableRecord({ opportunityId, deliveredOn: opportunityId === summit.id ? twoDaysAgo : nineDaysAgo, invoicedOn: opportunityId === summit.id ? twoDaysAgo : nineDaysAgo, receipts: opportunityId === summit.id ? [] : [createPaymentReceipt({ id: 'demo-receipt-' + opportunityId, amount: opportunityId.includes('reagent') ? 180000000 : 480000000, currency: 'VND', receivedOn: sixDaysAgo, method: 'Bank transfer', note: 'Fictional demo receipt' })], source: 'demo', isSample: true }));
+  const targets = (['Q1', 'Q2', 'Q3', 'Q4'] as const).map(period => ({ id: 'demo-target-' + period, period, fiscalYear: now.getFullYear(), fiscalYearStartMonth: 1, amount: 2500000000, currency: 'VND', note: 'Fictional demo target', isSample: true, createdAt: timestamp, updatedAt: timestamp }));
   const expenses: ExpenseRecord[] = [
     sampleExpense({ id: 'demo-expense-reagent-cogs', label: 'Reagent stock (resupply COGS)', category: 'Cost of goods', amount: 62000000, status: 'Paid', expenseDate: nineDaysAgo }),
     sampleExpense({ id: 'demo-expense-salary', label: 'Team salaries', category: 'Salaries', amount: 90000000, status: 'Paid', expenseDate: sixDaysAgo, recurring: true }),
@@ -1198,6 +1238,7 @@ export function buildSampleDataset(): SampleDataset {
     markSampleRecord({
       id: 'demo-context-distributor-onboarding',
       contextType: 'initiative' as const,
+      userId: 'guest',
       title: 'Distributor onboarding program',
       status: 'Active',
       period: 'Q3',
@@ -1221,11 +1262,12 @@ export function buildSampleDataset(): SampleDataset {
     objections,
     actionOutcomes,
     opportunityOutcomes,
-    operatingContexts,
+    operatingContexts: operatingContexts.map(row => ({ ...row, userId: 'guest' })),
     salesAssets,
     quotes,
     expenses,
     weeklyCommitments: [buildSampleWeeklyCommitment(now)],
+    portfolioRecords, milestoneRecords, receivableRecords, targets,
   };
 }
 
@@ -1499,13 +1541,10 @@ function markSampleRecord<T extends object>(record: T): T {
 
 function writeLocalArray<T extends { id: string }>(key: string, records: T[]) {
   if (typeof window === 'undefined') return;
-  try {
-    const existing = JSON.parse(window.localStorage.getItem(key) || '[]') as T[];
-    const cleanExisting = existing.filter((item) => !isSampleRecord(item as SampleRecord));
-    window.localStorage.setItem(key, JSON.stringify([...records, ...cleanExisting]));
-  } catch {
-    window.localStorage.setItem(key, JSON.stringify(records));
-  }
+  let existing: T[];
+  try { const value: unknown = JSON.parse(window.localStorage.getItem(key) || '[]'); if (!Array.isArray(value)) throw new Error(); existing = value; }
+  catch { throw new Error('Existing browser data could not be read. Export a backup before loading the demo.'); }
+  requireLocalWrite(writeLocalRecords(key, [...records, ...existing.filter(item => !isSampleRecord(item as SampleRecord))]));
 }
 
 function removeSampleRecords(key: string) {
