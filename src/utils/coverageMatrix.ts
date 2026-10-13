@@ -1,6 +1,9 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import { resolveAccountName, type AccountAliasIndex } from './accountAliases.ts';
 import { accountKey } from './accountIdentity.ts';
+import { isLeadStage } from './leadIdentity.ts';
+import type { AccountMemoryRecord } from '../services/accountStore.ts';
+import type { QuoteRecord } from '../services/quoteStore.ts';
 import { isCommittedToOrder } from './orderToCash.ts';
 import { sumMoneyInBase } from './money.ts';
 import { brandKey, canonicalBrandName } from './brandIdentity.ts';
@@ -23,7 +26,7 @@ import { portfolioAssignments, portfolioNodes, type PortfolioRecord } from '../d
  * in the product, and its answer is a list of things to go and do.
  */
 
-export type CoverageCellState = 'won' | 'committed' | 'active' | 'lost' | 'none';
+export type CoverageCellState = 'won' | 'committed' | 'quoted' | 'active' | 'lead' | 'lost' | 'none';
 
 export type CoverageCell = {
   accountName: string;
@@ -77,6 +80,8 @@ const CELL_RANK: Record<CoverageCellState, number> = {
   won: 4,
   committed: 3,
   active: 2,
+  quoted: 2.5,
+  lead: 0.5,
   lost: 1,
   none: 0,
 };
@@ -84,6 +89,8 @@ const CELL_RANK: Record<CoverageCellState, number> = {
 export function buildCoverageMatrix(input: {
   portfolioRecords?: PortfolioRecord[];
   opportunities: CrmLiteOpportunity[];
+  accounts?: AccountMemoryRecord[];
+  quotes?: QuoteRecord[];
   /** How many gaps to name. The panel shows a shortlist, not a backlog. */
   gapLimit?: number;
   /** Names the user has merged, so a customer merged in Accounts is one row here. */
@@ -104,10 +111,13 @@ export function buildCoverageMatrix(input: {
    * columns, and both then resolved to the same cell key - so one line's deals
    * appeared twice and its money was counted twice in the column order.
    */
-  const allBrandSpellings = withBrand.map((opportunity) => opportunity.brand || '');
+  const catalogBrands = [...nodes.values()].filter(node => node.kind === 'brand' && node.status === 'active' && brandKey(node.name) !== brandKey('Others'));
+  const allBrandSpellings = input.portfolioRecords === undefined ? withBrand.map(opportunity => opportunity.brand || '').filter(name => brandKey(name) !== brandKey('Others')) : catalogBrands.map(node => node.name);
   const brandValue = new Map<string, number>();
+  allBrandSpellings.forEach(name => brandValue.set(name, 0));
   withBrand.forEach((opportunity) => {
     const brand = canonicalBrandName((opportunity.brand || '').trim(), allBrandSpellings);
+    if (!allBrandSpellings.some(name => brandKey(name) === brandKey(brand))) return;
     brandValue.set(brand, (brandValue.get(brand) || 0) + valueOf(opportunity));
   });
   // Biggest lines first, so the columns that matter are read before scrolling.
@@ -123,7 +133,7 @@ export function buildCoverageMatrix(input: {
   // group with `cellKey`, so a customer written "VNVC" on one deal and "vnvc."
   // on another used to get two rows carrying the same squares.
   const accountNamesByKey = new Map<string, string>();
-  opportunities.forEach((opportunity) => {
+  (input.accounts || opportunities).forEach((opportunity) => {
     const name = (opportunity.accountName || '').trim();
     if (!name) return;
     const key = accountKey(name);
@@ -142,7 +152,7 @@ export function buildCoverageMatrix(input: {
   const rows: CoverageRow[] = accountNames.map((accountName) => {
     const cells = brands.map((brand) => {
       const deals = byAccountBrand.get(cellKey(accountName, brand)) || [];
-      return buildCell(accountName, brand, deals);
+      return buildCell(accountName, brand, deals, input.quotes || []);
     });
 
     const activeValueBase = cells.reduce((sum, cell) => sum + cell.activeValueBase, 0);
@@ -177,7 +187,7 @@ export function buildCoverageMatrix(input: {
     // meant (this is a real relationship, not a bare name) and cannot be zeroed
     // by a missing rate. The sort still uses the value, so an unpriced customer
     // ranks low rather than disappearing.
-    .filter((row) => row.missingBrands.length > 0 && row.brandsTouched > 0)
+    .filter((row) => row.missingBrands.length > 0 && row.cells.some(cell => cell.state === 'won'))
     .slice(0, input.gapLimit ?? 5)
     .map((row) => ({
       accountName: row.accountName,
@@ -197,9 +207,10 @@ export function buildCoverageMatrix(input: {
   };
 }
 
-function buildCell(accountName: string, brand: string, deals: CrmLiteOpportunity[]): CoverageCell {
-  const active = deals.filter((deal) => deal.status === 'Active');
-  const won = deals.filter((deal) => deal.status === 'Won');
+function buildCell(accountName: string, brand: string, deals: CrmLiteOpportunity[], quotes: QuoteRecord[]): CoverageCell {
+  const qualified = deals.filter(deal => !isLeadStage(deal.stage));
+  const active = qualified.filter((deal) => deal.status === 'Active');
+  const won = qualified.filter((deal) => deal.status === 'Won');
 
   // Strongest truth about this square wins. "Won" outranks "we also have
   // something active", because the question the square answers is whether this
@@ -207,8 +218,10 @@ function buildCell(accountName: string, brand: string, deals: CrmLiteOpportunity
   let state: CoverageCellState = 'none';
   if (won.length > 0) state = 'won';
   else if (active.some(isCommittedToOrder)) state = 'committed';
+  else if (quotes.some(quote => !quote.__deleted && ['Sent','Revised','Accepted'].includes(quote.status) && active.some(deal => deal.id === quote.opportunityId))) state = 'quoted';
   else if (active.length > 0) state = 'active';
-  else if (deals.length > 0) state = 'lost';
+  else if (qualified.length > 0) state = 'lost';
+  else if (deals.length > 0) state = 'lead';
 
   return {
     accountName,
@@ -228,8 +241,10 @@ export function coverageCellLabel(state: CoverageCellState) {
     won: 'Won',
     committed: 'Committed to order',
     active: 'In play',
+    quoted: 'Quote recorded',
+    lead: 'Lead only',
     lost: 'Tried and lost',
-    none: 'Never taken to them',
+    none: 'No recorded deal',
   }[state];
 }
 

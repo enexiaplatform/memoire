@@ -3,6 +3,8 @@ import type { CrmLiteOpportunity } from '../../services/opportunityStore';
 import type { ResolvedThread } from './deriveThreads.ts';
 import { convertMoney, getReportingCurrency, BASE_CURRENCY, type SupportedCurrency } from '../../utils/money.ts';
 import { resolveClosePeriod } from '../../utils/closePeriod.ts';
+import { isValidBusinessDate } from '../../utils/safeDate.ts';
+import type { OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore.ts';
 
 /**
  * Forecast coverage: "am I going to make the number, and is there still time?"
@@ -334,6 +336,8 @@ export function buildCoverage(input: {
   opportunities: CrmLiteOpportunity[];
   threads: ResolvedThread[];
   targets: ForecastTarget[];
+  /** Canonical close-outs, shared with Review. Planning dates never place Won value. */
+  outcomes?: OpportunityOutcomeRecord[];
   /**
    * Qualification scores, keyed by opportunity id.
    *
@@ -396,9 +400,23 @@ export function buildCoverage(input: {
   let unsupportedValue = 0;
   const unqualifiedBrandTotals = new Map<string, { amount: number; deals: number }>();
 
+  const closes = input.outcomes || input.opportunities.filter(row => row.status === 'Won' && !isLeadStage(row.stage))
+    .map(row => ({outcome:'Won',outcomeDate:row.closedOn || '',finalAmount:row.estimatedValue,currency:row.currency,isSample:row.isSample}));
+  for (const close of closes) {
+    if ((!includeSamples && close.isSample) || close.outcome !== 'Won') continue;
+    if (!isValidBusinessDate(close.outcomeDate)) { excludedUndatedCount += 1; continue; }
+    const [year, month, day] = close.outcomeDate.split('-').map(Number);
+    if (year - (month < fiscalStart ? 1 : 0) !== fiscalYear) continue;
+    const amount = typeof close.finalAmount === 'number' && close.currency?.trim()
+      ? convertMoney(close.finalAmount, close.currency as SupportedCurrency, reportingCurrency) : null;
+    if (amount === null) { excludedCurrencyCount += 1; continue; }
+    const bucket = totals[quarterForDate(new Date(year, month - 1, day), fiscalStart)];
+    bucket.committed += amount; bucket.count += 1;
+  }
+
   for (const opportunity of input.opportunities) {
     if (!includeSamples && opportunity.isSample) continue;
-    if (opportunity.status === 'Lost' || isLeadStage(opportunity.stage)) continue;
+    if (opportunity.status === 'Lost' || opportunity.status === 'Won' || isLeadStage(opportunity.stage)) continue;
 
     if (convertMoney(1, opportunity.currency || BASE_CURRENCY, reportingCurrency) === null) { excludedCurrencyCount += 1; continue; }
     const period = resolveClosePeriod(opportunity.expectedClosePeriod, `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`);
@@ -412,10 +430,7 @@ export function buildCoverage(input: {
       threadByOpportunity.get(opportunity.id),
     );
 
-    // Won money is banked and needs no qualification behind it; the question
-    // only applies to what is still open.
-    const qualifies = opportunity.status === 'Won'
-      || input.qualification?.get(opportunity.id)?.backsForecast === true;
+    const qualifies = input.qualification?.get(opportunity.id)?.backsForecast === true;
 
     for (const quarter of FORECAST_QUARTERS) {
       const amount = amounts[quarter];
@@ -423,11 +438,6 @@ export function buildCoverage(input: {
 
       const bucket = totals[quarter];
       bucket.count += 1;
-
-      if (opportunity.status === 'Won') {
-        bucket.committed += amount;
-        continue;
-      }
 
       bucket.openPipeline += amount;
       bucket.weightedDeclared += amount * (declared / 100);

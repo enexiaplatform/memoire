@@ -5,6 +5,7 @@ import type { ObjectionRecord } from '../services/objectionStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { StakeholderRecord } from '../services/stakeholderStore';
 import { activitiesForOpportunityBroad } from './activityIndex.ts';
+import { isLeadStage } from './leadIdentity.ts';
 import { analyzeMeddicLiteOpportunity, type MeddicLiteFieldKey } from './meddicLite.ts';
 import { getObjectionsForOpportunity } from './objectionLedger.ts';
 import { generateOpportunityActionPlan } from './opportunityActionPlan.ts';
@@ -78,7 +79,7 @@ export function generateSalesPlaybookPatterns(input: {
   executionReview?: WeeklyExecutionReview;
   limit?: number;
 }): SalesPlaybookPattern[] {
-  const opportunities = input.opportunities.filter((opportunity) => opportunity.status === 'Active');
+  const opportunities = input.opportunities.filter((opportunity) => opportunity.status === 'Active' && !isLeadStage(opportunity.stage));
   const stakeholders = input.stakeholders || [];
   const objections = input.objections || [];
   const activities = input.activities || [];

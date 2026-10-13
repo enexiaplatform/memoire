@@ -413,7 +413,7 @@ function buildDealItems(opportunities: CrmLiteOpportunity[], range: PlanRange, t
       label: opportunity.nextAction || 'Next action not written yet',
       done: false,
       contactName: (opportunity.decisionMaker || '').trim(),
-      href: '/app/opportunities',
+      href: `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}`,
       overdue: compareSafeBusinessDate(opportunity.nextActionDate, today) < 0,
     }));
 }

@@ -1,0 +1,318 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 4 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "4 open": "4"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 4 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Analysis
+  - heading "Reports" [level=1]
+  - generic: Ask a repeatable question, inspect the source records, then export the same result.
+  - button "Reload library"
+  - status: Exported all 2 matching records, grouped summary and run metadata.
+  - paragraph: Demo report library. Separate from your real data.
+  - heading "Payments needing attention" [level=2]
+  - generic "How to read these numbers · scope, cash and exchange rates"
+  - paragraph: 2 matching records from 4 loaded source records · USD · run 2026-10-12T13:36:46.437Z
+  - paragraph: "One expected or confirmed qualified order per row; inspect order stage and date basis. Demo sources; no live cloud data. Timezone: Asia/Saigon; planning FX 2026-08-01, workspace overrides captured."
+  - paragraph:
+    - text: Only quotes linked by ID are used; legacy name-only quotes are excluded. Open a row’s source deal or
+    - link "open Collections":
+      - /url: /app/revenue?view=collections
+    - text: to manage payments.
+  - paragraph: Records
+  - paragraph: "2"
+  - paragraph: Outstanding
+  - paragraph: 55,769.23
+  - paragraph: Confirmed overdue balance
+  - paragraph: 21,153.85
+  - paragraph: Recorded receipts
+  - paragraph: 3,846.15
+  - button "Export CSV pack"
+  - button "Print / save PDF"
+  - paragraph: Preview 1–2 of 2 records. Export uses the full filtered result.
+  - table:
+    - rowgroup:
+      - row "Account Order reference Order stage Outstanding Confirmed overdue balance Planning dates to confirm Recorded receipts Reporting currency Next payment due Missing context / blocker Next action Source":
+        - columnheader "Account"
+        - columnheader "Order reference"
+        - columnheader "Order stage"
+        - columnheader "Outstanding"
+        - columnheader "Confirmed overdue balance"
+        - columnheader "Planning dates to confirm"
+        - columnheader "Recorded receipts"
+        - columnheader "Reporting currency"
+        - columnheader "Next payment due"
+        - columnheader "Missing context / blocker"
+        - columnheader "Next action"
+        - columnheader "Source"
+    - rowgroup:
+      - row "Orion Pharma Q-DEMO-ORION-01 To confirm 34,615.38 0 34,615.38 0 USD 2026-10-06 Decision committee; budget owner; procurement path; tender timeline Clarify tender timeline and committee owner Open":
+        - cell "Orion Pharma"
+        - cell "Q-DEMO-ORION-01"
+        - cell "To confirm"
+        - cell "34,615.38"
+        - cell "0"
+        - cell "34,615.38"
+        - cell "0"
+        - cell "USD"
+        - cell "2026-10-06"
+        - cell "Decision committee; budget owner; procurement path; tender timeline"
+        - cell "Clarify tender timeline and committee owner"
+        - cell "Open":
+          - link "Open":
+            - /url: /app/opportunities?opportunityId=demo-opp-orion-pharma-tender
+      - row "Summit Diagnostics Q-DEMO-SUMMIT-01 Awaiting payment 21,153.85 21,153.85 0 3,846.15 USD 2026-10-10 — Confirm payment release date with finance Open":
+        - cell "Summit Diagnostics"
+        - cell "Q-DEMO-SUMMIT-01"
+        - cell "Awaiting payment"
+        - cell "21,153.85"
+        - cell "21,153.85"
+        - cell "0"
+        - cell "3,846.15"
+        - cell "USD"
+        - cell "2026-10-10"
+        - cell "—"
+        - cell "Confirm payment release date with finance"
+        - cell "Open":
+          - link "Open":
+            - /url: /app/opportunities?opportunityId=demo-opp-summit-diagnostics-qc-workflow
+  - button "Previous page" [disabled]
+  - button "Next page" [disabled]
+  - complementary:
+    - heading "Choose a business question" [level=2]
+    - button "How is each Brand performing?"
+    - button "Which deals need a next action?"
+    - button "Where are my Leads coming from?"
+    - button "Which payments need attention?"
+    - heading "Other templates" [level=3]
+    - button "Portfolio Performance"
+    - button "Collections & Blockers"
+    - heading "Saved reports" [level=2]
+    - checkbox "Archived reports only"
+    - text: Archived reports only
+    - list
+    - paragraph: No saved reports here yet.
+  - generic "Customize filters, columns and saved report"
+  - option "Qualified opportunities" [selected]
+  - option "Leads only"
+  - option "All opportunities"
+  - option "Details" [selected]
+  - option "Grouped summary"
+  - option "Source ID"
+  - option "Account"
+  - option "Deal / order"
+  - option "Business unit"
+  - option "Brand"
+  - option "Product group"
+  - option "Product / solution"
+  - option "Deal stage"
+  - option "Deal status"
+  - option "Original brand"
+  - option "Original product"
+  - option "Original value"
+  - option "Original currency"
+  - option "Value in reporting currency"
+  - option "Reporting currency"
+  - option "Next action"
+  - option "Next action date"
+  - option "Closed on"
+  - option "Missing context / blocker"
+  - option "Open objections"
+  - option "Channel"
+  - option "Opportunity type"
+  - option "Order reference"
+  - option "Order stage"
+  - option "Order anchor date"
+  - option "Next payment due" [selected]
+  - option "Recorded receipts"
+  - option "Outstanding"
+  - option "Planning dates to confirm"
+  - option "Confirmed overdue balance"
+  - option "Overpayment"
+  - option "Payment schedule confidence"
+  - option "Money data incomplete"
+  - option "All conditions (AND)"
+  - option "Any condition (OR)" [selected]
+  - option "Source ID"
+  - option "Account"
+  - option "Deal / order"
+  - option "Business unit"
+  - option "Brand"
+  - option "Product group"
+  - option "Product / solution"
+  - option "Deal stage"
+  - option "Deal status"
+  - option "Original brand"
+  - option "Original product"
+  - option "Original value"
+  - option "Original currency"
+  - option "Value in reporting currency"
+  - option "Reporting currency"
+  - option "Next action"
+  - option "Next action date"
+  - option "Closed on"
+  - option "Missing context / blocker"
+  - option "Open objections"
+  - option "Channel"
+  - option "Opportunity type"
+  - option "Order reference"
+  - option "Order stage"
+  - option "Order anchor date"
+  - option "Next payment due"
+  - option "Recorded receipts"
+  - option "Outstanding" [selected]
+  - option "Planning dates to confirm"
+  - option "Confirmed overdue balance"
+  - option "Overpayment"
+  - option "Payment schedule confidence"
+  - option "Money data incomplete"
+  - option "Equals"
+  - option "At least / on or after" [selected]
+  - option "At most / on or before"
+  - option "Missing / unassigned"
+  - option "Present / assigned"
+  - option "Source ID"
+  - option "Account"
+  - option "Deal / order"
+  - option "Business unit"
+  - option "Brand"
+  - option "Product group"
+  - option "Product / solution"
+  - option "Deal stage"
+  - option "Deal status"
+  - option "Original brand"
+  - option "Original product"
+  - option "Original value"
+  - option "Original currency"
+  - option "Value in reporting currency"
+  - option "Reporting currency"
+  - option "Next action"
+  - option "Next action date"
+  - option "Closed on"
+  - option "Missing context / blocker"
+  - option "Open objections"
+  - option "Channel"
+  - option "Opportunity type"
+  - option "Order reference"
+  - option "Order stage"
+  - option "Order anchor date"
+  - option "Next payment due"
+  - option "Recorded receipts"
+  - option "Outstanding"
+  - option "Planning dates to confirm"
+  - option "Confirmed overdue balance"
+  - option "Overpayment"
+  - option "Payment schedule confidence"
+  - option "Money data incomplete" [selected]
+  - option "Equals" [selected]
+  - option "Missing / unassigned"
+  - option "Present / assigned"
+  - option "Choose"
+  - option "True" [selected]
+  - option "False"
+  - option "No grouping"
+  - option "Source ID"
+  - option "Account"
+  - option "Deal / order"
+  - option "Business unit" [selected]
+  - option "Brand"
+  - option "Product group"
+  - option "Product / solution"
+  - option "Deal stage"
+  - option "Deal status"
+  - option "Original brand"
+  - option "Original product"
+  - option "Original currency"
+  - option "Reporting currency"
+  - option "Next action"
+  - option "Next action date"
+  - option "Closed on"
+  - option "Missing context / blocker"
+  - option "Open objections"
+  - option "Channel"
+  - option "Opportunity type"
+  - option "Order reference"
+  - option "Order stage"
+  - option "Order anchor date"
+  - option "Next payment due"
+  - option "Payment schedule confidence"
+  - option "Money data incomplete"
+  - option "No grouping" [selected]
+  - option "Source ID"
+  - option "Account"
+  - option "Deal / order"
+  - option "Business unit"
+  - option "Brand"
+  - option "Product group"
+  - option "Product / solution"
+  - option "Deal stage"
+  - option "Deal status"
+  - option "Original brand"
+  - option "Original product"
+  - option "Original currency"
+  - option "Reporting currency"
+  - option "Next action"
+  - option "Next action date"
+  - option "Closed on"
+  - option "Missing context / blocker"
+  - option "Open objections"
+  - option "Channel"
+  - option "Opportunity type"
+  - option "Order reference"
+  - option "Order stage"
+  - option "Order anchor date"
+  - option "Next payment due"
+  - option "Payment schedule confidence"
+  - option "Money data incomplete"

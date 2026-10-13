@@ -214,7 +214,7 @@ function buildRoutes(input: {
     routes.push({
       id: 'whitespace',
       label: 'The shortest new conversations you have',
-      detail: `${input.whitespace.length} customer${input.whitespace.length === 1 ? '' : 's'} who already buy from you have never been offered ${lines} of your lines. A line missing at a customer who trusts you is a shorter conversation than a new logo.`,
+      detail: `${input.whitespace.length} customer${input.whitespace.length === 1 ? '' : 's'} with recorded Won deals ${input.whitespace.length === 1 ? 'has' : 'have'} no recorded deal for ${lines} of your lines. Review their history and fit before starting a new conversation.`,
       valueBase: null,
       href: '/app/vault',
     });

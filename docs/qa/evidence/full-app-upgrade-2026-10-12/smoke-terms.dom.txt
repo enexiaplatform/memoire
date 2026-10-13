@@ -1,0 +1,79 @@
+- navigation:
+  - link "Memoire home":
+    - /url: /
+    - generic: Memoire
+  - link "Use Cases":
+    - /url: /use-cases
+  - link "Pricing":
+    - /url: /pricing
+  - link "Log in":
+    - /url: /login
+  - link "Talk to us":
+    - /url: /request-access
+  - link "Create Account":
+    - /url: /signup
+- main:
+  - article:
+    - paragraph: Memoire legal
+    - heading "Terms of Service" [level=1]
+    - paragraph: "Last updated: August 11, 2026"
+    - paragraph: These terms govern use of Memoire, a personal sales workspace for one operator.
+    - heading "What this service is" [level=2]
+    - paragraph: Memoire is provided as a sales preparation and memory tool, not as a system of record, legal record, or guaranteed forecast.
+    - paragraph: Features, limits, storage behavior, and availability may change. Anything that would remove access to work you have already entered will be announced before it happens, and export is always available.
+    - heading "Subscription and payment" [level=2]
+    - paragraph: Memoire is free while it is in preview. No card is taken, nothing is charged, and there is no trial clock counting down - the whole product is available to every account for as long as the preview runs.
+    - paragraph: "When the preview ends the Personal plan is $10 per month for one person. Nothing starts billing on its own: every account will be told before any charge is possible, and continuing then is a decision you make rather than one that happens to you."
+    - paragraph: The Team plan is not on sale and has no price.
+    - paragraph: Because no money moves during the preview there is nothing to refund. The paragraphs about charges, cancellation and refunds take effect only once paid subscriptions open, and this page will say so before they do.
+    - heading "Your responsibilities" [level=2]
+    - paragraph: You are responsible for having permission to enter or process any customer, contact, pricing, tender, or company information.
+    - paragraph: You must not use Memoire for unlawful activity, unauthorized access, or storage of information prohibited by your employer or applicable agreements.
+    - heading "Outputs and decisions" [level=2]
+    - paragraph: "Risk signals, MEDDIC-lite reviews, recommended actions and summaries are computed by rule from the records you entered. They are not produced by a language model, and they require human review all the same: a rule applied to an incomplete record returns a confident answer about the wrong thing."
+    - paragraph: You remain responsible for sales decisions, customer communications, forecasts, and information shared with managers or third parties.
+    - heading "Availability and liability" [level=2]
+    - paragraph: The service may be interrupted or contain errors. Keep independent copies of business-critical information.
+    - paragraph: To the extent permitted by law, Memoire is not liable for lost opportunities, lost local browser data, inaccurate outputs, or decisions made from generated recommendations.
+    - heading "Who you are contracting with" [level=2]
+    - paragraph: "The operating entity behind Memoire has not been named in these terms yet, and no charge is taken while that is true: checkout stays closed. Anything you need to raise in the meantime can be sent to support@memoire-official.com and will be answered by the person who runs the service."
+    - paragraph: Lemon Squeezy is the merchant of record for payments and is the seller named on your invoice; its own terms cover the transaction itself.
+    - heading "Contact" [level=2]
+    - paragraph: Questions about these terms can be sent to support@memoire-official.com.
+    - link "Talk to us":
+      - /url: /request-access
+- contentinfo:
+  - link "Memoire home":
+    - /url: /
+    - generic: Memoire
+  - link "support@memoire-official.com":
+    - /url: mailto:support@memoire-official.com
+  - heading "Product" [level=4]
+  - list:
+    - link "Features":
+      - /url: /#features
+    - link "Use Cases":
+      - /url: /use-cases
+    - link "Pricing":
+      - /url: /pricing
+    - link "Talk to us":
+      - /url: /request-access
+    - link "Create Account":
+      - /url: /signup
+    - link "Log in":
+      - /url: /login
+  - heading "Guides" [level=4]
+  - list:
+    - link "Why deals go quiet":
+      - /url: /why-deals-go-quiet
+    - link "Quote to cash":
+      - /url: /quote-to-cash
+  - heading "Legal" [level=4]
+  - list:
+    - link "Privacy Policy":
+      - /url: /legal/privacy
+    - link "Terms of Service":
+      - /url: /legal/terms
+    - link "Product Boundaries":
+      - /url: /legal/boundaries
+  - generic: © 2026 Memoire. All rights reserved.

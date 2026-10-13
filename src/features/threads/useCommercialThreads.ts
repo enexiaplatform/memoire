@@ -34,6 +34,7 @@ import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../servi
 import type { PlanRecord } from '../../utils/weeklyPlan';
 import {attachMoneyConsequenceContext,deriveMoneyConsequences} from '../../domain/commercialKernel/deriveMoneyConsequences';
 import {todayDateKey} from '../../utils/safeDate';
+import {canonicalReviewOutcomes} from '../../utils/outcomeScoreboard';
 
 /**
  * Resolves the workspace's commercial threads and the recommendations the
@@ -191,6 +192,7 @@ export function useCommercialThreads() {
       opportunities: workspace.opportunities,
       threads,
       targets: targets.map((target) => ({ quarter: target.period, amount: target.amount, currency: target.currency, fiscalYear: target.fiscalYear })),
+      outcomes: canonicalReviewOutcomes(workspace.opportunities, workspace.opportunityOutcomes),
       qualification,
       fiscalYearStartMonth: targets[0]?.fiscalYearStartMonth || 1,
       includeSampleRecords: sampleDataActive,

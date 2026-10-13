@@ -4,7 +4,7 @@ import { normalizeSearchText } from '../../utils/textSearch.ts';
 export function interpretAskQuestion(question: string): string {
   const text = normalizeSearchText(question);
   const intents: [RegExp, string][] = [
-    [/tien.*(o dau|mac ket|dang cho)|cong no|khoan.*phai thu/, 'Where is the money?'],
+    [/tien.*(o dau|mac ket|dang cho)|cong no|khoan.*phai thu|khach.*(con no|no tien|chua tra|chua thanh toan)/, 'Where is the money?'],
     [/toi.*(no|phai tra)|nghia vu.*toi/, 'What do I owe?'],
     [/dang cho.*(khach|nguoi mua)|khach.*no.*toi/, 'What am I waiting on customers for?'],
     [/cam ket|loi hua/, 'Did I keep my promises?'],

@@ -266,8 +266,8 @@ function App() {
             <Route path="entities/:entityId" element={<Navigate to="/app/accounts" replace />} />
             <Route path="deals" element={<Navigate to="/app/opportunities" replace />} />
             <Route path="deals/new" element={<Navigate to="/app/opportunities" replace />} />
-            <Route path="deals/:id" element={<Navigate to="/app/opportunities" replace />} />
-            <Route path="deals/:id/edit" element={<Navigate to="/app/opportunities" replace />} />
+            <Route path="deals/:id" element={<LegacyDealRouteRedirect />} />
+            <Route path="deals/:id/edit" element={<LegacyDealRouteRedirect />} />
             <Route path="search" element={<Navigate to="/app/ask" replace />} />
 
             {/* Singular/plural. `/app/plan` and `/app/dashboard` redirected and
@@ -311,6 +311,11 @@ function LegacyRedirect({ to, params }: { to: string; params?: Record<string, st
   }
   const query = search.toString();
   return <Navigate to={`${to}${query ? `?${query}` : ''}${location.hash}`} replace />;
+}
+
+function LegacyDealRouteRedirect() {
+  const { id = '' } = useParams();
+  return <LegacyRedirect to="/app/opportunities" params={{ opportunityId: id }} />;
 }
 
 /**

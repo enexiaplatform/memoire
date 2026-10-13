@@ -77,10 +77,10 @@ const documents: Record<string, LegalDocument> = {
         ],
       },
       {
-        title: 'Links you share',
+        title: 'Shared workspaces and retired links',
         paragraphs: [
-          'A shared review brief carries its content in the fragment of the link - the part after the # - which browsers do not send to any server. The brief is never uploaded; it is decoded in whichever browser opens it.',
-          'The consequence is that anyone holding the link can read it, and there is no password and no expiry. Share it the way you would share the document itself.',
+          'The old shared-brief link flow has been retired. Current shared workspaces use owner-selected promises and invitations to authenticated accounts. Their configuration and actor responses are synchronized to the service; this is not an anonymous, browser-only link.',
+          'When sharing is configured and synchronized, recipients must accept the current invitation. Reader and reviewer roles grant different access to the selected view; they do not grant access to the owner’s whole workspace. Revocation prevents subsequent authorized reads but cannot erase information someone already viewed or copied. Local and demo configurations do not grant remote access.',
         ],
       },
       {

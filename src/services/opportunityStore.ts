@@ -11,8 +11,9 @@ import { requireCloudHistoricalIntegrity } from './historicalCloudGate.ts';
 import { loadAccounts } from './accountStore.ts';
 import { canonicalAccountId } from '../utils/canonicalAccountLink.ts';
 import { accountKey } from '../utils/accountIdentity.ts';
-import { captureLocalWorkspaceScope } from './localWorkspaceOwner.ts';
+import { captureLocalWorkspaceScope, getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
 import { prepareOpportunityBrand, linkOpportunityBrand, type PortfolioScope } from './portfolioStore.ts';
+import { beginBrandWrite, finishBrandWrite, pendingBrandWrites } from './brandWriteJournal.ts';
 
 export const OPPORTUNITY_STORAGE_KEY = 'memoire.opportunities.v1';
 
@@ -218,10 +219,20 @@ export function canUseOpportunityCloudStore(userId?: string | null) {
 }
 
 export async function loadOpportunities(userId?: string | null): Promise<CrmLiteOpportunity[]> {
+  const sameWorkspace = captureLocalWorkspaceScope();
   if (canUseOpportunityCloudStore(userId)) {
     try {
-      return await loadCloudOpportunities(userId as string);
+      const cloud = await loadCloudOpportunities(userId as string);
+      if (!sameWorkspace()) throw new Error('Workspace changed while loading deals.');
+      if (getLocalWorkspaceOwner() !== userId) return cloud;
+      const pendingIds = new Set(pendingBrandWrites({userId: userId as string, sampleDataActive: false}).map(row => row.opportunityId));
+      if (pendingIds.size) reportWorkspaceSyncError('Brand-linked work is pending. Retry it in Products & Brands before using another device.');
+      const pending = loadLocalOpportunities().filter(row => pendingIds.has(row.id) && row.userId === userId && !row.isSample && row.source !== 'demo');
+      const pendingById = new Map(pending.map(row => [row.id, row]));
+      // Pending browser edits stay visible until the operator finishes their retry.
+      return [...cloud.map(row => pendingById.get(row.id) || row), ...pending.filter(row => !cloud.some(item => item.id === row.id))];
     } catch (error) {
+      if (!sameWorkspace()) throw error;
       reportWorkspaceSyncError();
       debugOpportunityStore('cloud load failed; falling back to local', { message: getErrorMessage(error) });
       return loadLocalOpportunities();
@@ -240,33 +251,65 @@ export async function createOpportunity(
 ) {
   const sample = workspace.isSample || workspace.source === 'demo';
   return writeOpportunityWithBrand(input, { userId: sample ? null : userId || null, sampleDataActive: sample },
-    clean => createOpportunityRecord(clean, userId, workspace));
+    (clean, reservedId, localOnly, createdAt) => createOpportunityRecord(clean, userId, workspace, reservedId, localOnly, createdAt));
 }
 
 async function writeOpportunityWithBrand(input: OpportunityFormInput, scope: PortfolioScope,
-  write: (input: OpportunityFormInput) => Promise<{ opportunity: CrmLiteOpportunity; mode: 'local' | 'cloud'; warning?: string }>, opportunityId?: string, previousBrand?: string) {
+  write: (input: OpportunityFormInput, reservedId?: string, localOnly?: boolean, createdAt?: string) => Promise<{ opportunity: CrmLiteOpportunity; mode: 'local' | 'cloud'; warning?: string }>, opportunityId?: string, previousBrand?: string) {
   const sameWorkspace = captureLocalWorkspaceScope();
+  if (!scope.sampleDataActive && getLocalWorkspaceOwner() && getLocalWorkspaceOwner() !== scope.userId) throw new Error('Workspace changed before saving.');
   const selection = await prepareOpportunityBrand(scope, input, opportunityId, previousBrand);
   if (!sameWorkspace()) throw new Error('Workspace changed before saving.');
-  const clean = { ...input, brand: selection.brand };
-  delete clean.brandCatalogId;
-  const result = await write(clean);
+  // No Brand means there is no second classification write to coordinate.
+  if (!selection.brand && !previousBrand) return write(input);
+  const command = beginBrandWrite(scope, input, opportunityId);
   try {
-    if (!sameWorkspace()) throw new Error('Workspace changed.');
-    const catalog = await linkOpportunityBrand(scope, result.opportunity, { ...selection,
-      preserveOriginal: input.brandCatalogId === undefined && previousBrand !== undefined && previousBrand.trim() === selection.brand });
-    if (catalog?.cloud === 'unavailable') result.warning = [result.warning, catalog.message].filter(Boolean).join(' ');
-  } catch {
+    if (!sameWorkspace()) throw new Error('Workspace changed before saving.');
+    const clean = { ...input, brand: selection.brand }; delete clean.brandCatalogId;
+    const draft = createLocalOpportunity(clean, scope.userId || undefined,
+      {source: scope.sampleDataActive ? 'demo' : 'user', isSample:scope.sampleDataActive}, command.opportunityId);
+    // Link first: a refused catalog write cannot leave a saved unclassified deal.
+    const catalog = await linkOpportunityBrand(scope, draft, {...selection,
+      preserveOriginal:input.brandCatalogId === undefined && previousBrand !== undefined && previousBrand.trim() === selection.brand});
+    if (!sameWorkspace()) throw new Error('Workspace changed before saving.');
+    const localOnly = Boolean(scope.userId && selection.brand && (catalog?.cloud || selection.cloudState) !== 'synced');
+    const result = await write(clean,command.opportunityId,localOnly,command.createdAt);
+    if (!sameWorkspace()) return {...result,warning:'Saved to the original account. Reload that account to finish pending Brand work.'};
+    const cloudPending = Boolean(scope.userId && result.mode !== 'cloud');
+    finishBrandWrite(scope,command,cloudPending);
+    if (cloudPending) {
+      reportWorkspaceSyncError('Brand-linked changes are saved locally; cloud completion is pending.');
+      result.warning = [result.warning,'Saved and Brand-linked in this browser. Cloud completion is pending; retry in Products & Brands before using another device.'].filter(Boolean).join(' ');
+    }
+    return result;
+  } catch (error) {
     reportWorkspaceSyncError();
-    result.warning = [result.warning, 'Deal saved, but the Brand link could not be saved. Open Products & Brands to repair this link; do not create the deal again.'].filter(Boolean).join(' ');
+    const detail = error instanceof Error ? error.message : 'Save interrupted.';
+    throw new Error(detail + ' Save is not complete. Retry the same form or use Pending Brand work in Products & Brands; the retry keeps the same record ID.');
   }
-  return result;
+}
+
+export async function retryPendingOpportunityBrandWrites(scope: PortfolioScope) {
+  const pending = pendingBrandWrites(scope);
+  for (const command of pending) {
+    if (command.kind === 'create') await createOpportunity(command.input,scope.userId,{source:scope.sampleDataActive?'demo':'user',isSample:scope.sampleDataActive});
+    else {
+      const opportunity = loadLocalOpportunities().find(row => row.id === command.opportunityId)
+        || (await loadOpportunities(scope.sampleDataActive ? undefined : scope.userId)).find(row => row.id === command.opportunityId);
+      if (!opportunity) throw new Error('The pending deal is unavailable. Restore its source before retrying; do not create a replacement.');
+      await updateOpportunity(opportunity,command.input,scope.userId);
+    }
+  }
+  return pendingBrandWrites(scope);
 }
 
 async function createOpportunityRecord(
   input: OpportunityFormInput,
   userId: string | null | undefined,
   workspace: OpportunityWorkspaceTag,
+  reservedId?: string,
+  localOnly = false,
+  createdAt?: string,
 ): Promise<{ opportunity: CrmLiteOpportunity; mode: 'local' | 'cloud'; warning?: string }> {
   const sameWorkspace = captureLocalWorkspaceScope();
   const normalized = normalizeOpportunityInput(input);
@@ -278,15 +321,16 @@ async function createOpportunityRecord(
   if (!sameWorkspace()) throw new Error('Workspace changed. Open the current account before saving a deal.');
   const sample = workspace.isSample || workspace.source === 'demo';
   const tag: OpportunityWorkspaceTag = { source: sample ? 'demo' : 'user', isSample: sample };
-  if (!sample && canUseOpportunityCloudStore(userId)) {
+  if (!sample && !localOnly && canUseOpportunityCloudStore(userId)) {
     let opportunity: CrmLiteOpportunity;
     try {
       await requireCloudHistoricalIntegrity(userId as string);
-      opportunity = await createCloudOpportunity(normalized, userId as string);
+      opportunity = await createCloudOpportunity(normalized, userId as string, reservedId, createdAt);
     } catch (error) {
       if (!sameWorkspace()) throw new Error('Workspace changed before this deal was saved.');
       reportWorkspaceSyncError();
-      const opportunity = createLocalOpportunity(normalized, userId || undefined, tag);
+      const opportunity = createLocalOpportunity(normalized, userId || undefined, tag, reservedId);
+      if (createdAt) opportunity.createdAt = createdAt;
       saveLocalOpportunityRecord(opportunity);
       invalidateWorkspaceCollection('opportunities');
       debugOpportunityStore('cloud create failed; local copy preserved', { message: getErrorMessage(error) });
@@ -301,7 +345,8 @@ async function createOpportunityRecord(
     return { opportunity, mode: 'cloud', warning };
   }
 
-  const opportunity = createLocalOpportunity(normalized, sample ? undefined : userId || undefined, tag);
+  const opportunity = createLocalOpportunity(normalized, sample ? undefined : userId || undefined, tag, reservedId);
+  if (createdAt) opportunity.createdAt = createdAt;
   saveLocalOpportunityRecord(opportunity);
   invalidateWorkspaceCollection('opportunities');
   return { opportunity, mode: 'local' };
@@ -314,13 +359,14 @@ export async function updateOpportunity(
 ) {
   const sample = opportunity.isSample === true || opportunity.source === 'demo';
   return writeOpportunityWithBrand(input, { userId: sample ? null : userId || null, sampleDataActive: sample },
-    clean => updateOpportunityRecord(opportunity, clean, userId), opportunity.id, opportunity.brand || '');
+     (clean, _reservedId, localOnly) => updateOpportunityRecord(opportunity, clean, userId, localOnly), opportunity.id, opportunity.brand || '');
 }
 
 async function updateOpportunityRecord(
   opportunity: CrmLiteOpportunity,
   input: OpportunityFormInput,
-  userId?: string | null
+  userId?: string | null,
+  localOnly = false,
 ): Promise<{ opportunity: CrmLiteOpportunity; mode: 'local' | 'cloud'; warning?: string }> {
   const sameWorkspace = captureLocalWorkspaceScope();
   const normalized = normalizeOpportunityInput(input);
@@ -353,7 +399,7 @@ async function updateOpportunityRecord(
     }
   };
 
-  if (!opportunity.isSample && opportunity.source !== 'demo' && opportunity.storageMode === 'cloud' && canUseOpportunityCloudStore(userId)) {
+  if (!opportunity.isSample && opportunity.source !== 'demo' && !localOnly && canUseOpportunityCloudStore(userId)) {
     let updated: CrmLiteOpportunity;
     try {
       await requireCloudHistoricalIntegrity(userId as string);
@@ -589,20 +635,24 @@ async function loadCloudOpportunities(userId: string): Promise<CrmLiteOpportunit
   return records;
 }
 
-async function createCloudOpportunity(input: OpportunityFormInput, userId: string) {
+async function createCloudOpportunity(input: OpportunityFormInput, userId: string, reservedId?: string, createdAt?: string) {
   const { data, error } = await supabaseClient!
     .from(TABLE_NAME)
-    .insert(opportunityToInsert(input, userId))
+    .insert({...opportunityToInsert(input, userId), ...(reservedId ? {id:reservedId} : {}), ...(createdAt ? {created_at:createdAt} : {})})
     .select('*')
     .single();
 
   if (error) {
     const fallback = await supabaseClient!
       .from(TABLE_NAME)
-      .insert(opportunityToInsertWithLegacyColumns(input, userId))
+      .insert({...opportunityToInsertWithLegacyColumns(input, userId), ...(reservedId ? {id:reservedId} : {}), ...(createdAt ? {created_at:createdAt} : {})})
       .select('*')
       .single();
 
+    if (fallback.error && reservedId && (error.code === '23505' || fallback.error.code === '23505')) {
+      const existing = await supabaseClient!.from(TABLE_NAME).select('*').eq('id',reservedId).eq('user_id',userId).single();
+      if (!existing.error && existing.data) return rowToOpportunity(existing.data as OpportunityRow);
+    }
     if (fallback.error) throw new Error(fallback.error.message);
     return rowToOpportunity(fallback.data as OpportunityRow);
   }
@@ -623,15 +673,16 @@ async function updateCloudOpportunity(opportunityId: string, input: OpportunityF
   return rowToOpportunity(data as OpportunityRow);
 }
 
-function createLocalOpportunity(input: OpportunityFormInput, userId: string | undefined, workspace: OpportunityWorkspaceTag): CrmLiteOpportunity {
+function createLocalOpportunity(input: OpportunityFormInput, userId: string | undefined, workspace: OpportunityWorkspaceTag, reservedId?: string): CrmLiteOpportunity {
   const timestamp = new Date().toISOString();
+  const original = reservedId ? loadLocalOpportunities().find(row => row.id === reservedId) : undefined;
   return {
     ...input,
-    id: createId(),
+    id: reservedId || createId(),
     userId,
     source: workspace.source,
     isSample: workspace.isSample,
-    createdAt: timestamp,
+    createdAt: original?.createdAt || timestamp,
     updatedAt: timestamp,
     storageMode: 'local',
   };

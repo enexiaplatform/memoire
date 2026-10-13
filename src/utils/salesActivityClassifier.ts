@@ -559,28 +559,32 @@ export function extractCompetitors(rawNote: string) {
   return Array.from(found);
 }
 
+export function hasAffirmativeStatement(rawNote: string, term: RegExp) {
+  return rawNote.split(/[.\n;,]|\bbut\b|nhưng/iu).some(clause =>
+    term.test(clause) && !/\b(?:no|not|never|without|pending|if|might|may|could|cancelled|canceled)\b|\b(?:didn|hasn|haven|won|wasn|weren)['’]t\b|(?:không|chưa|hủy|huỷ|nếu|có thể)/iu.test(clause));
+}
+
 export function extractBuyingSignals(rawNote: string) {
+  const affirmativeMention = (term: RegExp) => hasAffirmativeStatement(rawNote, term);
   const signals: string[] = [];
-  if (/\bbudget\s+(?:approval|approved|confirmed|secured)\b/i.test(rawNote)) signals.push('Budget approved');
-  if (/\b(?:confirmed|approved)\s+(?:budget|funding)\b/i.test(rawNote)) signals.push('Budget approved');
+  if (affirmativeMention(/\bbudget\s+(?:approval|approved|confirmed|secured)\b/i)) signals.push('Budget approved');
+  if (affirmativeMention(/\b(?:confirmed|approved)\s+(?:budget|funding)\b/i)) signals.push('Budget approved');
   // The ordinary way a customer says yes before the money moves. "They approved
   // the LED and HVAC controls programme in principle" recorded nothing, because
   // the only approvals this read were of a budget by name. An approval in
   // principle is the strongest thing most B2B deals get before a PO.
-  if (/\bapproved\b[^.\n;]{0,60}?\bin principle\b/i.test(rawNote)) signals.push('Approved in principle');
-  if (/\b(?:board|committee|management|leadership|they|customer|client)\s+(?:has\s+|have\s+)?approved\b/i.test(rawNote)) signals.push('Approved in principle');
-  if (/\bsign(?:ed)?[\s-]off\b|\bsigned\s+the\b/i.test(rawNote)) signals.push('Sign-off signal');
-  if (/\bshortlist(?:ed)?\b/i.test(rawNote)) signals.push('Shortlisted');
-  if (/\btechnically\s+agreed\b|\btechnical(?:ly)?\s+approv(?:al|ed)\b|\bspec(?:ification)?\s+(?:is\s+)?approved\b/i.test(rawNote)) signals.push('Technical approval');
-  if (/\bpo\b|purchase order/i.test(rawNote)) signals.push('Purchase order signal');
-  const affirmativeMention = (term: RegExp) => rawNote.split(/[.\n;]|\bbut\b/i).some(clause =>
-    term.test(clause) && !/\b(?:no|not|never|without|pending)\b|\b(?:didn|hasn|haven|won|wasn|weren)['’]t\b/i.test(clause));
+  if (affirmativeMention(/\bapproved\b[^.\n;]{0,60}?\bin principle\b/i)) signals.push('Approved in principle');
+  if (affirmativeMention(/\b(?:board|committee|management|leadership|they|customer|client)\s+(?:has\s+|have\s+)?approved\b/i)) signals.push('Approved in principle');
+  if (affirmativeMention(/\bsign(?:ed)?[\s-]off\b|\bsigned\s+the\b/i)) signals.push('Sign-off signal');
+  if (affirmativeMention(/\bshortlist(?:ed)?\b/i)) signals.push('Shortlisted');
+  if (affirmativeMention(/\btechnically\s+agreed\b|\btechnical(?:ly)?\s+approv(?:al|ed)\b|\bspec(?:ification)?\s+(?:is\s+)?approved\b/i)) signals.push('Technical approval');
+  if (affirmativeMention(/\bpo\b|purchase order/i)) signals.push('Purchase order signal');
   if (affirmativeMention(/\bpayment\b/i)) signals.push('Payment signal');
   if (affirmativeMention(/\bdelivery\b/i)) signals.push('Delivery signal');
-  if (/\bquote|quotation|commercial offer\b/i.test(rawNote)) signals.push('Quote/commercial signal');
-  if (/\bdecision maker (?:confirmed|identified)\b/i.test(rawNote)) signals.push('Decision maker identified');
-  if (/\bconfirmed next step\b|next step confirmed/i.test(rawNote)) signals.push('Next step confirmed');
-  if (/\bprocurement (?:approved|confirmed|engaged)\b/i.test(rawNote)) signals.push('Procurement engaged');
+  if (affirmativeMention(/\bquote|quotation|commercial offer\b/i)) signals.push('Quote/commercial signal');
+  if (affirmativeMention(/\bdecision maker (?:confirmed|identified)\b/i)) signals.push('Decision maker identified');
+  if (affirmativeMention(/\bconfirmed next step\b|next step confirmed/i)) signals.push('Next step confirmed');
+  if (affirmativeMention(/\bprocurement (?:approved|confirmed|engaged)\b/i)) signals.push('Procurement engaged');
   return uniqueList(signals);
 }
 
@@ -686,7 +690,12 @@ export function extractDueDate(rawNote: string, activityDate: string) {
   if (vietnameseWeekday) {
     const weekdays: Record<string, string> = { hai:'monday', '2':'monday', ba:'tuesday', '3':'tuesday', tư:'wednesday', '4':'wednesday', năm:'thursday', '5':'thursday', sáu:'friday', '6':'friday', bảy:'saturday', '7':'saturday' };
     const weekday = weekdays[vietnameseWeekday[1]] || 'sunday';
-    return /tuần sau/u.test(lower) ? nextWeekday(anchor, weekday) : upcomingWeekday(anchor, weekday);
+    if (/tuần sau/u.test(lower)) {
+      const target = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].indexOf(weekday);
+      const mondayOffset = 7 - ((anchor.getUTCDay() + 6) % 7);
+      return addDays(anchor, mondayOffset + ((target + 6) % 7));
+    }
+    return upcomingWeekday(anchor, weekday);
   }
   if (/ngày mai/u.test(lower)) return addDays(anchor, 1);
   if (/hôm nay/u.test(lower)) return formatDate(anchor);
@@ -721,13 +730,18 @@ export function extractDueDate(rawNote: string, activityDate: string) {
 }
 
 function extractVietnameseActions(rawNote: string, activityDate: string): { title: string; dueDate: string | undefined; sourceText: string }[] {
-  return rawNote.split(/(?<=[.!?;])\s+|\n+/u).flatMap(sentence => sentence.split(/\s+(?:rồi|sau đó)\s+/u))
+  const verb = '(?:gửi|gọi|chuẩn bị|xác nhận|lên lịch|đặt lịch|nhắc|cập nhật|trả lời|nộp|theo dõi)';
+  const delimiter = new RegExp(`[,;]\\s*(?=${verb}\\s)|\\s+(?:và|rồi|sau đó)\\s+(?=${verb}\\s)`, 'iu');
+  return rawNote.split(/(?<=[.!?;])\s+|\n+/u).flatMap(sentence => {
+    if (!/(?:sẽ|cần|phải|việc tiếp theo)/iu.test(sentence) || /(?:không|chưa)\s+(?:cần|phải|sẽ)/iu.test(sentence)) return [];
+    return sentence.split(delimiter).map((clause, index) => index === 0 ? clause : `sẽ ${clause}`);
+  })
     .filter(sentence => !/(?:không|chưa)\s+(?:cần|phải|sẽ)/iu.test(sentence))
     .flatMap(sentence => {
       const match = sentence.trim().match(/^(?:[^.!?;]{1,50}\s+)?(?:sẽ|cần|phải|việc tiếp theo:?)\s+((?:gửi|gọi|chuẩn bị|xác nhận|lên lịch|đặt lịch|nhắc|cập nhật|trả lời|nộp|theo dõi)\s+.+)$/iu);
       if (!match) return [];
       const sourceText = match[1].trim();
-      const title = sourceText.replace(/\s+(?:(?:vào|trước|đến hạn|hạn chót)\s+(?:ngày\s+)?|ngày mai\b|hôm nay\b|tuần sau\b|thứ\s|chủ nhật\b).*$/iu, '').replace(/[.!?]+$/u, '').trim();
+      const title = sourceText.replace(/\s+(?:(?:vào|trước|đến hạn|hạn chót)\s+(?:ngày\s+)?|ngày\s+\d|ngày mai|hôm nay|tuần sau|thứ\s|chủ nhật).*$/iu, '').replace(/[.!?]+$/u, '').trim();
       return title ? [{ title, dueDate: extractDueDate(sourceText, activityDate) || undefined, sourceText }] : [];
     });
 }

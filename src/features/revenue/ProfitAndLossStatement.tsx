@@ -3,6 +3,9 @@ import { Link } from 'react-router-dom';
 import { FileText } from 'lucide-react';
 import type { QuoteRecord } from '../../services/quoteStore';
 import type { ExpenseRecord } from '../../services/expenseStore';
+import type { CrmLiteOpportunity } from '../../services/opportunityStore';
+import type { OrderReceivableRecord } from '../../utils/receivables';
+import type { OrderMilestoneRecord } from '../../utils/orderToCash';
 import { buildProfitAndLoss, type PnlPeriod } from '../../utils/pnl';
 import { formatCompactCurrencyAmount } from '../../utils/money';
 
@@ -22,12 +25,14 @@ const periodOptions: { value: PnlPeriod; label: string }[] = [
 export function ProfitAndLossStatement({
   quotes,
   expenses,
+  opportunities = [], receivableRecords = [], milestoneRecords = [],
 }: {
   quotes: QuoteRecord[];
   expenses: ExpenseRecord[];
+  opportunities?: CrmLiteOpportunity[]; receivableRecords?: OrderReceivableRecord[]; milestoneRecords?: OrderMilestoneRecord[];
 }) {
   const [period, setPeriod] = useState<PnlPeriod>('mtd');
-  const pnl = useMemo(() => buildProfitAndLoss({ quotes, expenses, period }), [quotes, expenses, period]);
+  const pnl = useMemo(() => buildProfitAndLoss({ quotes, expenses, period, opportunities, receivableRecords, milestoneRecords }), [quotes, expenses, period, opportunities, receivableRecords, milestoneRecords]);
   const money = (amount: number) => formatCompactCurrencyAmount(amount, pnl.reportingCurrency);
   const topCategories = pnl.expenseByCategory.slice(0, 4);
   const expensesTotal = pnl.expensesBase || 1;

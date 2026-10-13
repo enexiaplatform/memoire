@@ -58,6 +58,7 @@ import {
   type RoleCoverageRow,
 } from '../../utils/stakeholderRoleCoverage';
 import { normalizeMeddicRole } from '../../utils/meddicStakeholderMap.ts';
+import { stakeholderRoleLabel } from '../../utils/stakeholderRoleLabel';
 import { todayDateKey, formatSafeBusinessDate } from '../../utils/safeDate';
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -636,6 +637,7 @@ function CoverageRow({
             <button type="button" onClick={() => onOpenPerson(lead)} className="block max-w-full rounded-md px-1 py-0.5 text-left transition-colors hover:bg-white">
               <span className="block truncate text-[12px] font-semibold text-ink">
                 {lead.name}
+                {!lead.tags.includes('role-confirmed') && <span className="ml-1 text-[10px] font-normal text-amber-700">Tentative</span>}
                 {cell.people.length > 1 && <span className="ml-1 font-mono text-[10.5px] font-normal text-muted">+{cell.people.length - 1}</span>}
               </span>
               {detail.text && (
@@ -703,7 +705,7 @@ function StakeholderRow({ stakeholder, today, onOpen }: { stakeholder: Stakehold
         {/* A badge says which dimension it is reporting, not just its value:
             for an imported stakeholder all three read "Unknown", and three
             identical chips said nothing about which one nobody had filled in. */}
-        <Badge dimension="Role" label={stakeholder.stakeholderRole} tone={roleTone(stakeholder.stakeholderRole)} />
+        <Badge dimension="Role" label={stakeholderRoleLabel(stakeholder)} tone={roleTone(stakeholder.stakeholderRole)} />
         <Badge dimension="Influence" label={stakeholder.influenceLevel} tone={stakeholder.influenceLevel === 'High' ? 'amber' : 'neutral'} />
         <Badge dimension="Stance" label={stakeholder.stance} tone={stakeholder.stance === 'Supportive' ? 'green' : stakeholder.stance === 'Resistant' ? 'red' : 'neutral'} />
         <span className={`min-w-[88px] text-right font-mono text-[11px] ${touchTone}`}>

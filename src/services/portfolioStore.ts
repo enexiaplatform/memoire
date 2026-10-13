@@ -95,13 +95,13 @@ export async function savePortfolio(scope: PortfolioScope, input: { id: string; 
 }
 
 export async function prepareOpportunityBrand(scope: PortfolioScope, input: { brand?: string; brandCatalogId?: string }, opportunityId?: string, previousBrand?: string) {
-  if (!input.brand?.trim() && !input.brandCatalogId && (!opportunityId || !window.localStorage.getItem(PORTFOLIO_STORAGE_KEY))) return { brand: '', node: null, others: false };
+  if (!input.brand?.trim() && !input.brandCatalogId && (!opportunityId || !window.localStorage.getItem(PORTFOLIO_STORAGE_KEY))) return { brand: '', node: null, others: false, cloudState:'local' as const };
   const catalog = await loadPortfolio(scope);
-  return resolveBrandSelection(catalog.records, input, opportunityId, previousBrand);
+  return {...resolveBrandSelection(catalog.records, input, opportunityId, previousBrand),cloudState:catalog.cloud};
 }
 
 /** Re-read at commit time to preserve independent product/BU classifications. */
-export async function linkOpportunityBrand(scope: PortfolioScope, opportunity: CrmLiteOpportunity, selection: Awaited<ReturnType<typeof prepareOpportunityBrand>> & { preserveOriginal?: boolean }) {
+export async function linkOpportunityBrand(scope: PortfolioScope, opportunity: CrmLiteOpportunity, selection: ReturnType<typeof resolveBrandSelection> & { preserveOriginal?: boolean }) {
   if (!selection.brand && !window.localStorage.getItem(PORTFOLIO_STORAGE_KEY)) return null;
   let records = readPortfolio(scope);
   const old = portfolioAssignments(records).find(row => row.opportunityId === opportunity.id);
@@ -144,4 +144,18 @@ export async function registerLegacyBrand(scope: PortfolioScope, name: string, o
     if (saved) { catalog = saved; unavailable ||= saved.cloud === 'unavailable'; }
   }
   return { ...catalog, records: readPortfolio(scope), ...(unavailable ? { cloud: 'unavailable' as const, message: 'Brand links saved in this browser. Cloud sync is unavailable; reload the catalog to retry.' } : {}) };
+}
+
+/** Explicitly classifies one original legacy spelling as Others, never inventing a Brand. */
+export async function classifyLegacyBrandAsOthers(scope: PortfolioScope, name: string, opportunities: CrmLiteOpportunity[]) {
+  if (!name.trim()) throw new Error('Enter the manual Brand name.');
+  let catalog = await loadPortfolio(scope);
+  for (const opportunity of opportunities) {
+    if ((opportunity.isSample === true || opportunity.source === 'demo') !== scope.sampleDataActive || brandKey(opportunity.brand || '') !== brandKey(name)) continue;
+    if (portfolioAssignments(readPortfolio(scope)).some(row => row.opportunityId === opportunity.id && row.brandId)) continue;
+    const selection = resolveBrandSelection(readPortfolio(scope), {brand: opportunity.brand,brandCatalogId:'__others__'});
+    const linked = await linkOpportunityBrand(scope, opportunity, selection);
+    if (linked) catalog = linked;
+  }
+  return {...catalog,records:readPortfolio(scope)};
 }

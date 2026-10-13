@@ -100,7 +100,7 @@ describe('buildTargetPlan', () => {
 
     assert.deepEqual(plan.routes.map((route) => route.id), ['recover', 'accelerate', 'whitespace', 'open']);
     assert.equal(plan.routes[0].valueBase, 180_000_000);
-    assert.match(plan.routes[2].detail, /never been offered 2 of your lines/);
+    assert.match(plan.routes[2].detail, /no recorded deal for 2 of your lines/);
   });
 
   test('a covered quarter is told it is covered, and offered no work it does not need', () => {

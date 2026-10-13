@@ -1,0 +1,312 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities":
+    - /url: /app/opportunities
+    - text: Opportunities
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace" [active]:
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Week 42 · 12–18 October
+  - heading "0 of 11 planned items done" [level=1]
+  - tablist "Timeline view":
+    - tab "Upcoming" [selected]
+    - tab "History"
+  - region "Committed this week":
+    - heading "Committed this week (1/3)" [level=2]
+    - paragraph: Confirmed for Oct 12, 2026 - Oct 18, 2026. Change it in the weekly review. This is the frozen weekly review status; Plan records dated execution separately.
+    - link "Open the review":
+      - /url: /app/reviews
+    - list:
+      - checkbox "Send Apex Labs the revised quote and procurement checklistApex Labs" [checked]
+      - generic: Send Apex Labs the revised quote and procurement checklistApex Labs
+      - checkbox "Get Northstar Foods to name the PO issue dateNorthstar Foods"
+      - generic: Get Northstar Foods to name the PO issue dateNorthstar Foods
+      - checkbox "Re-open the Orion Pharma validation threadOrion Pharma"
+      - generic: Re-open the Orion Pharma validation threadOrion Pharma
+  - generic "Suggested for this week (4) 2 of those come from what is at risk right now. Nothing is on your plan until you put it there.":
+    - generic: Suggested for this week (4)
+    - generic: 2 of those come from what is at risk right now. Nothing is on your plan until you put it there.
+  - option "Mon Oct 12"
+  - option "Tue Oct 13"
+  - option "Wed Oct 14" [selected]
+  - option "Thu Oct 15"
+  - option "Fri Oct 16"
+  - option "Sat Oct 17"
+  - option "Sun Oct 18"
+  - option "Mon Oct 12"
+  - option "Tue Oct 13"
+  - option "Wed Oct 14" [selected]
+  - option "Thu Oct 15"
+  - option "Fri Oct 16"
+  - option "Sat Oct 17"
+  - option "Sun Oct 18"
+  - option "Mon Oct 12" [selected]
+  - option "Tue Oct 13"
+  - option "Wed Oct 14"
+  - option "Thu Oct 15"
+  - option "Fri Oct 16"
+  - option "Sat Oct 17"
+  - option "Sun Oct 18"
+  - option "Mon Oct 12"
+  - option "Tue Oct 13"
+  - option "Wed Oct 14"
+  - option "Thu Oct 15" [selected]
+  - option "Fri Oct 16"
+  - option "Sat Oct 17"
+  - option "Sun Oct 18"
+  - region "Commitments":
+    - heading "Commitments" [level=2]
+    - generic: 10 open
+    - button "Record a commitment":
+      - text: Record a commitment
+    - paragraph: 7 promises are on the week below
+    - paragraph: 1 due today · 6 still to come
+    - link "Go to the week":
+      - /url: "#plan-board"
+      - text: Go to the week
+    - button "List them"
+    - paragraph: Not shown on the board (3)
+    - paragraph: Overdue (1)
+    - list:
+      - generic: I owe
+      - paragraph:
+        - text: "QA demo: send the validation documents"
+        - generic: · Apex Labs
+      - button "Mark as kept":
+      - button "Move the date":
+      - button "Cancel this commitment":
+      - paragraph:
+        - generic: due Oct 11, 2026
+    - paragraph: Due today (1)
+    - list:
+      - generic: I owe
+      - paragraph:
+        - text: gửi báo giá
+        - generic: · Apex Labs
+      - button "Mark as kept":
+      - button "Move the date":
+      - button "Cancel this commitment":
+      - paragraph:
+        - generic: due Oct 13, 2026
+    - paragraph: Coming up (1)
+    - list:
+      - generic: I owe
+      - paragraph:
+        - text: gọi lại
+        - generic: · Apex Labs
+      - button "Mark as kept":
+      - button "Move the date":
+      - button "Cancel this commitment":
+      - paragraph:
+        - generic: due Oct 20, 2026
+  - checkbox "Include overdue backlog (1 carried items). Current-period work is shown by default."
+  - text: Include overdue backlog (1 carried items). Current-period work is shown by default.
+  - button "Previous period":
+  - generic: Oct 12 - Oct 18
+  - button "Next period":
+  - button "Today":
+    - text: Today
+  - tablist "Board period":
+    - tab "Week" [selected]
+    - tab "Month"
+  - region "This period at a glance":
+    - text: Done
+    - generic: 0%
+    - generic "Against last week": ±0 pts
+    - generic: 0 of 11 · vs last week
+    - generic: How the work happens
+    - generic: 11 items
+    - img "Not stated 11"
+    - generic: Not stated 11
+    - text: From records / by hand
+    - generic: 11 / 0
+  - generic: This week serves
+  - generic: Customer 10
+  - generic: Internal 1
+  - generic: 7 pulled in from your captures
+  - link "3 commitments confirmed for this week":
+    - /url: /app/reviews
+  - region "Monday Oct 12":
+    - heading "Mon 12" [level=2]
+    - button "Add a plan item":
+      - text: Add a plan item
+  - region "Tuesday Oct 13, today":
+    - heading "Tue 13" [level=2]
+    - generic: Today 0/3
+    - checkbox "Mark \"Confirm renewal PO timing with engineering manager\" done"
+    - paragraph:
+      - link "Apex Labs":
+        - /url: /app/opportunities?opportunityId=demo-opp-apex-service-renewal
+        - generic: Apex Labs
+      - link "Confirm renewal PO timing with engineering manager":
+        - /url: /app/opportunities?opportunityId=demo-opp-apex-service-renewal
+    - paragraph: Deal next step
+    - button "Edit details of Confirm renewal PO timing with engineering manager":
+    - checkbox "Mark \"Follow up with procurement\" done"
+    - paragraph:
+      - link "Apex Labs":
+        - /url: /app/accounts?accountName=Apex%20Labs
+        - generic: Apex Labs
+      - link "Follow up with procurement":
+        - /url: /app/timeline?view=history&activityId=demo-activity-apex-budget
+      - generic: · Dr. Avery
+    - paragraph: From a capture
+    - button "Edit details of Follow up with procurement":
+    - checkbox "Mark \"gửi báo giá\" done"
+    - paragraph:
+      - link "Apex Labs":
+        - /url: /app/accounts?accountName=Apex%20Labs
+        - generic: Apex Labs
+      - link "gửi báo giá":
+        - /url: /app/timeline?view=history&activityId=9fec8609-6cb0-4a32-ad62-c8d5a9e29a01
+    - paragraph: From a capture
+    - button "Edit details of gửi báo giá":
+    - button "Add a plan item":
+      - text: Add a plan item
+  - region "Wednesday Oct 14":
+    - heading "Wed 14" [level=2]
+    - button "Add a plan item":
+      - text: Add a plan item
+  - region "Thursday Oct 15":
+    - heading "Thu 15" [level=2]
+    - button "Add a plan item":
+      - text: Add a plan item
+  - region "Friday Oct 16":
+    - heading "Fri 16" [level=2]
+    - generic: Open 6
+    - checkbox "Mark \"Send revised quote and procurement checklist\" done"
+    - paragraph:
+      - link "Apex Labs":
+        - /url: /app/opportunities?opportunityId=demo-opp-apex-validation-expansion
+        - generic: Apex Labs
+      - link "Send revised quote and procurement checklist":
+        - /url: /app/opportunities?opportunityId=demo-opp-apex-validation-expansion
+      - generic: · Dr. Avery
+    - paragraph: Deal next step
+    - button "Edit details of Send revised quote and procurement checklist":
+    - checkbox "Mark \"Send the rapid testing overview\" done"
+    - paragraph:
+      - link "Delta Nutrition":
+        - /url: /app/opportunities?opportunityId=demo-lead-delta-second-qc-line
+        - generic: Delta Nutrition
+      - link "Send the rapid testing overview":
+        - /url: /app/opportunities?opportunityId=demo-lead-delta-second-qc-line
+    - paragraph: Deal next step
+    - button "Edit details of Send the rapid testing overview":
+    - checkbox "Mark \"Send the overview\" done"
+    - paragraph:
+      - link "Delta Nutrition":
+        - /url: /app/accounts?accountName=Delta%20Nutrition
+        - generic: Delta Nutrition
+      - link "Send the overview":
+        - /url: /app/timeline?view=history&activityId=demo-activity-delta-second-line
+      - generic: · Ms. Quinn
+    - paragraph: From a capture
+    - button "Edit details of Send the overview":
+    - checkbox "Mark \"Send differentiator evidence\" done"
+    - paragraph:
+      - link "Orion Pharma":
+        - /url: /app/accounts?accountName=Orion%20Pharma
+        - generic: Orion Pharma
+      - link "Send differentiator evidence":
+        - /url: /app/timeline?view=history&activityId=demo-activity-orion-pharma-tender-email
+      - generic: · Ms. Linh
+    - paragraph: From a capture
+    - button "Edit details of Send differentiator evidence":
+    - checkbox "Mark \"Clarify procurement path\" done"
+    - paragraph:
+      - link "Orion Pharma":
+        - /url: /app/accounts?accountName=Orion%20Pharma
+        - generic: Orion Pharma
+      - link "Clarify procurement path":
+        - /url: /app/timeline?view=history&activityId=demo-activity-orion-pharma-tender-email
+      - generic: · Ms. Linh
+    - paragraph: From a capture
+    - button "Edit details of Clarify procurement path":
+    - checkbox "Mark \"CRM & software subscriptions\" done"
+    - paragraph:
+      - link "Tools & software":
+        - /url: /app/revenue
+        - generic: Tools & software
+      - link "CRM & software subscriptions":
+        - /url: /app/revenue
+    - paragraph: You owe
+    - button "Edit details of CRM & software subscriptions":
+    - button "Add a plan item":
+      - text: Add a plan item
+  - region "Saturday Oct 17":
+    - heading "Sat 17" [level=2]
+    - generic: Open 1
+    - checkbox "Mark \"Confirm the audit kickoff report is delivered\" done"
+    - paragraph:
+      - link "Northstar Foods":
+        - /url: /app/accounts?accountName=Northstar%20Foods
+        - generic: Northstar Foods
+      - link "Confirm the audit kickoff report is delivered":
+        - /url: /app/timeline?view=history&activityId=demo-activity-northstar-payment-received
+    - paragraph: From a capture
+    - button "Edit details of Confirm the audit kickoff report is delivered":
+    - button "Add a plan item":
+      - text: Add a plan item
+  - region "Sunday Oct 18":
+    - heading "Sun 18" [level=2]
+    - generic: Open 1
+    - checkbox "Mark \"Send local support proof\" done"
+    - paragraph:
+      - link "Northstar Foods":
+        - /url: /app/accounts?accountName=Northstar%20Foods
+        - generic: Northstar Foods
+      - link "Send local support proof":
+        - /url: /app/timeline?view=history&activityId=demo-activity-northstar-foods-lead-time
+    - paragraph: From a capture
+    - button "Edit details of Send local support proof":
+    - button "Add a plan item":
+      - text: Add a plan item
+  - button "Paste a week":
+    - text: Paste a week
+  - paragraph: "Items in green were pulled in from a capture - you wrote them once, they landed here on their own. Drag any item to another day to reschedule it, or open the pencil to change the day, the customer, the person you are seeing and the wording together - all of it writes straight into the deal or touch it came from. Checking an item opens its record: how it happened, who at the customer it was with, and what was said. It is done when that is saved, and it lands on Activity, on the customer's history and on the stakeholder's record. The record still moves no deal, so a stage change is still yours to make."

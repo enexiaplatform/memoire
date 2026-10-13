@@ -1,0 +1,195 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 4 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "4 open": "4"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 4 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Portfolio
+  - heading "Products & Brands" [level=1]
+  - generic: Organize the lines you carry and link each deal once. Business units classify your own records.
+  - button "Reload catalog"
+  - status: Demo catalog. Separate from your real data.
+  - paragraph: Qualified pipeline
+  - paragraph: $164,231
+  - paragraph: 4 active deals · 0 missing amount/rate
+  - paragraph: Won deal value
+  - paragraph: $50,385
+  - paragraph: 3 won deals · 0 missing amount/rate
+  - paragraph: Win rate
+  - paragraph: 75%
+  - paragraph: 4 decided deals
+  - paragraph: Current pipeline and all-time won/lost outcomes. Partial totals exclude missing amounts/rates. Planning FX dated 2026-08-01, with workspace overrides. Won value is not cash or accounting revenue. 0 qualified deals have no portfolio classification.
+  - generic "Check original brand text before classification"
+  - heading "Add catalog entry" [level=2]
+  - text: Type
+  - combobox "Type":
+    - option "Business unit"
+    - option "Brand" [selected]
+    - option "Product group"
+    - option "Product / solution"
+  - text: Name
+  - textbox "Name"
+  - text: Code (optional)
+  - textbox "Code (optional)"
+  - text: Description
+  - textbox "Description"
+  - text: Confirmed aliases (one per line)
+  - textbox "Confirmed aliases (one per line)"
+  - button "Save entry"
+  - heading "Catalog (17)" [level=2]
+  - text: Search catalog
+  - textbox "Search catalog" [active]:
+    - /placeholder: Name, alias or code
+    - text: Others
+  - text: Entry kind
+  - combobox "Entry kind":
+    - option "All kinds" [selected]
+    - option "Business unit"
+    - option "Brand"
+    - option "Product group"
+    - option "Product / solution"
+  - text: Catalog status
+  - combobox "Catalog status":
+    - option "All statuses" [selected]
+    - option "Active"
+    - option "Retired"
+  - text: Parent entry
+  - combobox "Parent entry":
+    - option "All parents" [selected]
+    - option "No parent"
+    - option "Laboratory solutions"
+    - option "Laboratory workflows"
+    - option "Tailin"
+    - option "Scitek"
+    - option "PMM"
+    - option "MicroView"
+    - option "Others"
+    - option "Validation Expansion decontamination expansion"
+    - option "Service renewal and validation support"
+    - option "Lab workflow"
+    - option "Sterility testing workflow"
+    - option "QC workflow upgrade"
+    - option "Production line audit"
+    - option "LIMS site expansion"
+    - option "Rapid microbial testing"
+    - option "Allergen test kits"
+    - option "Reagent resupply"
+  - status: 1 matching entries · page 1 of 1
+  - list:
+    - paragraph: Others
+    - paragraph: Brand · active · 1 total links · 1 Leads · 0 qualified active · 0 closed · version 1
+    - paragraph: "Pipeline: $0"
+    - button "Edit"
+    - button "Retire"
+    - link "Performance report (Qualified)":
+      - /url: /app/reports?catalogKind=brand&catalogId=demo-brand-others
+    - link "All linked records":
+      - /url: /app/reports?catalogKind=brand&catalogId=demo-brand-others&population=all
+  - button "Previous entries" [disabled]
+  - button "Next entries" [disabled]
+  - heading "Classify existing deals" [level=2]
+  - paragraph: Original brand/product text is preserved. Suggested matches need your choice. Bundle amounts are not split between products.
+  - paragraph: Catalog counts and totals use direct deal classifications. Parent links organize entries; child totals are not rolled up.
+  - text: Find a deal
+  - textbox "Find a deal":
+    - /placeholder: Account, deal, original brand or product
+  - text: Deal
+  - combobox "Deal":
+    - option "Choose a deal"
+    - option "[SIMULATED QC] New customer — Brand manual validation" [selected]
+    - option "Apex Labs — Validation Expansion"
+    - option "Apex Labs — Validated decontamination service renewal"
+    - option "Northstar Foods — Lab workflow"
+    - option "Orion Pharma — Procurement review"
+    - option "Summit Diagnostics — QC workflow"
+    - option "Delta Nutrition — Second QC line"
+    - option "Harbor Diagnostics — New microbiology lab"
+    - option "Northstar Foods — Reagent resupply"
+    - option "Northstar Foods — Line audit service"
+    - option "Riverside Foods — Allergen testing"
+    - option "Orion Pharma — LIMS expansion"
+  - paragraph: "Original: [SIMULATED QC] Unlisted Brand / no product"
+  - text: Business unit
+  - combobox "Business unit":
+    - option "Unassigned / bundle not allocated" [selected]
+    - option "Laboratory solutions"
+  - text: Brand
+  - combobox "Brand":
+    - option "Unassigned / bundle not allocated"
+    - option "Tailin"
+    - option "Scitek"
+    - option "PMM"
+    - option "MicroView"
+    - option "Others" [selected]
+  - text: Product group
+  - combobox "Product group":
+    - option "Unassigned / bundle not allocated" [selected]
+    - option "Laboratory workflows"
+  - text: Product / solution
+  - combobox "Product / solution":
+    - option "Unassigned / bundle not allocated" [selected]
+    - option "Validation Expansion decontamination expansion"
+    - option "Service renewal and validation support"
+    - option "Lab workflow"
+    - option "Sterility testing workflow"
+    - option "QC workflow upgrade"
+    - option "Production line audit"
+    - option "LIMS site expansion"
+    - option "Rapid microbial testing"
+    - option "Allergen test kits"
+    - option "Reagent resupply"
+  - button "Save classification"
+  - link "Open source deal":
+    - /url: /app/opportunities?opportunityId=9c992111-4040-4d20-81dd-6ba601d6013e

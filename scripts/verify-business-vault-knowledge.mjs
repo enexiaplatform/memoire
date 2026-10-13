@@ -60,7 +60,7 @@ const registry = readFileSync('src/config/featureRegistry.ts', 'utf8');
 {
   const coverage = readFileSync('src/features/coverage/PortfolioCoveragePage.tsx', 'utf8');
   assert.match(coverage, /buildCoverageMatrix/, 'the coverage matrix still renders somewhere');
-  assert.match(coverage, /Never offered/, 'and keeps the ranked gap list an operator acts on');
+  assert.match(coverage, /No recorded deal/, 'and keeps the ranked gap list an operator acts on');
   assert.match(coverage, /new=1&account=/, 'and keeps the empty square that starts an opportunity');
 
   assert.match(app, /path="portfolio-coverage"/, 'the coverage route resolves');

@@ -1,0 +1,858 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 4 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "4 open": "4"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 4 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - heading "Review" [level=1]
+  - generic: "Close the week: what moved, what slipped, what went quiet, where money is stuck - and what you commit to next."
+  - tablist "Review section":
+    - tab "Weekly review"
+    - tab "Learning & Analytics" [active] [selected]
+  - generic "How to read these numbers · scope, cash and exchange rates"
+  - heading "The whole business, and how you are working it." [level=2]
+  - paragraph: "History and trend, in four readings: what the book is, how you worked it, what it is teaching you, and the detail underneath. For what to do next, use Today."
+  - button "Export":
+    - text: Export
+  - button "Reload analytics":
+  - heading "Business picture" [level=3]
+  - paragraph: What the book actually is - who it depends on, whether it is believable, and what it is worth
+  - paragraph: Open pipeline
+  - paragraph: 164.2K USD
+  - paragraph: 4 active deals · 1 open quote
+  - paragraph: Customers
+  - paragraph: "8"
+  - paragraph: 5 touched in 30 days
+  - paragraph: Touches, last 30 days
+  - paragraph: "12"
+  - paragraph: 4 of 4 active deals reached
+  - paragraph: Recorded net cash flow
+  - paragraph: 22.1K USD
+  - paragraph: Collected, less paid costs
+  - heading "Customer concentration" [level=2]
+  - paragraph: All of your open pipeline sits with 3 customers. Apex Labs alone is 68% of it.
+  - group "Customer concentration view":
+    - button "Chart" [pressed]:
+      - text: Chart
+    - button "Table":
+      - text: Table
+  - img "Open pipeline by customer, largest first":
+    - generic "Apex Labs"
+    - generic: 112.3K USD68%
+    - generic "Orion Pharma"
+    - generic: 34.6K USD21%
+    - generic "Northstar Foods"
+    - generic: 17.3K USD11%
+  - heading "Pipeline by stage" [level=2]
+  - paragraph: Active deals, valued in USD
+  - group "Pipeline by stage view":
+    - button "Chart" [pressed]:
+      - text: Chart
+    - button "Table":
+      - text: Table
+  - img "Open pipeline value by stage":
+    - generic "Proposal"
+    - generic: 37.3K USD2
+    - generic "Negotiation"
+    - generic: 92.3K USD1
+    - generic "Procurement"
+    - generic: 34.6K USD1
+  - heading "Is the pipeline believable?" [level=2]
+  - paragraph: Active deals by the evidence behind them, not by how they feel
+  - group "Is the pipeline believable? view":
+    - button "Chart" [pressed]:
+      - text: Chart
+    - button "Table":
+      - text: Table
+  - img "Active deals by forecast evidence category":
+    - 'generic "Defensible: 1"'
+    - 'generic "Weak but recoverable: 2"'
+    - 'generic "Hope-based: 1"'
+  - text: "Defensible:"
+  - generic: "1"
+  - text: "Weak but recoverable:"
+  - generic: "2"
+  - text: "Hope-based:"
+  - generic: "1"
+  - heading "Touches per week" [level=2]
+  - paragraph: The last eight weeks of recorded customer contact · all of it in the last four weeks
+  - group "Touches per week view":
+    - button "Chart" [pressed]:
+      - text: Chart
+    - button "Table":
+      - text: Table
+  - img "Recorded customer touches per week over the last eight weeks"
+  - generic: 24/8
+  - generic: 21/9
+  - generic: 12/10
+  - heading "What closed" [level=2]
+  - paragraph: Deals marked Won or Lost, and what they were worth
+  - paragraph: Won
+  - paragraph: "3"
+  - paragraph: 50.4K USD
+  - paragraph: Lost
+  - paragraph: "1"
+  - paragraph: 46.2K USD
+  - paragraph: 3 of these closed without a retro, so they are counted at the value forecast on the deal rather than the figure actually signed. Open the deal and record the outcome to correct it.
+  - paragraph:
+    - text: Why each one ended that way lives in the deal's retro.
+    - link "Review holds the win/loss learning and your forecast calibration":
+      - /url: /app/reviews
+    - text: .
+  - region "Forecast defensibility review":
+    - heading "Forecasts to challenge" [level=3]
+    - paragraph: Current recorded premises for dated close claims. Existing forecast calculations and historical calibration are shown separately.
+    - paragraph: 0 dated claim(s) · 0 with a conditional, incomplete or unsupported current basis.
+    - paragraph: No dated close claims to evaluate.
+  - region "Profit and cash":
+    - paragraph: Collected revenue
+    - paragraph: 29.2K USD
+    - paragraph: Cash actually received
+    - paragraph: Money out (paid)
+    - paragraph: 7.2K USD
+    - paragraph: Expenses settled
+    - paragraph: Recorded net cash flow
+    - paragraph: 22.1K USD
+    - paragraph: Collected − paid out
+    - paragraph: Projected net flow
+    - paragraph: 52.4K USD
+    - paragraph: Set opening balance in Settings
+  - heading "Execution" [level=3]
+  - paragraph: "How the week was actually worked: adherence, the record-once funnel, and the rhythm of the touches"
+  - region "How the loop is running":
+    - heading "How the loop is running" [level=2]
+    - paragraph: This week, Oct 12, 2026 – Oct 18, 2026. Record once; it flows all the way through.
+    - link "Open the plan":
+      - /url: /app/timeline?view=upcoming
+    - paragraph: Plan adherence
+    - link "0%":
+      - /url: /app/timeline?view=upcoming
+    - paragraph: 0 of 11 planned commitments done
+    - link "4":
+      - /url: /app/opportunities
+    - text: from pipeline
+    - link "7":
+      - /url: /app/capture
+    - text: from captures
+    - link "0":
+      - /url: /app/timeline?view=upcoming
+    - text: added by you
+    - paragraph: Record-once funnel · last 30 days
+    - generic: —
+    - link "9 captured":
+      - /url: /app/capture
+      - generic: "9"
+      - generic: captured
+    - link "9 on plan":
+      - /url: /app/timeline?view=upcoming
+      - generic: "9"
+      - generic: on plan
+    - link "0 done":
+      - /url: /app/timeline?view=upcoming
+      - generic: "0"
+      - generic: done
+    - paragraph: Every next action captured landed on the plan — none re-entered by hand. 9 still ahead of their due date, so nothing is late yet.
+  - region "Committed this week":
+    - heading "Committed this week (1/3)" [level=2]
+    - paragraph: Confirmed for Oct 12, 2026 - Oct 18, 2026. Change it in the weekly review. This is the frozen weekly review status; Plan records dated execution separately.
+    - link "Open the review":
+      - /url: /app/reviews
+    - list:
+      - checkbox "Send Apex Labs the revised quote and procurement checklistApex Labs" [checked]
+      - generic: Send Apex Labs the revised quote and procurement checklistApex Labs
+      - checkbox "Get Northstar Foods to name the PO issue dateNorthstar Foods"
+      - generic: Get Northstar Foods to name the PO issue dateNorthstar Foods
+      - checkbox "Re-open the Orion Pharma validation threadOrion Pharma"
+      - generic: Re-open the Orion Pharma validation threadOrion Pharma
+  - tablist "Period":
+    - tab "This week"
+    - tab "This month"
+    - tab "Last 30 days" [selected]
+    - tab "Last 90 days"
+    - tab "Last 6 months"
+    - tab "Last 12 months"
+  - generic: Sep 13, 2026 – Oct 12, 2026 · A rolling month, ending today.
+  - paragraph: 13 dated items. Your busiest single subject was Line audit service, at 15% of these items. You closed 0 of the 1 dated items that came due.
+  - paragraph: Dated items
+  - generic: "13"
+  - text: new
+  - paragraph: 12 captured touches · 1 dated work · 2.2/active day
+  - paragraph: Attached to something
+  - generic: 100%
+  - generic: 11/11
+  - paragraph: of the work that named someone reaches a real record. 2 internal excluded.
+  - paragraph: Follow-through
+  - generic: 0%
+  - generic: 0/1 due
+  - paragraph: closed of what came due · 1 overdue
+  - paragraph: Concentration
+  - generic: 46%
+  - paragraph: of the period went to its three biggest subjects (Line audit service, Procurement review, Validation Expansion)
+  - heading "Rhythm" [level=2]
+  - generic: 6 active days · busiest Oct 11, 2026 · click a day to filter
+  - generic: M
+  - generic: T
+  - generic: W
+  - generic: T
+  - generic: F
+  - generic: S
+  - generic: S
+  - generic: Sep 7,
+  - button "Sep 13, 2026, 0 items"
+  - generic: Sep 14
+  - button "Sep 14, 2026, 0 items"
+  - button "Sep 15, 2026, 0 items"
+  - button "Sep 16, 2026, 0 items"
+  - button "Sep 17, 2026, 0 items"
+  - button "Sep 18, 2026, 0 items"
+  - button "Sep 19, 2026, 0 items"
+  - button "Sep 20, 2026, 0 items"
+  - generic: Sep 21
+  - button "Sep 21, 2026, 0 items"
+  - button "Sep 22, 2026, 0 items"
+  - button "Sep 23, 2026, 0 items"
+  - button "Sep 24, 2026, 0 items"
+  - button "Sep 25, 2026, 0 items"
+  - button "Sep 26, 2026, 1 items"
+  - button "Sep 27, 2026, 0 items"
+  - generic: Sep 28
+  - button "Sep 28, 2026, 0 items"
+  - button "Sep 29, 2026, 0 items"
+  - button "Sep 30, 2026, 0 items"
+  - button "Oct 1, 2026, 0 items"
+  - button "Oct 2, 2026, 0 items"
+  - button "Oct 3, 2026, 1 items"
+  - button "Oct 4, 2026, 0 items"
+  - generic: Oct 5,
+  - button "Oct 5, 2026, 0 items"
+  - button "Oct 6, 2026, 2 items"
+  - button "Oct 7, 2026, 0 items"
+  - button "Oct 8, 2026, 0 items"
+  - button "Oct 9, 2026, 0 items"
+  - button "Oct 10, 2026, 3 items"
+  - button "Oct 11, 2026, 4 items"
+  - generic: Oct 12
+  - button "Oct 12, 2026, 2 items"
+  - text: quiet
+  - text: busy
+  - generic: peak 4 in a day
+  - paragraph: Per week, done in solid
+  - img "Activity per week":
+    - 'generic "Sep 21: 1 done / 1 total"'
+    - 'generic "Sep 28: 1 done / 1 total"'
+    - 'generic "Oct 5,: 8 done / 9 total"'
+    - 'generic "Oct 12: 2 done / 2 total"'
+    - generic "Sep 21"
+    - generic "Sep 28"
+    - generic "Oct 5,"
+    - generic "Oct 12"
+  - heading "Who it was for" [level=2]
+  - paragraph: Which customer or deal each touch was against — the difference between work that reaches the business and work that does not.
+  - img "Activity by subject type":
+    - 'generic "Opportunity: 10"'
+    - 'generic "Internal: 2"'
+    - 'generic "Account: 1"'
+  - text: "Opportunity:"
+  - generic: "10"
+  - generic: (77%)
+  - text: "Internal:"
+  - generic: "2"
+  - generic: (15%)
+  - text: "Account:"
+  - generic: "1"
+  - generic: (8%)
+  - paragraph: Business domain
+  - img "Activity by business domain":
+    - 'generic "Sales: 6"'
+    - 'generic "Money: 5"'
+    - 'generic "Delivery: 1"'
+    - 'generic "Marketing: 1"'
+  - text: "Sales:"
+  - generic: "6"
+  - generic: (46%)
+  - text: "Money:"
+  - generic: "5"
+  - generic: (38%)
+  - text: "Delivery:"
+  - generic: "1"
+  - generic: (8%)
+  - text: "Marketing:"
+  - generic: "1"
+  - generic: (8%)
+  - paragraph: Shape of the week
+  - img "Activity by weekday":
+    - 'generic "Mon: 2"'
+    - 'generic "Tue: 2"'
+    - 'generic "Wed: 0"'
+    - 'generic "Thu: 0"'
+    - 'generic "Fri: 0"'
+    - 'generic "Sat: 5"'
+    - 'generic "Sun: 4"'
+    - generic "Mon"
+    - generic "Tue"
+    - generic "Wed"
+    - generic "Thu"
+    - generic "Fri"
+    - generic "Sat"
+    - generic "Sun"
+  - heading "Pivot" [level=2]
+  - paragraph: Subject down, Week across. The customer, deal, line or domain the work served.
+  - generic: Rows
+  - combobox "Rows":
+    - option "Subject" [selected]
+    - option "Subject type"
+    - option "Activity type"
+    - option "Business domain"
+    - option "State"
+    - option "Record"
+    - option "Came from"
+    - option "Month"
+    - option "Week"
+    - option "Weekday"
+  - generic: Columns
+  - combobox "Columns":
+    - option "Subject"
+    - option "Subject type"
+    - option "Activity type"
+    - option "Business domain"
+    - option "State"
+    - option "Record"
+    - option "Came from"
+    - option "Month"
+    - option "Week" [selected]
+    - option "Weekday"
+  - table:
+    - rowgroup:
+      - row "Subject Sep 21, 2026 Sep 28, 2026 Oct 5, 2026 Oct 12, 2026 Total":
+        - columnheader "Subject"
+        - columnheader "Sep 21, 2026":
+          - generic: Sep 21, 2026
+        - columnheader "Sep 28, 2026":
+          - generic: Sep 28, 2026
+        - columnheader "Oct 5, 2026":
+          - generic: Oct 5, 2026
+        - columnheader "Oct 12, 2026":
+          - generic: Oct 12, 2026
+        - columnheader "Total"
+    - rowgroup:
+      - row "Line audit service Opportunity · 1 1 · 2":
+        - rowheader "Line audit service Opportunity":
+          - generic "Line audit service"
+          - generic: Opportunity
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1":
+          - button "1"
+        - cell "1":
+          - button "1"
+        - cell "·":
+          - button "·" [disabled]
+        - cell "2"
+      - row "Procurement review Opportunity · · 1 1 2":
+        - rowheader "Procurement review Opportunity":
+          - generic "Procurement review"
+          - generic: Opportunity
+        - cell "·":
+          - button "·" [disabled]
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1":
+          - button "1"
+        - cell "1":
+          - button "1"
+        - cell "2"
+      - row "Validation Expansion Opportunity · · 1 1 2":
+        - rowheader "Validation Expansion Opportunity":
+          - generic "Validation Expansion"
+          - generic: Opportunity
+        - cell "·":
+          - button "·" [disabled]
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1":
+          - button "1"
+        - cell "1":
+          - button "1"
+        - cell "2"
+      - row "Apex Labs Account · · 1 · 1":
+        - rowheader "Apex Labs Account":
+          - generic "Apex Labs"
+          - generic: Account
+        - cell "·":
+          - button "·" [disabled]
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1":
+          - button "1"
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1"
+      - row "Lab workflow Opportunity · · 1 · 1":
+        - rowheader "Lab workflow Opportunity":
+          - generic "Lab workflow"
+          - generic: Opportunity
+        - cell "·":
+          - button "·" [disabled]
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1":
+          - button "1"
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1"
+      - row "Marketing Internal · · 1 · 1":
+        - rowheader "Marketing Internal":
+          - generic "Marketing"
+          - generic: Internal
+        - cell "·":
+          - button "·" [disabled]
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1":
+          - button "1"
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1"
+      - row "Money Internal · · 1 · 1":
+        - rowheader "Money Internal":
+          - generic "Money"
+          - generic: Internal
+        - cell "·":
+          - button "·" [disabled]
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1":
+          - button "1"
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1"
+      - row "QC workflow Opportunity 1 · · · 1":
+        - rowheader "QC workflow Opportunity":
+          - generic "QC workflow"
+          - generic: Opportunity
+        - cell "1":
+          - button "1"
+        - cell "·":
+          - button "·" [disabled]
+        - cell "·":
+          - button "·" [disabled]
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1"
+      - row "Second QC line Opportunity · · 1 · 1":
+        - rowheader "Second QC line Opportunity":
+          - generic "Second QC line"
+          - generic: Opportunity
+        - cell "·":
+          - button "·" [disabled]
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1":
+          - button "1"
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1"
+      - row "Validated decontamination service renewal Opportunity · · 1 · 1":
+        - rowheader "Validated decontamination service renewal Opportunity":
+          - generic "Validated decontamination service renewal"
+          - generic: Opportunity
+        - cell "·":
+          - button "·" [disabled]
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1":
+          - button "1"
+        - cell "·":
+          - button "·" [disabled]
+        - cell "1"
+    - rowgroup:
+      - row "Total 1 1 9 2 13":
+        - rowheader "Total"
+        - cell "1"
+        - cell "1"
+        - cell "9"
+        - cell "2"
+        - cell "13"
+  - heading "Where the period went" [level=2]
+  - paragraph: Ranked by items. The bar splits done from still-open, so a big bar that is mostly hollow is a subject you keep planning for and never reach.
+  - list:
+    - button "Line audit service last 2d ago 2· 15% 2 done 0 open 0 overdue":
+      - link "Line audit service":
+        - /url: /app/opportunities?opportunityId=demo-opp-northstar-line-audit-won
+        - generic: Line audit service
+      - generic: last 2d ago
+      - text: "2"
+      - generic: · 15%
+      - generic "2 done"
+      - generic "0 open"
+      - generic "0 overdue"
+    - button "Procurement review last today 2· 15% 2 done 0 open 0 overdue":
+      - link "Procurement review":
+        - /url: /app/opportunities?opportunityId=demo-opp-orion-pharma-tender
+        - generic: Procurement review
+      - generic: last today
+      - text: "2"
+      - generic: · 15%
+      - generic "2 done"
+      - generic "0 open"
+      - generic "0 overdue"
+    - button "Validation Expansion last today 2· 15% 2 done 0 open 0 overdue":
+      - link "Validation Expansion":
+        - /url: /app/opportunities?opportunityId=demo-opp-apex-validation-expansion
+        - generic: Validation Expansion
+      - generic: last today
+      - text: "2"
+      - generic: · 15%
+      - generic "2 done"
+      - generic "0 open"
+      - generic "0 overdue"
+    - button "Apex Labs last today 1· 8% 1 done 0 open 0 overdue":
+      - link "Apex Labs":
+        - /url: /app/accounts?accountName=Apex%20Labs
+        - generic: Apex Labs
+      - generic: last today
+      - text: "1"
+      - generic: · 8%
+      - generic "1 done"
+      - generic "0 open"
+      - generic "0 overdue"
+    - button "Lab workflow last 1d ago 1· 8% 1 done 0 open 0 overdue":
+      - link "Lab workflow":
+        - /url: /app/opportunities?opportunityId=demo-opp-northstar-foods-lab
+        - generic: Lab workflow
+      - generic: last 1d ago
+      - text: "1"
+      - generic: · 8%
+      - generic "1 done"
+      - generic "0 open"
+      - generic "0 overdue"
+    - button "Marketing last 1d ago 1· 8% 1 done 0 open 0 overdue":
+      - generic "Internal work · Marketing":
+        - generic: Marketing
+      - generic: last 1d ago
+      - text: "1"
+      - generic: · 8%
+      - generic "1 done"
+      - generic "0 open"
+      - generic "0 overdue"
+    - button "Money last today 1· 8% 0 done 0 open 1 overdue":
+      - link "Money":
+        - /url: /app/revenue
+        - generic: Money
+      - generic: last today
+      - text: "1"
+      - generic: · 8%
+      - generic "0 done"
+      - generic "0 open"
+      - generic "1 overdue"
+    - button "QC workflow last 16d ago 1· 8% 1 done 0 open 0 overdue":
+      - link "QC workflow":
+        - /url: /app/opportunities?opportunityId=demo-opp-summit-diagnostics-qc-workflow
+        - generic: QC workflow
+      - generic: last 16d ago
+      - text: "1"
+      - generic: · 8%
+      - generic "1 done"
+      - generic "0 open"
+      - generic "0 overdue"
+    - button "Second QC line last 2d ago 1· 8% 1 done 0 open 0 overdue":
+      - link "Second QC line":
+        - /url: /app/opportunities?opportunityId=demo-lead-delta-second-qc-line
+        - generic: Second QC line
+      - generic: last 2d ago
+      - text: "1"
+      - generic: · 8%
+      - generic "1 done"
+      - generic "0 open"
+      - generic "0 overdue"
+    - button "Validated decontamination service renewal last 6d ago 1· 8% 1 done 0 open 0 overdue":
+      - link "Validated decontamination service renewal":
+        - /url: /app/opportunities?opportunityId=demo-opp-apex-service-renewal
+        - generic: Validated decontamination service renewal
+      - generic: last 6d ago
+      - text: "1"
+      - generic: · 8%
+      - generic "1 done"
+      - generic "0 open"
+      - generic "0 overdue"
+  - heading "Everything is attached" [level=2]
+  - paragraph: Every named subject in this period points at an account, a deal or a line you carry.
+  - heading "What went untouched" [level=2]
+  - paragraph: Worked, then went quiet
+  - list:
+    - link "QC workflow":
+      - /url: /app/opportunities?opportunityId=demo-opp-summit-diagnostics-qc-workflow
+      - generic: QC workflow
+    - generic: 16d silent
+  - paragraph: Nothing at all last 30 days
+  - list:
+    - link "[SIMULATED QC] New customer · Brand manual validation":
+      - /url: /app/opportunities?opportunityId=9c992111-4040-4d20-81dd-6ba601d6013e
+    - generic: lead
+    - link "Harbor Diagnostics · New microbiology lab":
+      - /url: /app/opportunities?opportunityId=demo-lead-harbor-diagnostics
+    - generic: lead
+    - link "Riverside Foods · Allergen testing":
+      - /url: /app/opportunities?opportunityId=demo-lead-riverside-foods
+    - generic: lead
+  - heading "What kind of work" [level=2]
+  - paragraph: Captured touch types and the four things that put work on a day.
+  - img "Activity by type":
+    - generic "Customer meeting"
+    - generic: 431%
+    - generic "Follow-up"
+    - generic: 215%
+    - generic "Tender / procurement"
+    - generic: 215%
+    - generic "Delivery / fulfillment"
+    - generic: 18%
+    - generic "Marketing / content"
+    - generic: 18%
+    - generic "Obligation"
+    - generic: 18%
+    - generic "Payment / invoice"
+    - generic: 18%
+    - generic "Quote / proposal"
+    - generic: 18%
+  - generic "The rows behind this 13 dated items":
+    - generic: The rows behind this
+    - generic: 13 dated items
+  - heading "Learning" [level=3]
+  - paragraph: What this book is starting to say about how you win - measured, never assumed
+  - region "How you sell":
+    - heading "How you sell" [level=2]
+    - paragraph: Read back from your own records. No benchmarks, no model.
+    - paragraph: 4 readings from your own records, 0 of them on a sample large enough to argue with. 3 more readings unlock as you record.
+    - paragraph: Touches captured is up 800% against the periods before it, now 8.
+    - paragraph: Touches captured
+    - text: 800%
+    - paragraph: "8"
+    - img "Touches captured over the last 8 weeks":
+    - paragraph: last complete week · this week still running
+    - paragraph: Follow-through
+    - text: 0/4 weeks
+    - paragraph: —
+    - paragraph: last complete week · this week still running
+    - paragraph: New deals opened
+    - text: too few
+    - paragraph: "1"
+    - img "New deals opened over the last 8 weeks":
+    - paragraph: last complete week · this week still running
+    - paragraph: Quotes issued
+    - text: too few
+    - paragraph: "4"
+    - img "Quotes issued over the last 8 weeks":
+    - paragraph: last complete week · this week still running
+    - paragraph: Value won
+    - text: steady
+    - paragraph: 43.5K USD
+    - img "Value won over the last 8 weeks":
+    - paragraph: last complete week · this week still running
+    - paragraph: Sales cycle
+    - generic "An early read - it can still move as you record more": early read · 3
+    - paragraph: Your won deals take a median of 10 days from first touch to close (fastest 7, slowest 19, across 3 wins).
+    - paragraph: A deal opened less than 10 days before a quarter ends is, on your own history, next quarter's revenue.
+    - paragraph: Typical deal size
+    - generic "An early read - it can still move as you record more": early read · 5
+    - paragraph: Your median won deal is 12.3K USD (5 wins with a recorded amount).
+    - paragraph: Win rate
+    - generic "An early read - it can still move as you record more": early read · 7
+    - paragraph: You win 71% of the deals that end - 5 of 7, counting no-decision and delayed as not won.
+    - paragraph: Revenue you want to close needs about 1.4x its value sitting in pipeline first.
+    - paragraph: Win rate by deal size
+    - generic "An early read - it can still move as you record more": early read · 6
+    - paragraph: You win 100% of deals under 15.4K USD but only 67% above it (6 closed).
+    - paragraph: Your big deals are the ones failing, and they are the ones the number depends on. Look at what the small wins had that they do not.
+    - generic "3 readings Memoire has not earned yet"
+  - heading "Personal forecast calibration" [level=2]
+  - paragraph: When you call a deal "Defensible", you win 75% of the time (3 of 4). Your labels are holding up - keep requiring the same evidence.
+  - paragraph: Win rates come from your own 5 closed outcomes. This is your history, not a prediction.
+  - table:
+    - rowgroup:
+      - row "Evidence label Closed Won / Lost / Stalled Your win rate Active deals Calibrated value":
+        - columnheader "Evidence label"
+        - columnheader "Closed"
+        - columnheader "Won / Lost / Stalled"
+        - columnheader "Your win rate"
+        - columnheader "Active deals"
+        - columnheader "Calibrated value"
+    - rowgroup:
+      - row "Defensible 4 3 / 1 / 0 75% 1 (92.3K USD) 69.2K USD":
+        - cell "Defensible"
+        - cell "4"
+        - cell "3 / 1 / 0"
+        - cell "75%"
+        - cell "1 (92.3K USD)"
+        - cell "69.2K USD"
+      - row "Weak but recoverable 0 - No history 2 (37.3K USD) -":
+        - cell "Weak but recoverable"
+        - cell "0"
+        - cell "-"
+        - cell "No history"
+        - cell "2 (37.3K USD)"
+        - cell "-"
+      - row "Hope-based 1 0 / 1 / 0 Unrated (1 of 3) 1 (34.6K USD) -":
+        - cell "Hope-based"
+        - cell "1"
+        - cell "0 / 1 / 0"
+        - cell "Unrated (1 of 3)"
+        - cell "1 (34.6K USD)"
+        - cell "-"
+      - row "Unsupported 0 - No history - -":
+        - cell "Unsupported"
+        - cell "0"
+        - cell "-"
+        - cell "No history"
+        - cell "-"
+        - cell "-"
+  - paragraph: "Calibrated expected value across rated categories: 69.2K USD. 3 active deals sit in unrated categories and are excluded."
+  - heading "Were your numbers right?" [level=2]
+  - paragraph: When you said 51-75%, you won 33% of the time (1 of 3). That band is running about 30 points optimistic.
+  - generic: You said
+  - generic: Actually won
+  - img "Declared probability against the win rate actually achieved, by probability band":
+    - generic: 51-75%
+    - generic: Optimistic
+    - generic: 1 of 3 won
+    - generic "You said 63%"
+    - generic "Actually won 33%"
+    - generic: 63%
+    - generic: 33%
+    - generic: Over 75%
+    - generic: Not enough yet
+    - generic: 2 closed - needs 3 to rate
+    - generic "You said 88%"
+    - generic: 88%
+  - paragraph: Read from the probability each deal carried when it closed, not the 100% or 0% it ended on. Deals closed before probabilities were recorded are not counted, which is why this can stay empty for a while.
+  - generic "Show as a table"
+  - heading "Detail" [level=3]
+  - paragraph: The chart pack the export produces, and every derivation behind the daily page
+  - heading "Pipeline by stage" [level=2]
+  - paragraph: Active deals · value in USD
+  - img "Pipeline value by stage":
+    - generic: Proposal
+    - generic: 2 · 37.3K USD
+    - generic: Negotiation
+    - generic: 1 · 92.3K USD
+    - generic: Procurement
+    - generic: 1 · 34.6K USD
+  - heading "Activity trend" [level=2]
+  - paragraph: Captured activities per week · last 8 weeks
+  - img "Activities per week":
+    - generic: "0"
+    - generic: "4"
+    - generic: "8"
+    - generic: 24/8
+    - generic: 31/8
+    - generic: 7/9
+    - generic: 14/9
+    - generic: "1"
+    - generic: 21/9
+    - generic: "1"
+    - generic: 28/9
+    - generic: "8"
+    - generic: 5/10
+    - generic: "2"
+    - generic: 12/10
+  - heading "Forecast evidence mix" [level=2]
+  - paragraph: Operator labels on active Opportunities
+  - img "Forecast evidence mix":
+    - generic: Defensible
+    - generic: 1 · 25%
+    - generic: Weak but recoverable
+    - generic: 2 · 50%
+    - generic: Hope-based
+    - generic: 1 · 25%
+  - heading "Money out by category" [level=2]
+  - paragraph: Paid expenses · value in USD
+  - img "Money out by category":
+    - generic: Salaries
+    - generic: 3.5K USD
+    - generic: Cost of goods
+    - generic: 2.4K USD
+    - generic: Rent & utilities
+    - generic: 1.1K USD
+    - generic: Logistics
+    - generic: 230.8 USD
+  - heading "Win / loss record" [level=2]
+  - paragraph: Closed outcomes recorded in Memoire
+  - paragraph: "3"
+  - paragraph: Won · 50.4K USD
+  - paragraph: "1"
+  - paragraph: Lost · 46.2K USD
+  - paragraph: 75%
+  - paragraph: Win rate
+  - heading "Daily digest" [level=2]
+  - paragraph: 1 obligation overdue, 2 deals stuck.
+  - paragraph: Memoire's outbound voice. Copy it into your morning routine, or mail it to yourself — so the day's silence signals reach you even before you open the app.
+  - button "Copy digest":
+    - text: Copy digest
+  - link "Email to myself":
+    - /url: mailto:?subject=Memoire+digest+Mon%2C+Oct+12%2C+2026+-+1+obligation+overdue%2C+2+deals+stuck.&body=Memoire+daily+digest+-+Mon%2C+Oct+12%2C+2026%0ADemo+workspace%0A%0A1+obligation+overdue%2C+2+deals+stuck.%0A%0AMONEY%0A-+Recorded+net+cash+flow%3A+22.1K+USD+%28collected+29.2K+USD+-+paid+out+7.2K+USD%29%0A-+Money+in+motion%3A+185.4K+USD+across+7+thread%28s%29%2C+2+stuck%0A-+Projected+net+flow%3A+52.4K+USD%0A%0ASTUCK+MONEY%0A-+Summit+Diagnostics+%2F+QC+workflow+-+550%2C000%2C000+VND+-+Payment+overdue.+Confirm+the+payment+date.%0A-+Orion+Pharma+%2F+Procurement+review+-+900%2C000%2C000+VND+-+Planning+payment+date+passed+%C2%B7+confirm+terms+and+trigger.+Confirm+the+PO+owner+and+date.%0A%0AOBLIGATIONS+YOU+OWE%0A-+%5BOverdue%5D+Payment%3A+Supplier+invoice+%28reagent+distributor%29+%28Reagent+distributor%29+-+48%2C000%2C000+VND+-+due+2026-10-06%0A-+%5BDue+soon%5D+Payment%3A+CRM+%26+software+subscriptions+%28Tools+%26+software%29+-+4%2C500%2C000+VND+-+due+2026-10-16%0A-+%5BDue+soon%5D+Payment%3A+Quarterly+VAT+%28Tax+%26+fees%29+-+34%2C000%2C000+VND+-+due+2026-10-19%0A-+%5BDue+soon%5D+Delivery%3A+Deliver+Lab+workflow+implementation+%28Northstar+Foods%29+-+450%2C000%2C000+VND+-+due+2026-10-19%0A%0AOpen+Memoire+to+act%3A+work+the+top+item+first.
+    - text: Email to myself
+  - generic "Preview"
+  - heading "Go deeper" [level=2]
+  - link "Money flow, end to end":
+    - /url: /app/revenue
+    - text: Money flow, end to end
+  - link "Opportunities":
+    - /url: /app/opportunities
+    - text: Opportunities
+  - link "Plan history":
+    - /url: /app/timeline?view=history
+    - text: Plan history
+  - generic "Every derivation behind Today Risk readings, forecast readiness, follow-up history, capture inbox":
+    - generic: Every derivation behind Today
+    - generic: Risk readings, forecast readiness, follow-up history, capture inbox

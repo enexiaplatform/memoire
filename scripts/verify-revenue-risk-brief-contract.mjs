@@ -65,7 +65,7 @@ function makeQuote(patch = {}) {
 
 // 3b. Retention risk: a paid customer going quiet surfaces as revenue at risk.
 {
-  const paid = makeQuote({ id: 'q-paid', paymentStatus: 'Paid', paymentDueDate: '', accountName: 'Retention Co', opportunityId: '', opportunityName: 'Analyzer order', title: 'Analyzer order', quoteDate: '2026-05-15' });
+  const paid = makeQuote({ id: 'q-paid', paymentStatus: 'Paid', paymentReceiptVerified: true, paymentDueDate: '', accountName: 'Retention Co', opportunityId: '', opportunityName: 'Analyzer order', title: 'Analyzer order', quoteDate: '2026-05-15' });
   const markdown = generateRevenueRiskBriefMarkdown({ opportunities: [], quotes: [paid], activities: [], accounts: [], periodLabel: 'Week of Jul 6', today });
   assert.ok(markdown.includes('## Retention risk'), 'the brief must include a retention-risk section');
   assert.ok(markdown.includes('Retention Co'), 'the paid-but-quiet customer must be named');

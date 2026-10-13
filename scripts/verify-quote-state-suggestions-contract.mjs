@@ -31,7 +31,8 @@ function makeActivity(patch = {}) {
   const suggestions = suggestQuoteStateChanges(makeActivity(), [makeQuote()]);
   assert.equal(suggestions.length, 1);
   assert.equal(suggestions[0].kind, 'payment-paid');
-  assert.equal(suggestions[0].patch.paymentStatus, 'Paid');
+  assert.equal(suggestions[0].patch.paymentStatus, undefined, 'a capture cannot create receipt proof');
+  assert.match(suggestions[0].patch.nextAction, /Collections/);
 }
 
 // 2. Literal detection only: a payment-type activity WITHOUT payment words suggests nothing.
@@ -67,7 +68,7 @@ function makeActivity(patch = {}) {
 
 // 5. Already-final states never re-suggest; other accounts never match.
 {
-  assert.equal(suggestQuoteStateChanges(makeActivity(), [makeQuote({ paymentStatus: 'Paid' })]).length, 0);
+  assert.equal(suggestQuoteStateChanges(makeActivity(), [makeQuote({ paymentStatus: 'Paid', paymentReceiptVerified: true })]).length, 0);
   assert.equal(suggestQuoteStateChanges(makeActivity({ accountName: 'Other Co', linkedAccountName: '' }), [makeQuote()]).length, 0);
 }
 

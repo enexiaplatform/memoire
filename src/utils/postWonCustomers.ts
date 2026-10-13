@@ -102,11 +102,11 @@ export function buildPostWonCustomers(input: PostWonInput): PostWonCustomers {
       opportunity.accountName,
       opportunity.estimatedValue ?? opportunity.fy26Value ?? null,
       opportunity.currency,
-      opportunity.expectedClosePeriod || opportunity.updatedAt.slice(0, 10),
+      opportunity.closedOn || '',
     ));
 
   input.quotes
-    .filter((quote) => !quote.__deleted && quote.deliveryStatus === 'Delivered' && quote.paymentStatus === 'Paid')
+    .filter((quote) => !quote.__deleted && quote.deliveryStatus === 'Delivered' && quote.paymentReceiptVerified === true)
     .forEach((quote) => addWon(quote.accountName, quote.amount, quote.currency, quote.paymentDueDate || quote.quoteDate));
 
   const lastTouchByAccount = new Map<string, string>();

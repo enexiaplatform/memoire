@@ -3189,7 +3189,7 @@ function OpportunityPanel({
     .slice(0, 8)
     .map((name) => ({ key: `product-${name}`, primary: name, onPick: () => update('productOrSolution', name) }));
 
-  const accountCheck = checkAccountName(form.accountName, knownAccountNames, accountAliases);
+  const accountCheck = checkAccountName(form.accountName, accountRecordNames, accountAliases);
 
   /**
    * Moves the deal to a stage, from either control that can do it.

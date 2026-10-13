@@ -5,7 +5,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuthContext } from '../../auth/authContext';
 import { useDemoWorkspaceMode } from '../../hooks/useDemoWorkspaceMode';
 import { loadSalesWorkspaceData, type SalesWorkspaceData } from '../../services/workspaceData';
-import { loadPortfolio, savePortfolio, registerLegacyBrand, type PortfolioLoad, type PortfolioScope } from '../../services/portfolioStore';
+import { loadPortfolio, savePortfolio, registerLegacyBrand, classifyLegacyBrandAsOthers, type PortfolioLoad, type PortfolioScope } from '../../services/portfolioStore';
 import { brandKey } from '../../utils/brandIdentity';
 import { portfolioAssignments, portfolioKinds, portfolioNodes, suggestPortfolioNode, type PortfolioNodeData } from '../../domain/portfolio/portfolioCatalog';
 import { buildPortfolioFacts, capturePortfolioMoneyBasis, summarizePortfolio } from '../../domain/portfolio/portfolioAnalytics';
@@ -13,6 +13,8 @@ import { EXCHANGE_RATES_CHANGED_EVENT, REPORTING_CURRENCY_CHANGED_EVENT } from '
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { portfolioReportHref } from '../../domain/reports/reportHandoffs';
 import { BrandPerformancePanel } from '../reviews/BrandPerformancePanel';
+import { pendingBrandWrites, type BrandWriteCommand } from '../../services/brandWriteJournal';
+import { retryPendingOpportunityBrandWrites } from '../../services/opportunityStore';
 
 const kinds = { unit: 'Business unit', brand: 'Brand', group: 'Product group', product: 'Product / solution' };
 const blank: PortfolioNodeData = { kind: 'brand', name: '', code: '', description: '', status: 'active', parentId: null, brandId: null, groupId: null, aliases: [] };
@@ -32,6 +34,12 @@ export function PortfolioPage() {
   const [form, setForm] = useState<PortfolioNodeData>(blank);
   const [editing, setEditing] = useState<{ id: string; version: number } | null>(null);
   const [search, setSearch] = useState('');
+  const [catalogSearch, setCatalogSearch] = useState('');
+  const [catalogKind, setCatalogKind] = useState('all');
+  const [catalogStatus, setCatalogStatus] = useState('all');
+  const [catalogParent, setCatalogParent] = useState('all');
+  const [catalogPage, setCatalogPage] = useState(0);
+  const [pendingWrites, setPendingWrites] = useState<BrandWriteCommand[]>([]);
   const [showOriginalBrands, setShowOriginalBrands] = useState(false);
   const [assignmentId, setAssignmentId] = useState('');
   const [assignment, setAssignment] = useState({ businessUnitId: '', brandId: '', groupId: '', productId: '' });
@@ -43,6 +51,7 @@ export function PortfolioPage() {
     try {
       const [catalog, workspace] = await Promise.all([loadPortfolio(scope), loadSalesWorkspaceData(scope.userId)]);
       setLoaded({ scope: scopeKey, catalog, workspace });
+      setPendingWrites(pendingBrandWrites(scope));
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not load the portfolio.'); }
     finally { setBusy(false); }
   }, [scope, scopeKey]);
@@ -65,11 +74,17 @@ export function PortfolioPage() {
   }, [current, requestedDeal, scopeKey]);
   const records = useMemo(() => current?.catalog.records || [], [current]);
   const nodes = useMemo(() => portfolioNodes(records), [records]);
-  const registerBrand = async (name: string) => {
+  const filteredNodes = nodes.filter(node =>
+    (!catalogSearch || brandKey([node.name, node.code, ...node.aliases].join(' ')).includes(brandKey(catalogSearch))) &&
+    (catalogKind === 'all' || node.kind === catalogKind) && (catalogStatus === 'all' || node.status === catalogStatus) &&
+    (catalogParent === 'all' || (node.parentId || '__root__') === catalogParent));
+  const catalogPages = Math.max(1, Math.ceil(filteredNodes.length / 40));
+  const visibleNodes = filteredNodes.slice(Math.min(catalogPage, catalogPages - 1) * 40, (Math.min(catalogPage, catalogPages - 1) + 1) * 40);
+  const registerBrand = async (name: string, asOthers = false) => {
     if (!current) return;
     setBusy(true); setError('');
     try {
-      const catalog = await registerLegacyBrand(scope, name, current.workspace.opportunities);
+      const catalog = await (asOthers ? classifyLegacyBrandAsOthers : registerLegacyBrand)(scope, name, current.workspace.opportunities);
       setLoaded(previous => previous?.scope === scopeKey ? { ...previous, catalog } : previous);
     } catch (failure) { setError(failure instanceof Error ? failure.message : 'Could not link this Brand.'); }
     finally { setBusy(false); }
@@ -103,6 +118,7 @@ export function PortfolioPage() {
     <PageHeader eyebrow="Portfolio" title="Products & Brands" description="Organize the lines you carry and link each deal once. Business units classify your own records." actions={<button className={`${ghostPillClass} min-h-11`} disabled={busy || authLoading} onClick={() => void refresh()}>Reload catalog</button>} />
     {error && <p role="alert" className="rounded-lg bg-tint-red-bg p-3 text-sm text-tint-red-ink">{error}</p>}
     {!current ? <p className="text-sm text-muted">{busy || authLoading ? 'Loading portfolio…' : 'Reload to try again.'}</p> : <>
+      {pendingWrites.length > 0 && <section className="rounded-panel border border-amber-200 bg-amber-50 p-4"><h2 className="font-bold">Pending Brand work ({pendingWrites.length})</h2><p className="mt-1 text-sm">These saves are unfinished or waiting for cloud completion. Retry keeps the original record identity.</p><ul className="mt-2 text-sm">{pendingWrites.map(command => <li key={command.id}>{command.input.accountName} · {command.input.opportunityName || 'Lead'} · {command.input.brand || 'No Brand'} · {command.state === 'cloud-pending' ? 'Linked locally; cloud pending' : 'Save unfinished'}</li>)}</ul><button disabled={busy} className={`${ghostPillClass} mt-3`} onClick={async () => { setBusy(true); setError(''); try { await retryPendingOpportunityBrandWrites(scope); await refresh(); } catch (failure) { setError(failure instanceof Error ? failure.message : 'Pending work could not be completed.'); setPendingWrites(pendingBrandWrites(scope)); } finally { setBusy(false); } }}>Retry pending Brand work</button></section>}
       <p role="status" className={`rounded-lg p-3 text-sm ${current.catalog.cloud === 'unavailable' ? 'bg-tint-amber-bg text-tint-amber-ink' : 'bg-tint-blue-bg text-ink'}`}>{current.catalog.message}</p>
       <div className="grid gap-3 sm:grid-cols-3">
         {[['Qualified pipeline', moneyLabel(totals.pipeline), `${totals.activeCount} active deals · ${totals.pipelineMissing} missing amount/rate`],
@@ -117,7 +133,7 @@ export function PortfolioPage() {
         <p className="mt-1 text-sm text-muted">Accept each name to create a Brand or link to its existing name/alias. Includes Leads. Similar names stay separate.</p>
         <ul className="mt-3 space-y-2">{unlinkedBrands.map(name => <li key={name} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line p-3">
           <span>{name} · {facts.filter(row => !row.brandId && brandKey(row.originalBrand) === brandKey(name)).length} records</span>
-          <button type="button" disabled={busy} className={ghostPillClass} onClick={() => void registerBrand(name)}>{suggestPortfolioNode(records, 'brand', name) ? 'Link records' : 'Add Brand and link records'}</button>
+          <button type="button" disabled={busy} className={ghostPillClass} onClick={() => void registerBrand(name)}>{suggestPortfolioNode(records, 'brand', name) ? 'Link records' : 'Add Brand and link records'}</button><button type="button" disabled={busy} className={ghostPillClass} onClick={() => void registerBrand(name, true)}>Link as Others, keep original name</button>
         </li>)}</ul>
       </section>}
       <section className="grid min-w-0 gap-5 lg:grid-cols-2">
@@ -136,11 +152,18 @@ export function PortfolioPage() {
           <div className="flex flex-wrap gap-2"><button className={button} disabled={busy}>Save entry</button>{editing && <button type="button" className="text-sm font-semibold text-gray-600" onClick={() => { setEditing(null); setForm(blank); }}>Cancel edit</button>}</div>
         </form>
         <div className="min-w-0 rounded-panel bg-white shadow-panel p-5"><h2 className="font-bold text-ink">Catalog ({nodes.length})</h2>{!nodes.length && <p className="mt-3 text-sm text-muted">Start with one brand or business unit. Entries stay visible before their first deal.</p>}
-          <ul className="mt-3 max-h-[38rem] space-y-3 overflow-y-auto">{nodes.map(node => {
+          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+            <label className="text-sm font-semibold">Search catalog<input className={control} value={catalogSearch} onChange={event => { setCatalogSearch(event.target.value); setCatalogPage(0); }} placeholder="Name, alias or code" /></label>
+            <label className="text-sm font-semibold">Entry kind<select className={control} value={catalogKind} onChange={event => { setCatalogKind(event.target.value); setCatalogPage(0); }}><option value="all">All kinds</option>{portfolioKinds.map(kind => <option key={kind} value={kind}>{kinds[kind]}</option>)}</select></label>
+            <label className="text-sm font-semibold">Catalog status<select className={control} value={catalogStatus} onChange={event => { setCatalogStatus(event.target.value); setCatalogPage(0); }}><option value="all">All statuses</option><option value="active">Active</option><option value="retired">Retired</option></select></label>
+            <label className="text-sm font-semibold">Parent entry<select className={control} value={catalogParent} onChange={event => { setCatalogParent(event.target.value); setCatalogPage(0); }}><option value="all">All parents</option><option value="__root__">No parent</option>{nodes.map(node => <option key={node.id} value={node.id}>{node.name}</option>)}</select></label>
+          </div>
+          <p role="status" className="mt-2 text-xs text-muted">{filteredNodes.length} matching entries · page {Math.min(catalogPage, catalogPages - 1) + 1} of {catalogPages}</p>
+          <ul className="mt-3 max-h-[38rem] space-y-3 overflow-y-auto">{visibleNodes.map(node => {
             const linked = facts.filter(fact => [fact.businessUnitId, fact.brandId, fact.groupId, fact.productId].includes(node.id));
             const reading = summarizePortfolio(linked);
-            return <li key={node.id} className="rounded-lg border border-line p-3"><p className="break-words font-bold text-ink">{node.name}</p><p className="text-xs text-muted">{kinds[node.kind]} · {node.status} · {linked.length} linked records · version {node.version}{node.parentId ? ` · parent: ${nodes.find(parent => parent.id === node.parentId)?.name}` : ''}</p><p className="mt-1 text-sm">Pipeline: {moneyLabel(reading.pipeline)}{reading.pipelineMissing ? ` (partial: ${reading.pipelineMissing} missing)` : ''}</p><div className="mt-2 flex flex-wrap gap-3"><button type="button" disabled={busy} className="text-sm font-bold text-brand-blue" onClick={() => { setEditing({ id: node.id, version: node.version }); setForm({ kind: node.kind, name: node.name, code: node.code, description: node.description, status: node.status, parentId: node.parentId, brandId: node.brandId, groupId: node.groupId, aliases: node.aliases }); }}>Edit</button><button type="button" disabled={busy} className="text-sm font-semibold text-gray-600" onClick={() => void apply(node.id, { kind: node.kind, name: node.name, code: node.code, description: node.description, parentId: node.parentId, brandId: node.brandId, groupId: node.groupId, aliases: node.aliases, status: node.status === 'active' ? 'retired' : 'active' }, node.version)}>{node.status === 'active' ? 'Retire' : 'Reactivate'}</button><Link className="inline-flex min-h-11 items-center text-sm font-bold text-brand-blue" to={portfolioReportHref(node.kind, node.id)}>View performance report</Link></div></li>;
-          })}</ul>
+            return <li key={node.id} className="rounded-lg border border-line p-3"><p className="break-words font-bold text-ink">{node.name}</p><p className="text-xs text-muted">{kinds[node.kind]} · {node.status} · {linked.length} total links · {linked.filter(fact => !fact.qualified).length} Leads · {linked.filter(fact => fact.qualified && fact.status === 'Active').length} qualified active · {linked.filter(fact => fact.qualified && ['Won', 'Lost'].includes(fact.status)).length} closed · version {node.version}{node.parentId ? ` · parent: ${nodes.find(parent => parent.id === node.parentId)?.name}` : ''}</p><p className="mt-1 text-sm">Pipeline: {moneyLabel(reading.pipeline)}{reading.pipelineMissing ? ` (partial: ${reading.pipelineMissing} missing)` : ''}</p><div className="mt-2 flex flex-wrap gap-3"><button type="button" disabled={busy} className="text-sm font-bold text-brand-blue" onClick={() => { setEditing({ id: node.id, version: node.version }); setForm({ kind: node.kind, name: node.name, code: node.code, description: node.description, status: node.status, parentId: node.parentId, brandId: node.brandId, groupId: node.groupId, aliases: node.aliases }); }}>Edit</button><button type="button" disabled={busy} className="text-sm font-semibold text-gray-600" onClick={() => void apply(node.id, { kind: node.kind, name: node.name, code: node.code, description: node.description, parentId: node.parentId, brandId: node.brandId, groupId: node.groupId, aliases: node.aliases, status: node.status === 'active' ? 'retired' : 'active' }, node.version)}>{node.status === 'active' ? 'Retire' : 'Reactivate'}</button><Link className="inline-flex min-h-11 items-center text-sm font-bold text-brand-blue" to={portfolioReportHref(node.kind, node.id)}>Performance report (Qualified)</Link><Link className="inline-flex min-h-11 items-center text-sm font-bold text-brand-blue" to={`${portfolioReportHref(node.kind, node.id)}&population=all`}>All linked records</Link></div></li>;
+          })}</ul><div className="mt-3 flex gap-3"><button className={ghostPillClass} disabled={catalogPage <= 0} onClick={() => setCatalogPage(page => page - 1)}>Previous entries</button><button className={ghostPillClass} disabled={catalogPage >= catalogPages - 1} onClick={() => setCatalogPage(page => page + 1)}>Next entries</button></div>
         </div>
       </section>
       <section className="min-w-0 rounded-panel bg-white shadow-panel p-5">

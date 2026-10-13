@@ -162,7 +162,7 @@ const deal = (patch = {}) => ({
 
   const panel = readFileSync('src/features/reviews/ReviewScoreboardPanel.tsx', 'utf8');
   assert.ok(
-    /deriveOutcomesFromClosedDeals\(/.test(panel),
+    /canonicalReviewOutcomes\(/.test(panel),
     'the review scoreboard must read closed deals, not only the retros written for them',
   );
 }

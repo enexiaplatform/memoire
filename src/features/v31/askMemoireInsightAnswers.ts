@@ -186,25 +186,29 @@ export function answerFromDealPosition(snapshot: CommercialJourneySnapshot, oppo
  */
 export function answerFromMoneyFlow(moneyFlow: MoneyFlow, orderBook?: OrderBook): AskMemoireAnswer {
   const awaitingBase = orderBook?.awaitingBase ?? 0;
-  const owedSentence = awaitingBase > 0
-    ? ` ${formatBaseCurrencyAmount(awaitingBase, true)} is already committed and not yet collected${orderBook?.stalledCount ? `, ${orderBook.stalledCount} of those orders not moved in a month` : ''}.`
-    : '';
+  const unavailable = orderBook?.awaitingMissingValueCount || 0;
+  const amountLabel = formatBaseCurrencyAmount(awaitingBase, true) + (unavailable ? ' known subtotal' : '');
+  const missing = unavailable ? ['Amounts, currencies or exchange rates on ' + unavailable + ' committed orders'] : [];
+  const unknownSentence = unavailable ? ' ' + unavailable + ' committed orders need an amount, currency or exchange rate; their outstanding balance is not zero.' : '';
+  const owedSentence = awaitingBase > 0 || unavailable > 0
+    ? ` ${amountLabel} is already committed and not yet collected${orderBook?.stalledCount ? `, ${orderBook.stalledCount} of those orders not moved in a month` : ''}.` + unknownSentence
+    : unknownSentence;
 
   if (moneyFlow.threads.length === 0) {
     // Nothing in the pipeline is not the same as no money anywhere. A book that
     // has won everything it is working on still has money to collect, and
     // "no commercial threads are in motion" reads as "you have nothing".
-    if (awaitingBase > 0) {
+    if (awaitingBase > 0 || unavailable > 0) {
       return {
         answer: `Nothing is open in the pipeline right now.${owedSentence}`,
         contextUsed: ['Money flow (deals, quotes, POs, deliveries, payments)', 'Order book'],
-        missingContext: ['Open opportunities or quotes'],
+        missingContext: ['Open opportunities or quotes', ...missing],
         suggestedNextAction: 'Chase what is already owed, then capture the next opportunity.',
         suggestedQuestions: ['What should I do first today?', 'What happened this week?'],
         cards: [{
           kind: 'insight',
           title: 'Where the money sits',
-          fields: [{ label: 'Committed, not collected', value: formatBaseCurrencyAmount(awaitingBase, true), tone: 'warning' }],
+          fields: [{ label: 'Committed, not collected', value: amountLabel, tone: 'warning' }],
           ctas: [{ label: 'Open Cash collection', href: '/app/cash-collection', note: 'What each customer still owes lives there.' }],
         }],
       };
@@ -231,10 +235,10 @@ export function answerFromMoneyFlow(moneyFlow: MoneyFlow, orderBook?: OrderBook)
       // before "1 of those orders not moved in a month", it contradicts its own
       // paragraph - so it says which nothing it means.
       : orderBook?.stalledCount ? 'Nothing in the pipeline is stuck.' : 'Nothing is stuck right now.'}${owedSentence}`,
-    contextUsed: awaitingBase > 0
+    contextUsed: awaitingBase > 0 || unavailable > 0
       ? ['Money flow (deals, quotes, POs, deliveries, payments)', 'Order book']
       : ['Money flow (deals, quotes, POs, deliveries, payments)'],
-    missingContext: [],
+    missingContext: missing,
     suggestedNextAction: stuck[0] ? `${stuck[0].nextAction} (${stuck[0].accountName})` : 'Keep the next commercial steps dated.',
     suggestedQuestions: ['Which customers should I check back with?', 'Which deals may go silent?'],
     cards: [{
@@ -242,10 +246,10 @@ export function answerFromMoneyFlow(moneyFlow: MoneyFlow, orderBook?: OrderBook)
       title: 'Where the money sits',
       fields: [
         { label: 'In motion', value: formatBaseCurrencyAmount(moneyFlow.totalInMotionBase, true), tone: 'good' },
-        ...(awaitingBase > 0
+        ...(awaitingBase > 0 || unavailable > 0
           ? [{
             label: 'Committed, not collected',
-            value: `${formatBaseCurrencyAmount(awaitingBase, true)}${orderBook?.stalledCount ? ` - ${orderBook.stalledCount} stalled` : ''}`,
+            value: `${amountLabel}${orderBook?.stalledCount ? ` - ${orderBook.stalledCount} stalled` : ''}`,
             tone: 'warning' as const,
           }]
           : []),
@@ -262,7 +266,7 @@ export function answerFromMoneyFlow(moneyFlow: MoneyFlow, orderBook?: OrderBook)
           }]
           : []),
       ],
-      ctas: awaitingBase > 0
+      ctas: awaitingBase > 0 || unavailable > 0
         ? [
           { label: 'Open Money', href: '/app/revenue', note: 'The full money flow lives on the Money page.' },
           { label: 'Open Cash collection', href: '/app/cash-collection', note: 'What each customer still owes lives there.' },
@@ -661,6 +665,8 @@ export function answerFromForecastCalibration(calibration: ForecastCalibration):
  */
 export function answerFromAwaitingCustomer(orderBook: OrderBook, moneyFlow: MoneyFlow): AskMemoireAnswer {
   const awaitingBase = orderBook.awaitingBase;
+  const unavailable = orderBook.awaitingMissingValueCount || 0;
+  const unknownSentence = unavailable ? ' ' + unavailable + ' orders need an amount, currency or exchange rate. This is a known subtotal, not the complete balance.' : '';
   const openOrders = orderBook.orders.filter((order) => !order.fullyCollected);
   const oldestOrder = [...openOrders].sort((a, b) => (b.daysInStage ?? 0) - (a.daysInStage ?? 0))[0];
   const decisionLanes = moneyFlow.lanes.filter((lane) => lane.stage === 'Quoted' || lane.stage === 'Pending PO');
@@ -672,7 +678,7 @@ export function answerFromAwaitingCustomer(orderBook: OrderBook, moneyFlow: Mone
     return {
       answer: 'Nothing is sitting on the customer side right now - no quote is out without an answer, and no committed order is waiting to be paid. Everything open is waiting on you.',
       contextUsed: ['Order book', 'Money flow (deals, quotes, POs, deliveries, payments)'],
-      missingContext: [],
+      missingContext: unavailable ? ['Amounts, currencies or exchange rates for committed orders'] : [],
       suggestedNextAction: 'Check what you owe today instead.',
       suggestedQuestions: ['What do I owe today?', 'Which deals may go silent?'],
     };
@@ -686,9 +692,9 @@ export function answerFromAwaitingCustomer(orderBook: OrderBook, moneyFlow: Mone
     : '';
 
   return {
-    answer: `${decisionSentence}${moneySentence}`,
+    answer: `${decisionSentence}${moneySentence}${unknownSentence}`,
     contextUsed: ['Order book', 'Money flow (deals, quotes, POs, deliveries, payments)'],
-    missingContext: [],
+    missingContext: unavailable ? ['Amounts, currencies or exchange rates for committed orders'] : [],
     suggestedNextAction: oldestOrder
       ? `Chase ${oldestOrder.accountName} on ${oldestOrder.orderRef}${oldestOrder.nextMilestone ? ` - ${oldestOrder.nextMilestone.label}` : ''}.`
       : waitingQuotes[0]
@@ -718,7 +724,7 @@ export function answerFromAwaitingCustomer(orderBook: OrderBook, moneyFlow: Mone
             value: [...openOrders]
               .sort((a, b) => (b.daysInStage ?? 0) - (a.daysInStage ?? 0))
               .slice(0, 4)
-              .map((order) => `${order.accountName} / ${order.orderRef}: ${formatBaseCurrencyAmount(order.amountBase, true)}${order.daysInStage ? ` - ${order.daysInStage} days` : ''}`),
+              .map((order) => `${order.accountName} / ${order.orderRef}: ${order.amountBase === null ? 'Value unavailable' : formatBaseCurrencyAmount(order.amountBase, true)}${order.daysInStage ? ` - ${order.daysInStage} days` : ''}`),
             tone: 'warning' as const,
           }]
           : []),
@@ -986,7 +992,7 @@ export function answerFromRecordFind(find: RecordFind, outcomes: OutcomeStageFac
             ? [{ label: 'Closed', value: account.deals.filter((deal) => deal.status !== 'Active' && !leadOf(deal)).map(dealLine) }]
             : []),
         ],
-        ctas: [{ label: 'Open Accounts', href: '/app/accounts', note: 'The full record lives on the Accounts page.' }],
+        ctas: [{ label: 'Open Accounts', href: `/app/accounts?accountName=${encodeURIComponent(account.name)}`, note: 'The full record lives on the Accounts page.' }],
       }],
     };
   }

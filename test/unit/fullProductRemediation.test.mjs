@@ -76,7 +76,7 @@ test('monthly close dates respect the year, exact fiscal month and undated exclu
   assert.deepEqual(quarterAmounts({...opportunity,expectedClosePeriod:'2026-08'},'Q2',fiscal),{Q1:0,Q2:28000,Q3:0,Q4:0});
   assert.deepEqual(quarterAmounts({...opportunity,expectedClosePeriod:'August 2026'},'Q2',fiscal),{Q1:0,Q2:28000,Q3:0,Q4:0});
   assert.deepEqual(quarterAmounts({...opportunity,expectedClosePeriod:'2025-08'},'Q2',fiscal),{Q1:0,Q2:0,Q3:0,Q4:0});
-  const report = buildCoverage({ opportunities:[{...opportunity,expectedClosePeriod:''}], threads:[], targets:[], today:fiscal.today });
+  const report = buildCoverage({ opportunities:[{...opportunity,expectedClosePeriod:'',closedOn:''}], threads:[], targets:[], today:fiscal.today });
   assert.equal(report.excludedUndatedCount,1);
   assert.equal(report.quarters.reduce((sum,q)=>sum+q.committed,0),0);
 });

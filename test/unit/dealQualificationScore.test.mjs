@@ -286,7 +286,7 @@ describe('forecast coverage, gated on qualification', () => {
 
   test('won money needs no qualification behind it', () => {
     const report = buildCoverage({
-      opportunities: [deal({ id: 'o1', status: 'Won', stage: 'Won', currency: 'VND', quarterValues: { Q4: 100000 } })],
+      opportunities: [deal({ id: 'o1', status: 'Won', stage: 'Won', closedOn:'2026-11-12', estimatedValue:100000, currency: 'VND', quarterValues: { Q4: 100000 } })],
       threads: [],
       targets: target,
       qualification: new Map(),

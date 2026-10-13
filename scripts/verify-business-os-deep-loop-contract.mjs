@@ -143,7 +143,7 @@ assert.equal(classifyInitiativeHealth(makeContext({ status: 'Completed' }), [], 
     quotes: [
       makeQuote(),
       makeQuote({ status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Due', paymentDueDate: '2026-07-01', accountName: 'Northstar' }),
-      makeQuote({ status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid', accountName: 'Paid Co' }),
+      makeQuote({ status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid', paymentReceiptVerified: true, accountName: 'Paid Co' }),
     ],
     today,
   });
@@ -255,7 +255,7 @@ assert.equal(classifyInitiativeHealth(makeContext({ status: 'Completed' }), [], 
 {
   const paidQuiet = buildWeeklyBusinessReview({
     opportunities: [],
-    quotes: [makeQuote({ status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid', accountName: 'Retention Co', quoteDate: '2026-05-15' })],
+    quotes: [makeQuote({ status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid', paymentReceiptVerified: true, accountName: 'Retention Co', quoteDate: '2026-05-15' })],
     operatingContexts: [],
     activities: [],
     opportunityOutcomes: [],
@@ -268,7 +268,7 @@ assert.equal(classifyInitiativeHealth(makeContext({ status: 'Completed' }), [], 
 
   const suppressed = buildWeeklyBusinessReview({
     opportunities: [makeOpportunity({ accountName: 'Retention Co', nextActionDate: '' })],
-    quotes: [makeQuote({ status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid', accountName: 'Retention Co', quoteDate: '2026-05-15' })],
+    quotes: [makeQuote({ status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid', paymentReceiptVerified: true, accountName: 'Retention Co', quoteDate: '2026-05-15' })],
     operatingContexts: [],
     activities: [],
     opportunityOutcomes: [],

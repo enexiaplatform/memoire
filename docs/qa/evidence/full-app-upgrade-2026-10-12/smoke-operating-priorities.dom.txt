@@ -1,0 +1,90 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities":
+    - /url: /app/opportunities
+    - text: Opportunities
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace" [active]:
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Opened from Review
+  - heading "Must-win work" [level=1]
+  - paragraph: The initiatives and account plays you are betting on this quarter. Review reads them back; Today stays the single ranked action queue.
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - button "Add priority":
+    - text: Add priority
+  - generic: Do next
+  - generic: Initiative
+  - heading "Send the onboarding checklist to the northern distributor." [level=2]
+  - paragraph: Distributor onboarding program / Recruit and onboard one northern distributor before quarter end.
+  - button "Work priority":
+    - text: Work priority
+  - paragraph: Active
+  - paragraph: "1"
+  - paragraph: Initiatives
+  - paragraph: "1"
+  - paragraph: Due now
+  - paragraph: "0"
+  - paragraph: No next action
+  - paragraph: "0"
+  - heading "Operating priorities" [level=2]
+  - paragraph: 1 visible
+  - generic "Operating priority filter":
+    - button "active"
+    - button "Initiatives"
+    - button "Plays"
+    - button "all"
+  - generic: Initiative
+  - generic: Active
+  - paragraph: Distributor onboarding program
+  - paragraph: Recruit and onboard one northern distributor before quarter end.
+  - paragraph: Send the onboarding checklist to the northern distributor.
+  - paragraph: No due date / You
+  - paragraph: Value at stake
+  - paragraph: Not set
+  - button "Open Distributor onboarding program":

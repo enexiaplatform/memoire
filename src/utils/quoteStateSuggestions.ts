@@ -1,3 +1,4 @@
+import { hasAffirmativeStatement } from './salesActivityClassifier.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
@@ -37,21 +38,21 @@ export function suggestQuoteStateChanges(
 
   const suggestions: QuoteStateSuggestion[] = [];
 
-  if ((activity.activityType === 'Payment / invoice' || PAYMENT_PATTERN.test(text)) && PAYMENT_PATTERN.test(text)) {
-    const target = pickQuote(accountQuotes, (quote) => quote.status === 'Accepted' && quote.paymentStatus !== 'Paid');
+  if ((activity.activityType === 'Payment / invoice' || hasAffirmativeStatement(text, PAYMENT_PATTERN)) && hasAffirmativeStatement(text, PAYMENT_PATTERN)) {
+    const target = pickQuote(accountQuotes, (quote) => quote.status === 'Accepted' && quote.paymentReceiptVerified !== true);
     if (target) {
       suggestions.push({
         quoteRecordId: target.id,
         quoteLabel: quoteLabel(target),
         kind: 'payment-paid',
-        actionLabel: 'Mark payment as Paid',
+        actionLabel: 'Review payment in Collections',
         reason: 'This capture says a payment was received.',
-        patch: { paymentStatus: 'Paid', nextAction: 'Confirm the payment is reconciled and thank the customer.' },
+        patch: { nextAction: 'Record and reconcile this payment in Collections.' },
       });
     }
   }
 
-  if ((activity.activityType === 'Delivery / fulfillment' || DELIVERY_PATTERN.test(text)) && DELIVERY_PATTERN.test(text)) {
+  if ((activity.activityType === 'Delivery / fulfillment' || hasAffirmativeStatement(text, DELIVERY_PATTERN)) && hasAffirmativeStatement(text, DELIVERY_PATTERN)) {
     const target = pickQuote(accountQuotes, (quote) => quote.status === 'Accepted' && quote.deliveryStatus !== 'Delivered');
     if (target) {
       suggestions.push({
@@ -69,7 +70,7 @@ export function suggestQuoteStateChanges(
     }
   }
 
-  if (PO_PATTERN.test(text)) {
+  if (hasAffirmativeStatement(text, PO_PATTERN)) {
     const target = pickQuote(accountQuotes, (quote) => (
       (quote.status === 'Sent' || quote.status === 'Revised' || quote.status === 'Accepted') && quote.poStatus !== 'Received'
     ));

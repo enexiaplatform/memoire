@@ -1,0 +1,208 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 4 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "4 open": "4"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 4 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace" [active]:
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Accounts
+  - heading "Portfolio Coverage" [level=1]
+  - generic: Accounts against active catalog Brands. Each square describes recorded Lead, quote or deal evidence; an empty square means no recorded deal.
+  - link "Back to Accounts":
+    - /url: /app/accounts
+  - paragraph:
+    - text: "2"
+    - generic: of 5 customers have Won deals and unrecorded Brand combinations
+  - paragraph: 14 of 20 customer × line squares have no recorded deal. Check the customer’s history before starting a new opportunity.
+  - generic: 30% covered
+  - table:
+    - rowgroup:
+      - row "Customer Tailin Scitek PMM MicroView Relationship":
+        - columnheader "Customer"
+        - columnheader "Tailin":
+          - generic "Tailin"
+        - columnheader "Scitek":
+          - generic "Scitek"
+        - columnheader "PMM":
+          - generic "PMM"
+        - columnheader "MicroView":
+          - generic "MicroView"
+        - columnheader "Relationship"
+    - rowgroup:
+      - row "Apex Labs Apex Labs · Tailin — Quote recorded · 112.3K USD No Scitek deal is recorded for Apex Labs — review the account before starting an opportunity No PMM deal is recorded for Apex Labs — review the account before starting an opportunity No MicroView deal is recorded for Apex Labs — review the account before starting an opportunity 112.3K USD":
+        - cell "Apex Labs":
+          - link "Apex Labs":
+            - /url: /app/accounts?accountName=Apex%20Labs
+        - cell "Apex Labs · Tailin — Quote recorded · 112.3K USD":
+          - link "Apex Labs · Tailin — Quote recorded · 112.3K USD":
+            - /url: /app/opportunities?account=Apex%20Labs&brand=Tailin
+            - generic "Apex Labs · Tailin — Quote recorded · 112.3K USD": ◇
+        - cell "No Scitek deal is recorded for Apex Labs — review the account before starting an opportunity":
+          - link "No Scitek deal is recorded for Apex Labs — review the account before starting an opportunity":
+            - /url: /app/opportunities?new=1&account=Apex%20Labs&brand=Scitek
+            - generic "No Scitek deal is recorded for Apex Labs — review the account before starting an opportunity": +
+        - cell "No PMM deal is recorded for Apex Labs — review the account before starting an opportunity":
+          - link "No PMM deal is recorded for Apex Labs — review the account before starting an opportunity":
+            - /url: /app/opportunities?new=1&account=Apex%20Labs&brand=PMM
+            - generic "No PMM deal is recorded for Apex Labs — review the account before starting an opportunity": +
+        - cell "No MicroView deal is recorded for Apex Labs — review the account before starting an opportunity":
+          - link "No MicroView deal is recorded for Apex Labs — review the account before starting an opportunity":
+            - /url: /app/opportunities?new=1&account=Apex%20Labs&brand=MicroView
+            - generic "No MicroView deal is recorded for Apex Labs — review the account before starting an opportunity": +
+        - cell "112.3K USD"
+      - row "Northstar Foods No Tailin deal is recorded for Northstar Foods — review the account before starting an opportunity Northstar Foods · Scitek — Quote recorded · 17.3K USD Northstar Foods · PMM — Won · 25.4K USD No MicroView deal is recorded for Northstar Foods — review the account before starting an opportunity 42.7K USD":
+        - cell "Northstar Foods":
+          - link "Northstar Foods":
+            - /url: /app/accounts?accountName=Northstar%20Foods
+        - cell "No Tailin deal is recorded for Northstar Foods — review the account before starting an opportunity":
+          - link "No Tailin deal is recorded for Northstar Foods — review the account before starting an opportunity":
+            - /url: /app/opportunities?new=1&account=Northstar%20Foods&brand=Tailin
+            - generic "No Tailin deal is recorded for Northstar Foods — review the account before starting an opportunity": +
+        - cell "Northstar Foods · Scitek — Quote recorded · 17.3K USD":
+          - link "Northstar Foods · Scitek — Quote recorded · 17.3K USD":
+            - /url: /app/opportunities?account=Northstar%20Foods&brand=Scitek
+            - generic "Northstar Foods · Scitek — Quote recorded · 17.3K USD": ◇
+        - cell "Northstar Foods · PMM — Won · 25.4K USD":
+          - link "Northstar Foods · PMM — Won · 25.4K USD":
+            - /url: /app/opportunities?account=Northstar%20Foods&brand=PMM
+            - generic "Northstar Foods · PMM — Won · 25.4K USD": ●
+        - cell "No MicroView deal is recorded for Northstar Foods — review the account before starting an opportunity":
+          - link "No MicroView deal is recorded for Northstar Foods — review the account before starting an opportunity":
+            - /url: /app/opportunities?new=1&account=Northstar%20Foods&brand=MicroView
+            - generic "No MicroView deal is recorded for Northstar Foods — review the account before starting an opportunity": +
+        - cell "42.7K USD"
+      - row "Orion Pharma No Tailin deal is recorded for Orion Pharma — review the account before starting an opportunity Orion Pharma · Scitek — Committed to order · 34.6K USD No PMM deal is recorded for Orion Pharma — review the account before starting an opportunity No MicroView deal is recorded for Orion Pharma — review the account before starting an opportunity 34.6K USD":
+        - cell "Orion Pharma":
+          - link "Orion Pharma":
+            - /url: /app/accounts?accountName=Orion%20Pharma
+        - cell "No Tailin deal is recorded for Orion Pharma — review the account before starting an opportunity":
+          - link "No Tailin deal is recorded for Orion Pharma — review the account before starting an opportunity":
+            - /url: /app/opportunities?new=1&account=Orion%20Pharma&brand=Tailin
+            - generic "No Tailin deal is recorded for Orion Pharma — review the account before starting an opportunity": +
+        - cell "Orion Pharma · Scitek — Committed to order · 34.6K USD":
+          - link "Orion Pharma · Scitek — Committed to order · 34.6K USD":
+            - /url: /app/opportunities?account=Orion%20Pharma&brand=Scitek
+            - generic "Orion Pharma · Scitek — Committed to order · 34.6K USD": ◐
+        - cell "No PMM deal is recorded for Orion Pharma — review the account before starting an opportunity":
+          - link "No PMM deal is recorded for Orion Pharma — review the account before starting an opportunity":
+            - /url: /app/opportunities?new=1&account=Orion%20Pharma&brand=PMM
+            - generic "No PMM deal is recorded for Orion Pharma — review the account before starting an opportunity": +
+        - cell "No MicroView deal is recorded for Orion Pharma — review the account before starting an opportunity":
+          - link "No MicroView deal is recorded for Orion Pharma — review the account before starting an opportunity":
+            - /url: /app/opportunities?new=1&account=Orion%20Pharma&brand=MicroView
+            - generic "No MicroView deal is recorded for Orion Pharma — review the account before starting an opportunity": +
+        - cell "34.6K USD"
+      - row "Summit Diagnostics No Tailin deal is recorded for Summit Diagnostics — review the account before starting an opportunity No Scitek deal is recorded for Summit Diagnostics — review the account before starting an opportunity No PMM deal is recorded for Summit Diagnostics — review the account before starting an opportunity Summit Diagnostics · MicroView — Won · 25K USD 25K USD":
+        - cell "Summit Diagnostics":
+          - link "Summit Diagnostics":
+            - /url: /app/accounts?accountName=Summit%20Diagnostics
+        - cell "No Tailin deal is recorded for Summit Diagnostics — review the account before starting an opportunity":
+          - link "No Tailin deal is recorded for Summit Diagnostics — review the account before starting an opportunity":
+            - /url: /app/opportunities?new=1&account=Summit%20Diagnostics&brand=Tailin
+            - generic "No Tailin deal is recorded for Summit Diagnostics — review the account before starting an opportunity": +
+        - cell "No Scitek deal is recorded for Summit Diagnostics — review the account before starting an opportunity":
+          - link "No Scitek deal is recorded for Summit Diagnostics — review the account before starting an opportunity":
+            - /url: /app/opportunities?new=1&account=Summit%20Diagnostics&brand=Scitek
+            - generic "No Scitek deal is recorded for Summit Diagnostics — review the account before starting an opportunity": +
+        - cell "No PMM deal is recorded for Summit Diagnostics — review the account before starting an opportunity":
+          - link "No PMM deal is recorded for Summit Diagnostics — review the account before starting an opportunity":
+            - /url: /app/opportunities?new=1&account=Summit%20Diagnostics&brand=PMM
+            - generic "No PMM deal is recorded for Summit Diagnostics — review the account before starting an opportunity": +
+        - cell "Summit Diagnostics · MicroView — Won · 25K USD":
+          - link "Summit Diagnostics · MicroView — Won · 25K USD":
+            - /url: /app/opportunities?account=Summit%20Diagnostics&brand=MicroView
+            - generic "Summit Diagnostics · MicroView — Won · 25K USD": ●
+        - cell "25K USD"
+      - row "Delta Nutrition No Tailin deal is recorded for Delta Nutrition — review the account before starting an opportunity No Scitek deal is recorded for Delta Nutrition — review the account before starting an opportunity Delta Nutrition · PMM — Lead only No MicroView deal is recorded for Delta Nutrition — review the account before starting an opportunity —":
+        - cell "Delta Nutrition":
+          - link "Delta Nutrition":
+            - /url: /app/accounts?accountName=Delta%20Nutrition
+        - cell "No Tailin deal is recorded for Delta Nutrition — review the account before starting an opportunity":
+          - link "No Tailin deal is recorded for Delta Nutrition — review the account before starting an opportunity":
+            - /url: /app/opportunities?new=1&account=Delta%20Nutrition&brand=Tailin
+            - generic "No Tailin deal is recorded for Delta Nutrition — review the account before starting an opportunity": +
+        - cell "No Scitek deal is recorded for Delta Nutrition — review the account before starting an opportunity":
+          - link "No Scitek deal is recorded for Delta Nutrition — review the account before starting an opportunity":
+            - /url: /app/opportunities?new=1&account=Delta%20Nutrition&brand=Scitek
+            - generic "No Scitek deal is recorded for Delta Nutrition — review the account before starting an opportunity": +
+        - cell "Delta Nutrition · PMM — Lead only":
+          - link "Delta Nutrition · PMM — Lead only":
+            - /url: /app/opportunities?account=Delta%20Nutrition&brand=PMM
+            - generic "Delta Nutrition · PMM — Lead only": ·
+        - cell "No MicroView deal is recorded for Delta Nutrition — review the account before starting an opportunity":
+          - link "No MicroView deal is recorded for Delta Nutrition — review the account before starting an opportunity":
+            - /url: /app/opportunities?new=1&account=Delta%20Nutrition&brand=MicroView
+            - generic "No MicroView deal is recorded for Delta Nutrition — review the account before starting an opportunity": +
+        - cell "—"
+  - generic: ●
+  - text: Won
+  - generic: ◐
+  - text: Committed to order
+  - generic: ○
+  - text: In play
+  - generic: ×
+  - text: Tried and lost
+  - generic: +
+  - text: No recorded deal
+  - heading "The gaps worth closing first" [level=2]
+  - paragraph: Customers who already buy from you and carry only part of the range. A line missing at a customer who already trusts you is a shorter conversation than a new logo.
+  - list:
+    - link "Northstar Foods":
+      - /url: /app/accounts?accountName=Northstar%20Foods
+    - generic: 42.7K USD · 2 of 4 lines
+    - paragraph: "No recorded deal: Tailin, MicroView"
+    - link "Summit Diagnostics":
+      - /url: /app/accounts?accountName=Summit%20Diagnostics
+    - generic: 25K USD · 1 of 4 lines
+    - paragraph: "No recorded deal: Tailin, Scitek, PMM"

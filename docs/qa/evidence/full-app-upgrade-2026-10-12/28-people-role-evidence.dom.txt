@@ -1,0 +1,194 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities":
+    - /url: /app/opportunities
+    - text: Opportunities
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic: 5 accounts missing an Economic Buyer
+  - button "Add stakeholder":
+    - generic: Add stakeholder
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace" [active]:
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Accounts · Stakeholders
+  - heading "6 people, 1 unknown role" [level=1]
+  - tablist "How to read the book":
+    - tab "By account" [selected]
+    - tab "By role"
+    - tab "Unknown only1"
+  - paragraph: 1 person appears in your captures with no record here
+  - paragraph: Named in a note but never added. Adding one opens the form with what the note already said.
+  - button "Ms. Linh · But the committee owner · Orion Pharma":
+    - text: Ms. Linh
+    - generic: · But the committee owner
+    - generic: · Orion Pharma
+  - region "Role coverage by account":
+    - generic: Search
+    - textbox "Search":
+      - /placeholder: Find an account or a person...
+    - generic: Account
+    - combobox "Account":
+      - option "Account" [selected]
+      - option "Apex Labs"
+      - option "Delta Nutrition"
+      - option "Northstar Foods"
+      - option "Orion Pharma"
+      - option "Summit Diagnostics"
+    - paragraph: Click a name to open it, or a gap to fill it.
+    - table:
+      - rowgroup:
+        - row "Account Champion Economic Buyer Technical Buyer Procurement Decision Committee Coverage":
+          - columnheader "Account"
+          - columnheader "Champion"
+          - columnheader "Economic Buyer"
+          - columnheader "Technical Buyer"
+          - columnheader "Procurement"
+          - columnheader "Decision Committee"
+          - columnheader "Coverage"
+      - rowgroup:
+        - row "Apex Labs 2 open deals Dr. AveryTentative QA / Technical lead · High influence Add a Economic Buyer at Apex Labs Add a Technical Buyer at Apex Labs Ms. MorganTentative Procurement manager · Medium influence Add a Decision Committee at Apex Labs 2 of 5 buying roles recorded 2/5 · 3 gaps":
+          - rowheader "Apex Labs 2 open deals":
+            - button "Apex Labs 2 open deals":
+              - generic: AL
+              - generic: Apex Labs
+              - generic: 2 open deals
+          - cell "Dr. AveryTentative QA / Technical lead · High influence":
+            - button "Dr. AveryTentative QA / Technical lead · High influence":
+              - generic: Dr. AveryTentative
+              - generic: QA / Technical lead · High influence
+          - cell "Add a Economic Buyer at Apex Labs":
+            - button "Add a Economic Buyer at Apex Labs": Not recorded
+          - cell "Add a Technical Buyer at Apex Labs":
+            - button "Add a Technical Buyer at Apex Labs": Not recorded
+          - cell "Ms. MorganTentative Procurement manager · Medium influence":
+            - button "Ms. MorganTentative Procurement manager · Medium influence":
+              - generic: Ms. MorganTentative
+              - generic: Procurement manager · Medium influence
+          - cell "Add a Decision Committee at Apex Labs":
+            - button "Add a Decision Committee at Apex Labs": Not recorded
+          - cell "2 of 5 buying roles recorded 2/5 · 3 gaps":
+            - img "2 of 5 buying roles recorded"
+            - generic: 2/5 · 3 gaps
+        - row "Orion Pharma 1 open deal Add a Champion at Orion Pharma Add a Economic Buyer at Orion Pharma Add a Technical Buyer at Orion Pharma Orion Pharma procurement contactTentative Procurement · Medium influence Add a Decision Committee at Orion Pharma 1 of 5 buying roles recorded 1/5 · 4 gaps":
+          - rowheader "Orion Pharma 1 open deal":
+            - button "Orion Pharma 1 open deal":
+              - generic: OP
+              - generic: Orion Pharma
+              - generic: 1 open deal
+          - cell "Add a Champion at Orion Pharma":
+            - button "Add a Champion at Orion Pharma": Not recorded
+          - cell "Add a Economic Buyer at Orion Pharma":
+            - button "Add a Economic Buyer at Orion Pharma": Not recorded
+          - cell "Add a Technical Buyer at Orion Pharma":
+            - button "Add a Technical Buyer at Orion Pharma": Not recorded
+          - cell "Orion Pharma procurement contactTentative Procurement · Medium influence":
+            - button "Orion Pharma procurement contactTentative Procurement · Medium influence":
+              - generic: Orion Pharma procurement contactTentative
+              - generic: Procurement · Medium influence
+          - cell "Add a Decision Committee at Orion Pharma":
+            - button "Add a Decision Committee at Orion Pharma": Not recorded
+          - cell "1 of 5 buying roles recorded 1/5 · 4 gaps":
+            - img "1 of 5 buying roles recorded"
+            - generic: 1/5 · 4 gaps
+        - row "Northstar Foods 1 open deal Add a Champion at Northstar Foods Add a Economic Buyer at Northstar Foods Mr. TaylorTentative Lab manager · High influence Add a Procurement at Northstar Foods Add a Decision Committee at Northstar Foods 1 of 5 buying roles recorded 1/5 · 4 gaps":
+          - rowheader "Northstar Foods 1 open deal":
+            - button "Northstar Foods 1 open deal":
+              - generic: NF
+              - generic: Northstar Foods
+              - generic: 1 open deal
+          - cell "Add a Champion at Northstar Foods":
+            - button "Add a Champion at Northstar Foods": Not recorded
+          - cell "Add a Economic Buyer at Northstar Foods":
+            - button "Add a Economic Buyer at Northstar Foods": Not recorded
+          - cell "Mr. TaylorTentative Lab manager · High influence":
+            - button "Mr. TaylorTentative Lab manager · High influence":
+              - generic: Mr. TaylorTentative
+              - generic: Lab manager · High influence
+          - cell "Add a Procurement at Northstar Foods":
+            - button "Add a Procurement at Northstar Foods": Not recorded
+          - cell "Add a Decision Committee at Northstar Foods":
+            - button "Add a Decision Committee at Northstar Foods": Not recorded
+          - cell "1 of 5 buying roles recorded 1/5 · 4 gaps":
+            - img "1 of 5 buying roles recorded"
+            - generic: 1/5 · 4 gaps
+        - row "Delta Nutrition No open deal · 1 unknown Add a Champion at Delta Nutrition Add a Economic Buyer at Delta Nutrition Add a Technical Buyer at Delta Nutrition Add a Procurement at Delta Nutrition Add a Decision Committee at Delta Nutrition 0 of 5 buying roles recorded 0/5 · 5 gaps":
+          - rowheader "Delta Nutrition No open deal · 1 unknown":
+            - button "Delta Nutrition No open deal · 1 unknown":
+              - generic: DN
+              - generic: Delta Nutrition
+              - generic: No open deal · 1 unknown
+          - cell "Add a Champion at Delta Nutrition":
+            - button "Add a Champion at Delta Nutrition": Not recorded
+          - cell "Add a Economic Buyer at Delta Nutrition":
+            - button "Add a Economic Buyer at Delta Nutrition": Not recorded
+          - cell "Add a Technical Buyer at Delta Nutrition":
+            - button "Add a Technical Buyer at Delta Nutrition": Not recorded
+          - cell "Add a Procurement at Delta Nutrition":
+            - button "Add a Procurement at Delta Nutrition": Not recorded
+          - cell "Add a Decision Committee at Delta Nutrition":
+            - button "Add a Decision Committee at Delta Nutrition": Not recorded
+          - cell "0 of 5 buying roles recorded 0/5 · 5 gaps":
+            - img "0 of 5 buying roles recorded"
+            - generic: 0/5 · 5 gaps
+        - row "Summit Diagnostics No open deal Add a Champion at Summit Diagnostics Add a Economic Buyer at Summit Diagnostics Add a Technical Buyer at Summit Diagnostics Add a Procurement at Summit Diagnostics Add a Decision Committee at Summit Diagnostics 0 of 5 buying roles recorded 0/5 · 5 gaps":
+          - rowheader "Summit Diagnostics No open deal":
+            - button "Summit Diagnostics No open deal":
+              - generic: SD
+              - generic: Summit Diagnostics
+              - generic: No open deal
+          - cell "Add a Champion at Summit Diagnostics":
+            - button "Add a Champion at Summit Diagnostics": Not recorded
+          - cell "Add a Economic Buyer at Summit Diagnostics":
+            - button "Add a Economic Buyer at Summit Diagnostics": Not recorded
+          - cell "Add a Technical Buyer at Summit Diagnostics":
+            - button "Add a Technical Buyer at Summit Diagnostics": Not recorded
+          - cell "Add a Procurement at Summit Diagnostics":
+            - button "Add a Procurement at Summit Diagnostics": Not recorded
+          - cell "Add a Decision Committee at Summit Diagnostics":
+            - button "Add a Decision Committee at Summit Diagnostics": Not recorded
+          - cell "0 of 5 buying roles recorded 0/5 · 5 gaps":
+            - img "0 of 5 buying roles recorded"
+            - generic: 0/5 · 5 gaps
+    - paragraph: 5 of 5 accounts · coverage across Champion, Economic Buyer, Technical Buyer, Procurement, Decision Committee · 4 open deals have a role gap

@@ -1,0 +1,18 @@
+{
+  "status": "passed",
+  "exitCode": 0,
+  "finishedAt": "2026-10-13T06:36:16.208Z",
+  "command": "npm run check",
+  "unitTests": 2206,
+  "pass": 2206,
+  "fail": 0,
+  "contractCommands": 113,
+  "logSha256": "41bb02546a1c874add3271970e6d1c375d178711a4080bc85e664b3bf72cfaf6",
+  "coverage": [
+    "build",
+    "API typecheck",
+    "lint",
+    "unit tests",
+    "all configured contracts/runtime checks"
+  ]
+}

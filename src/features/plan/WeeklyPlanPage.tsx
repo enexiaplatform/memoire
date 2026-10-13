@@ -179,7 +179,7 @@ export function WeeklyPlanPage({
   const [showBacklog, setShowBacklog] = useState(false);
   const [dayLimits, setDayLimits] = useState<Record<string, number>>({});
   const [periodType, setPeriodType] = useState<PlanPeriod>('week');
-  const [showWeekend, setShowWeekend] = useState(false);
+  const [showWeekend, setShowWeekend] = useState(() => [0, 6].includes(new Date().getDay()));
   const [anchorDate, setAnchorDate] = useState(() => new Date());
   const [activities, setActivities] = useState<SalesActivityRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);

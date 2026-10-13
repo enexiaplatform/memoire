@@ -56,7 +56,7 @@ export function OrderToCashFunnel() {
     <figure className="rounded-card border border-white/10 bg-white/[0.04] p-6">
       <figcaption className="flex flex-wrap items-baseline justify-between gap-2">
         <span className="font-display text-sm font-bold text-white">One quarter, quote to cash</span>
-        <span className="text-[11px] font-semibold text-slate-400">$338,000 never made it to the bank</span>
+        <span className="text-[11px] font-semibold text-slate-400">$338,000 quote-to-cash gap, including quotes not yet ordered</span>
       </figcaption>
 
       <div className="mt-5 space-y-2.5">

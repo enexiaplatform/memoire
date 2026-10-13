@@ -1,6 +1,6 @@
 import {ExternalObservationIntake} from './ExternalObservationIntake';
 import { useCallback, useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { AlertTriangle, ArrowLeft, Building2, CalendarDays, Check, ChevronDown, Clipboard, Clock, Copy, Link2 as LinkIcon, Loader2, Lock, Mail, Mic, MicOff, NotebookPen, Save, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
@@ -301,6 +301,7 @@ const quickTemplates: {
 ];
 
 export function DailyCapturePage() {
+  const navigate = useNavigate();
   const { user } = useAuthContext();
   // Capture is the entry point of the whole loop, so it is where an ended
   // trial has to be felt. Reading, Plan, Orders and export all stay open.
@@ -1158,6 +1159,10 @@ export function DailyCapturePage() {
   const applyQuoteStateSuggestion = (suggestion: QuoteStateSuggestion) => {
     const quote = quotes.find((item) => item.id === suggestion.quoteRecordId);
     if (!quote) return;
+    if (suggestion.kind === 'payment-paid') {
+      navigate(quote.opportunityId ? `/app/cash-collection?opportunityId=${encodeURIComponent(quote.opportunityId)}` : `/app/quotes?quoteId=${encodeURIComponent(quote.id)}`);
+      return;
+    }
     const { id, createdAt, updatedAt, ...input } = quote;
     void id; void createdAt; void updatedAt;
     const updated = updateQuote(quote, { ...input, ...suggestion.patch });

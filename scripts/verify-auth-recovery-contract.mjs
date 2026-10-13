@@ -118,8 +118,8 @@ for (const marker of [
 
 const verifyPage = read('src/features/auth/VerifyEmailPage.tsx');
 for (const marker of [
-  'resendSignupConfirmation(email)',
-  'Verification email sent again. Please check your inbox.',
+  'resendSignupConfirmation(email.trim())',
+  'Verification request accepted. Check your inbox and spam folder; delivery may take a few minutes.',
   'Back to login',
   'to="/login"',
 ]) {

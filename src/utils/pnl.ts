@@ -4,6 +4,9 @@ import { expenseCategories, type ExpenseCategory } from '../services/expenseStor
 import { buildCashPosition, getOpeningCashBalance } from './cashPosition.ts';
 import { getReportingCurrency, hasExchangeRate, sumMoney, type SupportedCurrency } from './money.ts';
 import { sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
+import type { CrmLiteOpportunity } from '../services/opportunityStore.ts';
+import { buildOrderBook, type OrderMilestoneRecord } from './orderToCash.ts';
+import { uniquePaymentReceipts, type OrderReceivableRecord } from './receivables.ts';
 
 /**
  * A mini profit-and-loss statement, in the vocabulary a SaaS finance tool uses:
@@ -67,6 +70,9 @@ export type ProfitAndLoss = {
 };
 
 type PnlInput = {
+  opportunities?: CrmLiteOpportunity[];
+  receivableRecords?: OrderReceivableRecord[];
+  milestoneRecords?: OrderMilestoneRecord[];
   quotes: QuoteRecord[];
   expenses: ExpenseRecord[];
   period: PnlPeriod;
@@ -87,22 +93,26 @@ export function buildProfitAndLoss(input: PnlInput): ProfitAndLoss {
   // Balance items are as-of-now and share buildCashPosition's exact rules, so
   // the statement and the money-out panel can never disagree.
   const cash = buildCashPosition({
+    opportunities: input.opportunities || [],
+    receivableRecords: input.receivableRecords || [],
+    milestoneRecords: input.milestoneRecords || [],
     quotes: input.quotes,
     expenses: input.expenses,
     openingBalanceBase: getOpeningCashBalance(),
     today,
   });
 
-  const paidQuotesInPeriod = input.quotes.filter((quote) =>
-    !quote.__deleted
-    && quote.paymentStatus === 'Paid'
-    && inRange(collectionDate(quote), rangeStart, today));
+  const book = buildOrderBook({opportunities: input.opportunities || [], quotes: input.quotes,
+    milestoneRecords: input.milestoneRecords || [], receivableRecords: input.receivableRecords || [], linkage: 'explicit-id', today});
+  const eligibleIds = new Set(book.orders.map(order => order.opportunityId));
+  const receiptsInPeriod = (input.receivableRecords || []).filter(record => !record.__deleted && eligibleIds.has(record.opportunityId))
+    .flatMap(record => uniquePaymentReceipts(record.receipts)).filter(receipt => inRange(sanitizeBusinessDate(receipt.receivedOn), rangeStart, today));
   const paidExpensesInPeriod = input.expenses.filter((expense) =>
     expense.__deleted !== true
     && expense.status === 'Paid'
     && inRange(sanitizeBusinessDate(expense.expenseDate), rangeStart, today));
 
-  const revenueBase = sumMoney(paidQuotesInPeriod.map((quote) => ({ amount: quote.amount, currency: quote.currency })));
+  const revenueBase = sumMoney(receiptsInPeriod.map(receipt => ({amount: receipt.amount, currency: receipt.currency})));
   const expensesBase = sumMoney(paidExpensesInPeriod.map((expense) => ({ amount: expense.amount, currency: expense.currency })));
   const netProfitBase = revenueBase - expensesBase;
   const marginPct = revenueBase > 0 ? Math.round((netProfitBase / revenueBase) * 100) : null;
@@ -124,7 +134,7 @@ export function buildProfitAndLoss(input: PnlInput): ProfitAndLoss {
   // whether a conversion was possible at all, because the two need opposite
   // sentences. `sumMoney` silently drops what it cannot price.
   const periodCurrencies = [...new Set([
-    ...paidQuotesInPeriod.map((quote) => (quote.currency || '').trim().toUpperCase()),
+    ...receiptsInPeriod.map(receipt => (receipt.currency || '').trim().toUpperCase()),
     ...paidExpensesInPeriod.map((expense) => (expense.currency || '').trim().toUpperCase()),
   ])]
     .filter((currency) => currency && currency !== reportingCurrency)
@@ -134,7 +144,7 @@ export function buildProfitAndLoss(input: PnlInput): ProfitAndLoss {
   const excludedCurrencies = periodCurrencies.filter((currency) => !hasExchangeRate(currency));
   const isExcluded = (currency?: string | null) =>
     excludedCurrencies.includes((currency || '').trim().toUpperCase());
-  const excludedRecordCount = paidQuotesInPeriod.filter((quote) => isExcluded(quote.currency)).length
+  const excludedRecordCount = receiptsInPeriod.filter(receipt => isExcluded(receipt.currency)).length
     + paidExpensesInPeriod.filter((expense) => isExcluded(expense.currency)).length;
 
   return {
@@ -156,11 +166,6 @@ export function buildProfitAndLoss(input: PnlInput): ProfitAndLoss {
     excludedCurrencies,
     excludedRecordCount,
   };
-}
-
-/** The date a paid quote is recognised on - its payment due date, else its quote date. */
-function collectionDate(quote: QuoteRecord) {
-  return sanitizeBusinessDate(quote.paymentDueDate || quote.quoteDate);
 }
 
 function periodStart(period: PnlPeriod, today: string): string {

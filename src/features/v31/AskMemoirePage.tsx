@@ -1,5 +1,10 @@
+import { normalizeEntityName } from '../../utils/accountIdentity';
+import { buildKnowledgeGraph } from '../../utils/knowledgeGraph';
 import { matchCommands } from '../../utils/commandRegistry';
 import { interpretAskQuestion } from './askLanguage';
+import { answerKnowledgeQuestion } from '../../utils/knowledgeQuestions';
+import { buildAccountAliasIndex } from '../../utils/accountAliases';
+import { loadKnowledgeNotesForWorkspace } from '../../services/knowledgeNoteStore';
 import { selectQualifiedPipeline, disqualifiedLeadIds, isLeadStage } from '../../utils/leadIdentity';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
@@ -283,14 +288,31 @@ export function AskMemoirePage() {
     setError(null);
     setStatusMessage('');
 
+    const scopedIds = new Set(scopedMemory.opportunities.map(record => record.id));
+    const scopedAccountNames = new Set(scopedMemory.accounts.map(record => normalizeEntityName(record.name)));
+    const answerWorkspace = !rawWorkspace || scope === 'all' ? rawWorkspace : {
+      ...rawWorkspace,
+      opportunities: rawWorkspace.opportunities.filter(record => scopedIds.has(record.id)),
+      accounts: rawWorkspace.accounts.filter(record => scopedAccountNames.has(normalizeEntityName(record.accountName))),
+      activities: rawWorkspace.activities.filter(record => scopedAccountNames.has(normalizeEntityName(record.accountName || record.linkedAccountName || ''))),
+      quotes: rawWorkspace.quotes.filter(record => record.opportunityId ? scopedIds.has(record.opportunityId) : scope === 'account' && scopedAccountNames.has(normalizeEntityName(record.accountName))),
+      stakeholders: rawWorkspace.stakeholders.filter(record => scopedAccountNames.has(normalizeEntityName(record.accountName))),
+      objections: rawWorkspace.objections.filter(record => scopedAccountNames.has(normalizeEntityName(record.accountName))),
+      opportunityOutcomes: rawWorkspace.opportunityOutcomes.filter(record => scopedIds.has(record.opportunityId)),
+      receivableRecords: rawWorkspace.receivableRecords?.filter(record => scopedIds.has(record.opportunityId)),
+      milestoneRecords: rawWorkspace.milestoneRecords?.filter(record => scopedIds.has(record.opportunityId)),
+    };
     try {
       const command = matchCommands(nextQuestion).find(isLeadNavigationCommand);
       if (command) {
         setStatusMessage('Counted from your own records, on this device.');
-        setAnswer(answerFromLeadCommand(command, rawWorkspace));
+        setAnswer(answerFromLeadCommand(command, answerWorkspace));
         return;
       }
-      const fallbackAnswer = withAnswerCards(answerFromMemory(nextQuestion, contextPacket), nextQuestion, contextPacket);
+      const memoryAnswer = answerFromMemory(nextQuestion, contextPacket);
+      const fallbackAnswer = memoryAnswer.answer.startsWith('Memoire cannot answer')
+        ? { ...memoryAnswer, contextUsed: [], missingContext: ['A supported question or a named source record'], suggestedNextAction: undefined, suggestedQuestions: ['Where is the money?', 'What happened this week?'], cards: [] }
+        : withAnswerCards(memoryAnswer, nextQuestion, contextPacket);
       if (scope === 'all' && isAttentionQuestion(nextQuestion)) {
         setStatusMessage('Answered with local rule-based deal memory.');
         setAnswer(answerFromAttention({
@@ -310,7 +332,7 @@ export function AskMemoirePage() {
         setAnswer(answerFromChanges(
           whatChanged,
           contextPacket,
-          rawWorkspace ? namedAccountIn(nextQuestion, rawWorkspace.opportunities) ?? undefined : undefined,
+          answerWorkspace ? namedAccountIn(nextQuestion, answerWorkspace.opportunities) ?? undefined : undefined,
         ));
         return;
       }
@@ -321,16 +343,16 @@ export function AskMemoirePage() {
       }
       // Questions about the seller's own measured history are deterministic:
       // answer from the computed data layers, never from the AI endpoint.
-      const insightKind = rawWorkspace ? detectInsightQuestion(nextQuestion) : null;
+      const insightKind = answerWorkspace ? detectInsightQuestion(nextQuestion) : null;
       // Deal position needs to resolve which deal first; if it can't, fall
       // through to the normal answer path instead of guessing.
-      if (insightKind === 'deal_position' && rawWorkspace) {
-        const deal = resolveDealForQuestion(nextQuestion, rawWorkspace.opportunities, selectedOpportunityId);
+      if (insightKind === 'deal_position' && answerWorkspace) {
+        const deal = resolveDealForQuestion(nextQuestion, answerWorkspace.opportunities, selectedOpportunityId);
         if (!deal) {
           setStatusMessage('Choose a specific opportunity to avoid mixing customer records.');
           setAnswer({ answer: 'Chọn một Opportunity cụ thể để xem tình trạng / Choose a specific opportunity to see its position.',
             contextUsed: ['Opportunity identity'], missingContext: ['A specific opportunity'],
-            suggestedQuestions: rawWorkspace.opportunities.filter(opportunity => !isLeadStage(opportunity.stage)).slice(0, 5).map(opportunity => `Where do we stand on ${opportunity.opportunityName}?`) });
+            suggestedQuestions: answerWorkspace.opportunities.filter(opportunity => !isLeadStage(opportunity.stage)).slice(0, 5).map(opportunity => `Where do we stand on ${opportunity.opportunityName}?`) });
           return;
         }
         if (deal) {
@@ -338,18 +360,18 @@ export function AskMemoirePage() {
           setAnswer(answerFromDealPosition(
             buildCommercialJourneySnapshot({
               opportunity: deal,
-              quotes: rawWorkspace.quotes,
-              receivableRecords: rawWorkspace.receivableRecords,
-              milestoneRecords: rawWorkspace.milestoneRecords,
-              activities: rawWorkspace.activities,
-              objections: rawWorkspace.objections,
+              quotes: answerWorkspace.quotes,
+              receivableRecords: answerWorkspace.receivableRecords,
+              milestoneRecords: answerWorkspace.milestoneRecords,
+              activities: answerWorkspace.activities,
+              objections: answerWorkspace.objections,
             }),
             deal,
           ));
           return;
         }
       }
-      if (insightKind && insightKind !== 'deal_position' && rawWorkspace) {
+      if (insightKind && insightKind !== 'deal_position' && answerWorkspace) {
         setStatusMessage('Answered from your measured history (no AI involved).');
         const sample = hasLocalSampleData();
         const dataUserId = sample ? undefined : user?.id;
@@ -359,46 +381,46 @@ export function AskMemoirePage() {
           : [[], [], []];
         if (insightKind === 'follow_up_impact') {
           setAnswer(answerFromFollowUpImpact(buildFollowUpImpact({
-            activities: rawWorkspace.activities,
-            opportunities: rawWorkspace.opportunities,
-            opportunityOutcomes: rawWorkspace.opportunityOutcomes,
+            activities: answerWorkspace.activities,
+            opportunities: answerWorkspace.opportunities,
+            opportunityOutcomes: answerWorkspace.opportunityOutcomes,
           })));
         } else if (insightKind === 'objection_playbook') {
           setAnswer(answerFromObjectionPlaybook(buildObjectionPlaybook({
-            objections: rawWorkspace.objections,
-            opportunityOutcomes: rawWorkspace.opportunityOutcomes,
+            objections: answerWorkspace.objections,
+            opportunityOutcomes: answerWorkspace.opportunityOutcomes,
           })));
         } else if (insightKind === 'money_state') {
           // Both pools: the pipeline, and what is committed but not collected.
           setAnswer(answerFromMoneyFlow(
             buildMoneyFlow({
-              ...rawWorkspace,
+              ...answerWorkspace,
               receivableRecords, milestoneRecords,
             }),
             buildOrderBook({
-              opportunities: rawWorkspace.opportunities,
-              quotes: rawWorkspace.quotes,
+              opportunities: answerWorkspace.opportunities,
+              quotes: answerWorkspace.quotes,
               milestoneRecords, receivableRecords, costRecords,
-              outcomes: rawWorkspace.opportunityOutcomes,
+              outcomes: answerWorkspace.opportunityOutcomes,
             }),
           ));
         } else if (insightKind === 'week_recap') {
-          setAnswer(answerFromWeekRecap(rawWorkspace.activities));
+          setAnswer(answerFromWeekRecap(answerWorkspace.activities));
         } else if (insightKind === 'retention_check') {
           setAnswer(answerFromRetentionSignals(buildRetentionSignals({
-            receivableRecords: rawWorkspace.receivableRecords || [],
-            milestoneRecords: rawWorkspace.milestoneRecords || [],
-            quotes: rawWorkspace.quotes,
-            activities: rawWorkspace.activities,
-            opportunities: rawWorkspace.opportunities,
-            accounts: rawWorkspace.accounts,
+            receivableRecords: answerWorkspace.receivableRecords || [],
+            milestoneRecords: answerWorkspace.milestoneRecords || [],
+            quotes: answerWorkspace.quotes,
+            activities: answerWorkspace.activities,
+            opportunities: answerWorkspace.opportunities,
+            accounts: answerWorkspace.accounts,
           })));
         } else if (insightKind === 'commitments') {
           // Promises checked one week back and one week ahead of today.
           const today = todayDateKey();
           setAnswer(answerFromCommitments(buildCommitmentLedger({
-            opportunities: rawWorkspace.opportunities,
-            activities: rawWorkspace.activities,
+            opportunities: answerWorkspace.opportunities,
+            activities: answerWorkspace.activities,
             period: {
               start: addDaysToDateKey(today, -COMMITMENT_WINDOW_DAYS),
               end: addDaysToDateKey(today, COMMITMENT_WINDOW_DAYS),
@@ -406,28 +428,28 @@ export function AskMemoirePage() {
           }, today)));
         } else if (insightKind === 'initiative_review') {
           setAnswer(answerFromInitiativeReview(buildInitiativeReview({
-            operatingContexts: rawWorkspace.operatingContext,
-            activities: rawWorkspace.activities,
+            operatingContexts: answerWorkspace.operatingContext,
+            activities: answerWorkspace.activities,
           })));
         } else if (insightKind === 'awaiting_customer') {
           setAnswer(answerFromAwaitingCustomer(
             buildOrderBook({
-              opportunities: rawWorkspace.opportunities,
-              quotes: rawWorkspace.quotes,
+              opportunities: answerWorkspace.opportunities,
+              quotes: answerWorkspace.quotes,
               milestoneRecords, receivableRecords, costRecords,
-              outcomes: rawWorkspace.opportunityOutcomes,
+              outcomes: answerWorkspace.opportunityOutcomes,
             }),
-            buildMoneyFlow({ ...rawWorkspace, receivableRecords, milestoneRecords }),
+            buildMoneyFlow({ ...answerWorkspace, receivableRecords, milestoneRecords }),
           ));
         } else if (insightKind === 'own_obligations') {
           setAnswer(answerFromOwnObligations(
-            buildOwnObligations({ expenses: rawWorkspace.expenses, quotes: rawWorkspace.quotes }),
+            buildOwnObligations({ expenses: answerWorkspace.expenses, quotes: answerWorkspace.quotes }),
             // The same window the commitments answer uses. Two Ask answers
             // reporting different missed-promise counts for the same week is
             // exactly the disagreement this page exists to end.
             buildCommitmentLedger({
-              opportunities: rawWorkspace.opportunities,
-              activities: rawWorkspace.activities,
+              opportunities: answerWorkspace.opportunities,
+              activities: answerWorkspace.activities,
               period: {
                 start: addDaysToDateKey(todayDateKey(), -COMMITMENT_WINDOW_DAYS),
                 end: addDaysToDateKey(todayDateKey(), COMMITMENT_WINDOW_DAYS),
@@ -435,24 +457,31 @@ export function AskMemoirePage() {
             }, todayDateKey()),
           ));
         } else if (insightKind === 'customer_signals') {
-          setAnswer(answerFromCustomerSignals(buildCustomerSignalDigest({ activities: rawWorkspace.activities })));
+          setAnswer(answerFromCustomerSignals(buildCustomerSignalDigest({ activities: answerWorkspace.activities })));
         } else {
           setAnswer(answerFromForecastCalibration(buildForecastCalibration({
-            outcomes: rawWorkspace.opportunityOutcomes,
-            opportunities: rawWorkspace.opportunities,
+            outcomes: answerWorkspace.opportunityOutcomes,
+            opportunities: answerWorkspace.opportunities,
           })));
         }
         return;
+      }
+      if (answerWorkspace) {
+        const loadedKnowledge = await loadKnowledgeNotesForWorkspace(hasLocalSampleData() ? undefined : user?.id);
+        const baseGraph = buildKnowledgeGraph({...answerWorkspace, outcomes: answerWorkspace.opportunityOutcomes});
+        const knowledge = scope === 'all' ? loadedKnowledge : loadedKnowledge.filter(record => record.subjects.some(subject => baseGraph.byId.has(subject.nodeId)));
+        const knowledgeAnswer = answerKnowledgeQuestion(nextQuestion, {...answerWorkspace, outcomes: answerWorkspace.opportunityOutcomes, knowledge, accountAliases: buildAccountAliasIndex(answerWorkspace.accountMerges)});
+        if (knowledgeAnswer) { setStatusMessage('Answered from the same recorded knowledge as Business Vault.'); setAnswer(knowledgeAnswer); return; }
       }
       // The page is called Search & Insights and titled "Find anything". A
       // bare customer name is the first thing anyone types on a page called
       // Search, and it used to fall through to a summary of the whole
       // workspace that never mentioned the name typed. Checked last, so a
       // real question always keeps its own engine.
-      const found = rawWorkspace ? findRecords(nextQuestion, rawWorkspace.opportunities) : null;
+      const found = answerWorkspace ? findRecords(nextQuestion, answerWorkspace.opportunities) : null;
       if (found) {
         setStatusMessage('Found in your workspace - matched by name, on this device.');
-        setAnswer(answerFromRecordFind(found, rawWorkspace?.opportunityOutcomes));
+        setAnswer(answerFromRecordFind(found, answerWorkspace?.opportunityOutcomes));
         return;
       }
       // Answers are computed from your own workspace by rule, on this device.
@@ -464,7 +493,7 @@ export function AskMemoirePage() {
         console.debug('[Ask Memoire] answer build failed', { message: err instanceof Error ? err.message : 'Unknown error' });
       }
       setStatusMessage('There is not enough recorded yet to answer that from your workspace.');
-      setAnswer(withAnswerCards(answerFromMemory(nextQuestion, contextPacket), nextQuestion, contextPacket));
+      setAnswer({answer:'This question could not be answered from the current records. Try a supported question or open the source record.',contextUsed:[],missingContext:['Current source records'],suggestedQuestions:['Where is the money?','What happened this week?'],cards:[]});
     } finally {
       setLoading(false);
       // Deliberately NOT scrolled here. This runs inside the handler, before
@@ -870,7 +899,7 @@ function withAnswerCards(answer: AskMemoireAnswer, question: string, context: As
     : opportunity?.account_id
       ? `/app/accounts?accountId=${encodeURIComponent(opportunity.account_id)}`
       : undefined;
-  const opportunityHref = opportunity?.id ? '/app/opportunities' : undefined;
+  const opportunityHref = opportunity?.id ? `/app/opportunities?opportunityId=${encodeURIComponent(opportunity.id)}` : undefined;
 
   // Every card below is a single-customer briefing: it prints one Recipient,
   // one Current story, one Deal status, and fills them from five independently

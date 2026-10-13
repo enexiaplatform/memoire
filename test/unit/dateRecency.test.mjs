@@ -157,6 +157,7 @@ describe('the latest paid quote is the latest readable one', () => {
     opportunityName: 'Q3 supply',
     status: 'Accepted',
     paymentStatus: 'Paid',
+    paymentReceiptVerified: true,
     amount: over.amount,
     currency: 'USD',
     title: over.title,

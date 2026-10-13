@@ -171,6 +171,7 @@ export function loadSampleDataset(): SampleDataset {
 }
 
 export function clearSampleDataset() {
+  removeSampleRecords('memoire.brandWriteJournal.v1');
   removeSampleRecords(SALES_ACTIVITY_STORAGE_KEY);
   removeSampleRecords(OPPORTUNITY_STORAGE_KEY);
   removeSampleRecords(ACCOUNT_STORAGE_KEY);

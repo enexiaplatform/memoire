@@ -10,7 +10,7 @@ const deal = (patch = {}) => ({
   stage: 'Won',
   estimatedValue: 96000,
   currency: 'GBP',
-  expectedCloseDate: '2026-08-12',
+  closedOn: '2026-08-12',
   updatedAt: '2026-08-12T09:00:00.000Z',
   forecastEvidenceCategory: 'Defensible',
   decisionRecommendation: 'Defend',
