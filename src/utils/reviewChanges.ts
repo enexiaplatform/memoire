@@ -6,6 +6,7 @@ import type { CommercialEvent } from '../domain/commercialKernel/types.ts';
 import type { OrderReceivableRecord } from './receivables.ts';
 import type { WeeklyCommitmentSnapshot } from './weeklyCommitment.ts';
 import { closePeriodMoveDirection } from './closePeriod.ts';
+import { canonicalReviewOutcomes } from './outcomeScoreboard.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 import { convertMoney, formatCompactBaseAmount } from './money.ts';
 import { SILENCE_CRITICAL_DAYS } from './proactiveNudges.ts';
@@ -150,7 +151,7 @@ export function buildChangesSinceLastReview(input: ChangesInput): ChangesSinceLa
   const opportunities = input.opportunities.filter(real);
   const byId = new Map(opportunities.map((opportunity) => [opportunity.id, opportunity]));
   const events = input.events.filter(real).filter((event) => inWindow(timestampToLocalDateKey(event.occurredAt)));
-  const outcomes = input.opportunityOutcomes.filter(real);
+  const outcomes = canonicalReviewOutcomes(opportunities, input.opportunityOutcomes.filter(real));
   const lines: ChangeLine[] = [];
 
   const push = (line: Omit<ChangeLine, 'examples' | 'amountLabel'> & { names: string[] }) => {

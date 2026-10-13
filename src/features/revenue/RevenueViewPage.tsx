@@ -201,7 +201,7 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
               src/config/featureFlags.ts - the expense records themselves are
               untouched, still synced, and still exported. */}
           {BUSINESS_ACCOUNTING_ENABLED && (
-            <ProfitAndLossStatement quotes={data.quotes} expenses={expenses} />
+            <ProfitAndLossStatement quotes={data.quotes} expenses={expenses} opportunities={data.opportunities} receivableRecords={workspace?.receivableRecords} milestoneRecords={workspace?.milestoneRecords} />
           )}
           {consequences&&<CommercialValueWaitingPanel projection={consequences} opportunities={data.opportunities} />}
 

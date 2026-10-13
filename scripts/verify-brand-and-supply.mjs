@@ -154,7 +154,7 @@ import {
 {
   const coverage = readFileSync(new URL('../src/features/coverage/PortfolioCoveragePage.tsx', import.meta.url), 'utf8');
   assert.match(coverage, /buildCoverageMatrix/, 'the coverage page renders the coverage matrix');
-  assert.match(coverage, /Never taken to them/, 'the empty square keeps a label of its own');
+  assert.match(coverage, /No recorded deal/, 'the empty square keeps a label of its own');
 
   const vault = readFileSync(new URL('../src/features/vault/BusinessVaultPage.tsx', import.meta.url), 'utf8');
   assert.equal(
@@ -165,8 +165,8 @@ import {
 
   const matrix = buildCoverageMatrix({
     opportunities: [
-      { id: 'a', accountName: 'DP Lab', opportunityName: 'A', brand: 'Sartorius', status: 'Active', estimatedValue: 100, currency: 'VND', stage: 'Demo', pipelineProbability: null },
-      { id: 'b', accountName: 'Rohto', opportunityName: 'B', brand: 'Cobetter', status: 'Active', estimatedValue: 100, currency: 'VND', stage: 'Demo', pipelineProbability: null },
+      { id: 'a', accountName: 'DP Lab', opportunityName: 'A', brand: 'Sartorius', status: 'Won', estimatedValue: 100, currency: 'VND', stage: 'Won', pipelineProbability: null },
+      { id: 'b', accountName: 'Rohto', opportunityName: 'B', brand: 'Cobetter', status: 'Won', estimatedValue: 100, currency: 'VND', stage: 'Won', pipelineProbability: null },
     ],
   });
   assert.equal(matrix.totalCells, 4, 'every customer is measured against every line');

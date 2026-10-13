@@ -1,7 +1,7 @@
 export type CommercialStage = 'Draft' | 'Quoted' | 'Pending PO' | 'Pending delivery' | 'Pending payment' | 'Paid' | 'Closed';
 export type CommercialCheckpointRisk = 'PO follow-up' | 'Delivery overdue' | 'Payment overdue' | null;
 export type CommercialProgressAction = {
-  kind: 'receive-po' | 'schedule-delivery' | 'mark-delivered' | 'mark-paid';
+  kind: 'receive-po' | 'schedule-delivery' | 'mark-delivered' | 'record-payment';
   label: string;
   successMessage: string;
   nextAction: string;
@@ -14,13 +14,15 @@ export type CommercialProgress = {
   expectedDeliveryDate: string;
   paymentStatus: string;
   paymentDueDate: string;
+  /** Read-only evidence from the receipt ledger, never a quote editor choice. */
+  paymentReceiptVerified?: boolean;
 };
 
 export function getQuoteCommercialStage(quote: CommercialProgress): CommercialStage {
   if (quote.status === 'Draft') return 'Draft';
   if (quote.status === 'Sent' || quote.status === 'Revised') return 'Quoted';
   if (quote.status !== 'Accepted') return 'Closed';
-  if (quote.paymentStatus === 'Paid') return 'Paid';
+  if (quote.paymentReceiptVerified === true) return 'Paid';
   if (quote.deliveryStatus === 'Delivered') return 'Pending payment';
   if (quote.poStatus === 'Received') return 'Pending delivery';
   return 'Pending PO';
@@ -31,7 +33,7 @@ export function getCommercialCheckpointRisk(
   today = todayDateKey(),
 ): CommercialCheckpointRisk {
   if (quote.status !== 'Accepted') return null;
-  if (quote.poStatus === 'Received' && quote.deliveryStatus === 'Delivered' && quote.paymentStatus === 'Due' && isPast(quote.paymentDueDate, today)) return 'Payment overdue';
+  if (quote.poStatus === 'Received' && quote.deliveryStatus === 'Delivered' && quote.paymentReceiptVerified !== true && ['Due', 'Paid'].includes(quote.paymentStatus) && isPast(quote.paymentDueDate, today)) return 'Payment overdue';
   if (quote.poStatus === 'Received' && quote.deliveryStatus !== 'Delivered' && isPast(quote.expectedDeliveryDate, today)) return 'Delivery overdue';
   if (quote.poStatus === 'Pending') return 'PO follow-up';
   return null;
@@ -65,10 +67,10 @@ export function getNextCommercialProgressAction(quote: CommercialProgress): Comm
   }
   if (stage === 'Pending payment') {
     return {
-      kind: 'mark-paid',
-      label: 'Mark paid',
-      successMessage: 'Payment completed',
-      nextAction: '',
+      kind: 'record-payment',
+      label: 'Record payment',
+      successMessage: 'Open Collections to record a receipt',
+      nextAction: 'Record the receipt against this order in Collections.',
     };
   }
   return null;

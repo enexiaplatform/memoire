@@ -233,7 +233,7 @@ function buildRevenueNudges(actions: RevenueActionItem[], today: string) {
       recommendedAction: action.nextAction || 'Confirm the next commercial step.',
       urgency,
       dueDate: action.dueDate,
-      moneyAmount: action.amount,
+      moneyAmount: action.amount ?? undefined,
       moneyCurrency: action.currency,
       today,
     });

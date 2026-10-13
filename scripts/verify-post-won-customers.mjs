@@ -76,7 +76,7 @@ const activity = (accountName, activityDate) => ({ accountName, linkedAccountNam
     opportunities: [],
     opportunityOutcomes: [],
     quotes: [{
-      __deleted: false, accountName: 'Paid Co', deliveryStatus: 'Delivered', paymentStatus: 'Paid',
+      __deleted: false, accountName: 'Paid Co', deliveryStatus: 'Delivered', paymentStatus: 'Paid', paymentReceiptVerified: true,
       amount: 80_000_000, currency: 'VND', quoteDate: '2026-04-01', paymentDueDate: '2026-04-15',
     }],
     activities: [],

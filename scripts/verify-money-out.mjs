@@ -13,7 +13,7 @@ import { expenseCategories } from '../src/services/expenseStore.ts';
 
 const paidQuote = (amount, currency = 'VND') => ({
   __deleted: false, status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered',
-  paymentStatus: 'Paid', amount, currency, quoteDate: '2026-07-01', paymentDueDate: '2026-07-10',
+  paymentStatus: 'Paid', paymentReceiptVerified: true, amount, currency, quoteDate: '2026-07-01', paymentDueDate: '2026-07-10',
 });
 const awaitingQuote = (amount, currency = 'VND') => ({
   __deleted: false, status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered',
@@ -105,7 +105,7 @@ assert.ok(expenseCategories.includes('Cost of goods') && expenseCategories.inclu
 {
   const sample = readFileSync('src/utils/sampleData.ts', 'utf8');
   assert.ok(sample.includes('sampleExpense('), 'demo must seed sample expenses');
-  assert.ok(sample.includes("paymentStatus: 'Paid'"), 'demo must include a collected (paid) quote');
+  assert.ok(sample.includes('createPaymentReceipt('), 'demo collection must be supported by a fictional receipt');
 }
 
 console.log('Money-out and cash-position contract verified.');

@@ -90,6 +90,7 @@ import { formatCount } from '../../utils/numberFormat';
 import { useModalDrawer } from '../../hooks/useModalDrawer';
 import { matchesSearchQuery } from '../../utils/textSearch';
 import { normalizeEntityName } from '../../utils/accountIdentity.ts';
+import { stakeholderRoleLabel } from '../../utils/stakeholderRoleLabel';
 import { buildAccountGlance, type AccountGlance } from '../../utils/accountGlance.ts';
 import { disqualifiedLeadIds, isLeadStage } from '../../utils/leadQueue.ts';
 import { MicroLabel, Panel } from '../../components/ui/daylight';
@@ -1855,9 +1856,9 @@ function AccountCommercialLoop({ memory, quotes, flow }: { memory: AccountMemory
         ))}
       </div>
       <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-line-soft px-4 py-3 text-xs font-bold">
-        <Link to="/app/opportunities" className="text-brand-blue hover:underline">Open opportunities</Link>
+        <Link to={`/app/opportunities?account=${encodeURIComponent(memory.account.accountName)}`} className="text-brand-blue hover:underline">Open opportunities</Link>
         <Link to={`/app/quotes?accountName=${encodeURIComponent(memory.account.accountName)}`} className="text-brand-blue hover:underline">Open quotes</Link>
-        <Link to="/app/revenue" className="text-brand-blue hover:underline">Open revenue</Link>
+        <Link to={`/app/cash-collection?accountName=${encodeURIComponent(memory.account.accountName)}`} className="text-brand-blue hover:underline">Open customer collections</Link>
       </div>
     </section>
   );
@@ -1915,7 +1916,7 @@ function buildAccountNextAction({
 }): AccountNextAction {
   const accountName = memory.account.accountName;
   const stuck=flow?.stuckThreads[0];
-  if(stuck)return {title:stuck.nextAction,reason:stuck.stuckReason,cta:'Open collections',href:'/app/collections',tone:'amber',badge:stuck.stage};
+  if(stuck)return {title:stuck.nextAction,reason:stuck.stuckReason,cta:'Open collections',href:`/app/revenue?view=collections&accountName=${encodeURIComponent(accountName)}`,tone:'amber',badge:stuck.stage};
   const actionQuotes = [...quotes]
     .filter((quote) => ['Sent', 'Revised'].includes(quote.status))
     .sort((left, right) => quoteActionRank(right) - quoteActionRank(left) || compareSafeBusinessDate(left.validUntil, right.validUntil));
@@ -2218,7 +2219,7 @@ function AccountPeopleTab({
             <div key={stakeholder.id} className="rounded-lg bg-white p-3 ring-1 ring-gray-100">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <p className="text-sm font-bold text-ink">{stakeholder.name}</p>
-                <Badge label={stakeholder.stakeholderRole} tone={stakeholder.stakeholderRole === 'Blocker' ? 'red' : 'blue'} />
+                <Badge label={stakeholderRoleLabel(stakeholder)} tone={stakeholder.stakeholderRole === 'Blocker' ? 'red' : 'blue'} />
               </div>
               {stakeholder.roleTitle && <p className="mt-0.5 text-xs text-gray-500">{stakeholder.roleTitle}</p>}
               <p className="mt-1 text-xs font-semibold text-gray-500">
@@ -2358,7 +2359,7 @@ function AccountCoverageTab({ accountName }: { accountName: string }) {
     <section className="rounded-lg border border-line-soft bg-gray-50 p-4">
       <p className="text-xs font-bold uppercase tracking-wide text-gray-400">Line coverage</p>
       <p className="mt-2 text-sm leading-6 text-gray-600">
-        Which of your lines this customer has been quoted, has bought, and has never been offered.
+        Recorded Leads, quotes and purchases for this customer, including catalog lines with no recorded deal.
       </p>
       <Link
         to={`/app/portfolio-coverage?accountName=${encodeURIComponent(accountName)}`}
@@ -2400,7 +2401,7 @@ function AccountQuotesSection({ accountName, quotes }: { accountName: string; qu
             View all quotes
           </Link>
           <Link
-            to="/app/revenue"
+            to={`/app/revenue?view=collections&accountName=${encodeURIComponent(accountName)}`}
             className="inline-flex w-fit rounded-full border border-cyan-200 bg-white px-3 py-1.5 text-xs font-bold text-cyan-700"
           >
             Revenue view

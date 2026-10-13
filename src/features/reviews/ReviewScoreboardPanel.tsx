@@ -12,7 +12,7 @@ import {
 } from '../../services/commercialKernel/targetStore';
 import {
   buildOutcomeScoreboard,
-  deriveOutcomesFromClosedDeals,
+  canonicalReviewOutcomes,
   type ScoreboardPeriodKind,
   type ScoreboardRange,
   type TargetProgress,
@@ -97,10 +97,7 @@ export function ReviewScoreboardPanel({
     // Retros first, and the closed deals nobody wrote one for alongside them -
     // otherwise this reads "nothing closed" over a won deal, while the Business
     // page counts it. See `deriveOutcomesFromClosedDeals`.
-    outcomes: [
-      ...(workspace?.opportunityOutcomes || []),
-      ...deriveOutcomesFromClosedDeals(workspace?.opportunities || [], workspace?.opportunityOutcomes || []),
-    ],
+    outcomes: canonicalReviewOutcomes(workspace?.opportunities || [], workspace?.opportunityOutcomes || []),
     quotes: workspace?.quotes || [],
     activities: workspace?.activities || [],
     targets,
@@ -159,6 +156,8 @@ export function ReviewScoreboardPanel({
         </div>
       </div>
 
+      {board.undatedClosedCount > 0 && <p className="mx-5 mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{board.undatedClosedCount} closed records have no actual close date. They are excluded from period totals until a date is recorded.</p>}
+      {(board.won.missingValueCount > 0 || board.lost.missingValueCount > 0) && <p className="mx-5 mt-3 text-sm text-amber-800">Period amounts are partial: {board.won.missingValueCount + board.lost.missingValueCount} records need an amount, currency or exchange rate.</p>}
       <div className="grid gap-4 p-5 lg:grid-cols-[minmax(0,340px)_1fr]">
         <div>
           <p className="text-[11px] font-bold uppercase tracking-wide text-gray-400">
@@ -229,6 +228,7 @@ export function ReviewScoreboardPanel({
         </div>
 
         <div className="flex flex-col gap-3">
+          {board.targetValuesUnavailable > 0 && <p role="status" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-800">{board.targetValuesUnavailable} target values cannot be converted. Confirm their currency and exchange rate before relying on attainment.</p>}
           {board.hasTargets ? (
             <>
               {board.quarter && <TargetBar progress={board.quarter} emphasis />}
@@ -241,7 +241,7 @@ export function ReviewScoreboardPanel({
             <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 p-4">
               <div className="flex items-center gap-2">
                 <TargetIcon className="h-4 w-4 text-brand-blue" />
-                <p className="text-sm font-bold text-ink">No target to score against yet</p>
+                <p className="text-sm font-bold text-ink">{board.targetValuesUnavailable ? 'Target value unavailable' : 'No target to score against yet'}</p>
               </div>
               <p className="mt-1 text-sm leading-6 text-gray-600">
                 {board.verdict} Memoire already knows what closed and when; give it the number you are measured

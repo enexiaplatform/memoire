@@ -51,7 +51,7 @@ export function buildRetentionSignals(input: RetentionSignalsInput): RetentionSi
   const book=input.receivableRecords===undefined?null:buildOrderBook({opportunities,quotes:input.quotes,receivableRecords:input.receivableRecords,milestoneRecords:input.milestoneRecords||[],linkage:'explicit-id',today});
   const settledIds=new Set(book?buildReceivables({orders:book.orders,records:input.receivableRecords||[],today}).orders.filter(order=>order.settled).map(order=>order.opportunityId):[]);
   const paidQuotes = (input.quotes || [])
-    .filter((quote) => !quote.__deleted && quote.status === 'Accepted' && (book?Boolean(quote.opportunityId&&settledIds.has(quote.opportunityId)):quote.paymentStatus === 'Paid'));
+    .filter((quote) => !quote.__deleted && quote.status === 'Accepted' && (book?Boolean(quote.opportunityId&&settledIds.has(quote.opportunityId)):quote.paymentReceiptVerified === true));
 
   const latestPaidByAccount = new Map<string, QuoteRecord>();
   paidQuotes.forEach((quote) => {

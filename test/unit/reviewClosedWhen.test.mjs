@@ -29,14 +29,14 @@ describe('a review says what the week produced, not what was edited in it', () =
     assert.equal(derive({ closedOn: '2026-03-06' }).outcomeDate, '2026-03-06');
   });
 
-  test('a close period that is a real date is used when there is no close date', () => {
-    assert.equal(derive({ expectedClosePeriod: '2026-04-22' }).outcomeDate, '2026-04-22');
+  test('an expected close date does not invent the actual close date', () => {
+    assert.equal(derive({ expectedClosePeriod: '2026-04-22' }).outcomeDate, '');
   });
 
   test('a quarter label is not a day and is not treated as one', () => {
     const result = derive({ expectedClosePeriod: 'Q3 2026' });
     assert.notEqual(result.outcomeDate, 'Q3 2026');
-    assert.match(result.outcomeDate, /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(result.outcomeDate, '');
   });
 
   test('the close date beats the close period when both are present', () => {
@@ -46,9 +46,9 @@ describe('a review says what the week produced, not what was edited in it', () =
     );
   });
 
-  test('with nothing recorded it still falls back to the edit, as before', () => {
+  test('without a close date, later edits leave the close date unknown', () => {
     const result = derive({});
-    assert.match(result.outcomeDate, /^\d{4}-\d{2}-\d{2}$/);
+    assert.equal(result.outcomeDate, '');
   });
 
   test('an open deal is not an outcome', () => {

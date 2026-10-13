@@ -144,7 +144,7 @@ assert.equal(detectInsightQuestion('Which deals may go silent?'), null, 'silent 
     id: 'q-paid', quoteId: 'Q-1', accountName: 'Retention Pharma', opportunityId: '', opportunityName: 'Analyzer order',
     title: 'Analyzer order', quoteDate: '2026-05-15', validUntil: '2026-06-15', amount: 250_000_000, currency: 'VND',
     grossMarginEstimate: null, discount: null, paymentTerm: '', status: 'Accepted', poStatus: 'Received',
-    deliveryStatus: 'Delivered', expectedDeliveryDate: '', paymentStatus: 'Paid', paymentDueDate: '',
+    deliveryStatus: 'Delivered', expectedDeliveryDate: '', paymentStatus: 'Paid', paymentReceiptVerified: true, paymentDueDate: '',
     nextAction: '', notes: '', createdAt: '', updatedAt: '',
   };
   const oldTouch = {

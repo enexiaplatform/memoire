@@ -1,0 +1,342 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 4 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "4 open": "4"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 4 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Money
+  - heading "Orders" [level=1]
+  - generic: Committed orders, followed from contract to money in the bank. Today owns the priority order.
+  - tablist "Money view":
+    - tab "Orders" [selected]
+    - tab "Collections"
+    - tab "Margin"
+  - button "Reload orders from cloud":
+  - region "Money at risk":
+    - heading "Money at risk" [level=2]
+    - generic: 2 exceptions · 21.2K USD exposed
+    - generic "Exceptions by kind":
+      - generic: Invoice overdue · 1
+      - generic: Payment date needs confirmation · 1
+    - list:
+      - generic: Summit Diagnostics
+      - generic: Invoice overdue
+      - generic: Q-DEMO-SUMMIT-01
+      - paragraph: Chase payment with Summit Diagnostics
+      - paragraph: "What happened: 21.2K USD is 3 days past due on Due on delivery. Why it matters: Money that is late gets later. Every week unchased is working capital you are lending the customer."
+      - generic "What this is based on"
+      - generic: 21.2K USD
+      - link "Open":
+        - /url: /app/opportunities?opportunityId=demo-opp-summit-diagnostics-qc-workflow
+      - generic: Orion Pharma
+      - generic: Payment date needs confirmation
+      - generic: Q-DEMO-ORION-01
+      - paragraph: Confirm PO, payment terms and trigger date
+      - paragraph: "What happened: The planning schedule is past its estimated date; the due date is not confirmed. Why it matters: A collection request needs agreed terms and the actual trigger date."
+      - generic "What this is based on"
+      - link "Open":
+        - /url: /app/opportunities?opportunityId=demo-opp-orion-pharma-tender
+  - heading "Order book" [level=2]
+  - paragraph: Expected orders (90%+, procurement, or won); Contract / PO confirms the order, each one followed from contract to cash. Status comes from what the records already prove; tick the steps no document will ever prove. Stage totals show full order value; Collections shows receipts and remaining cash to collect.
+  - generic: "Unsettled orders: 55.8K USD"
+  - generic: 1 overdue
+  - generic: 2 settled orders
+  - button "All orders 4 85K USD" [pressed]:
+    - paragraph: All orders
+    - paragraph: "4"
+    - paragraph: 85K USD
+  - button "To confirm 1 34.6K USD":
+    - paragraph: To confirm
+    - paragraph: "1"
+    - paragraph: 34.6K USD
+  - button "Deposit due 0 —":
+    - paragraph: Deposit due
+    - paragraph: "0"
+    - paragraph: —
+  - button "To deliver 0 —":
+    - paragraph: To deliver
+    - paragraph: "0"
+    - paragraph: —
+  - button "To invoice 0 —":
+    - paragraph: To invoice
+    - paragraph: "0"
+    - paragraph: —
+  - button "Awaiting payment 1 25K USD · 1 late":
+    - paragraph: Awaiting payment
+    - paragraph: "1"
+    - paragraph:
+      - text: 25K USD
+      - generic: · 1 late
+  - button "Settled orders 2 25.4K USD":
+    - paragraph: Settled orders
+    - paragraph: "2"
+    - paragraph: 25.4K USD
+  - textbox:
+    - /placeholder: Search order, customer, reference...
+  - button "Late only (1)"
+  - paragraph: 4 of 4
+  - table:
+    - rowgroup:
+      - row "Order Ordered Value Status Next step Waiting Steps":
+        - columnheader "Order"
+        - columnheader "Ordered"
+        - columnheader "Value"
+        - columnheader "Status"
+        - columnheader "Next step"
+        - columnheader "Waiting"
+        - columnheader "Steps"
+    - rowgroup:
+      - row "Summit Diagnostics Q-DEMO-SUMMIT-01 · QC workflow Oct 10, 2026 650,000,000 VND Due on delivery Awaiting payment Collected Late since Oct 11, 2026 3d since it moved 3 of 4 steps done":
+        - cell "Summit Diagnostics Q-DEMO-SUMMIT-01 · QC workflow":
+          - paragraph: Summit Diagnostics
+          - paragraph: Q-DEMO-SUMMIT-01 · QC workflow
+        - cell "Oct 10, 2026"
+        - cell "650,000,000 VND Due on delivery":
+          - paragraph: 650,000,000 VND
+          - paragraph: Due on delivery
+        - cell "Awaiting payment"
+        - cell "Collected Late since Oct 11, 2026":
+          - paragraph: Collected
+          - paragraph: Late since Oct 11, 2026
+        - cell "3d since it moved":
+          - paragraph: 3d
+          - paragraph: since it moved
+        - cell "3 of 4 steps done":
+          - generic "3 of 4 steps done":
+            - generic: 3 of 4 steps done
+      - row "Orion Pharma Q-DEMO-ORION-01 · Procurement review Oct 6, 2026 900,000,000 VND 50% with PO, 50% after delivery To confirm Contract / PO No date on the record 7d since it moved 0 of 5 steps done":
+        - cell "Orion Pharma Q-DEMO-ORION-01 · Procurement review":
+          - paragraph: Orion Pharma
+          - paragraph: Q-DEMO-ORION-01 · Procurement review
+        - cell "Oct 6, 2026"
+        - cell "900,000,000 VND 50% with PO, 50% after delivery":
+          - paragraph: 900,000,000 VND
+          - paragraph: 50% with PO, 50% after delivery
+        - cell "To confirm"
+        - cell "Contract / PO No date on the record":
+          - paragraph: Contract / PO
+          - paragraph: No date on the record
+        - cell "7d since it moved":
+          - paragraph: 7d
+          - paragraph: since it moved
+        - cell "0 of 5 steps done":
+          - generic "0 of 5 steps done":
+            - generic: 0 of 5 steps done
+      - row "Northstar Foods Q-DEMO-NORTHSTAR-AUDIT · Line audit service Oct 3, 2026 480,000,000 VND Paid on delivery Collected Money in the bank 7d since it moved 4 of 4 steps done":
+        - cell "Northstar Foods Q-DEMO-NORTHSTAR-AUDIT · Line audit service":
+          - paragraph: Northstar Foods
+          - paragraph: Q-DEMO-NORTHSTAR-AUDIT · Line audit service
+        - cell "Oct 3, 2026"
+        - cell "480,000,000 VND Paid on delivery":
+          - paragraph: 480,000,000 VND
+          - paragraph: Paid on delivery
+        - cell "Collected"
+        - cell "Money in the bank":
+          - paragraph: Money in the bank
+        - cell "7d since it moved":
+          - paragraph: 7d
+          - paragraph: since it moved
+        - cell "4 of 4 steps done":
+          - generic "4 of 4 steps done":
+            - generic: 4 of 4 steps done
+      - row "Northstar Foods Q-DEMO-NORTHSTAR-02 · Reagent resupply Oct 3, 2026 180,000,000 VND Paid on delivery Collected Money in the bank 7d since it moved 4 of 4 steps done":
+        - cell "Northstar Foods Q-DEMO-NORTHSTAR-02 · Reagent resupply":
+          - paragraph: Northstar Foods
+          - paragraph: Q-DEMO-NORTHSTAR-02 · Reagent resupply
+        - cell "Oct 3, 2026"
+        - cell "180,000,000 VND Paid on delivery":
+          - paragraph: 180,000,000 VND
+          - paragraph: Paid on delivery
+        - cell "Collected"
+        - cell "Money in the bank":
+          - paragraph: Money in the bank
+        - cell "7d since it moved":
+          - paragraph: 7d
+          - paragraph: since it moved
+        - cell "4 of 4 steps done":
+          - generic "4 of 4 steps done":
+            - generic: 4 of 4 steps done
+  - paragraph: In motion
+  - paragraph: 185.4K USD
+  - paragraph: 6 quoted of 7
+  - paragraph: Active pipeline
+  - paragraph: 164.2K USD
+  - paragraph: Active qualified Opportunities; Leads stay separate until qualified
+  - paragraph: At risk
+  - paragraph: 165.4K USD
+  - paragraph: Contract exposure at risk; Collections shows cash still owed
+  - paragraph: Overdue follow-ups
+  - paragraph: "2"
+  - paragraph: On deals and quotes
+  - region "Coverage":
+    - heading "Coverage" [level=2]
+    - paragraph: Won plus probability-weighted supported pipeline against target. Evidence-qualified coverage is a separate, stricter reading.
+    - button "Edit targets"
+    - paragraph: Q4 · 80 days left
+    - paragraph: Short by 29.1K USD
+    - paragraph: 50.4K USD won plus 16.7K USD evidence-backed, against a 96.2K USD target (70%). There is still time to change this.
+    - paragraph: FY2026. 1 undated records and 0 records with missing amount, currency or rate excluded. Won value uses actual close-out dates and amounts; historical and future years remain in their own periods.
+    - paragraph:
+      - text: Q1
+      - generic: 0%
+    - paragraph: 96.2K USD
+    - term: Won
+    - definition: 0 USD
+    - term: Weighted
+    - definition: 0 USD
+    - paragraph:
+      - text: Q2
+      - generic: 0%
+    - paragraph: 96.2K USD
+    - term: Won
+    - definition: 0 USD
+    - term: Weighted
+    - definition: 0 USD
+    - paragraph:
+      - text: Q3
+      - generic: 23%
+    - paragraph: 96.2K USD
+    - term: Won
+    - definition: 22.3K USD
+    - term: Weighted
+    - definition: 0 USD
+    - paragraph:
+      - text: Q4
+      - generic: 70%
+    - paragraph: 96.2K USD
+    - term: Won
+    - definition: 50.4K USD
+    - term: Weighted
+    - definition: 16.7K USD
+    - term: Declared
+    - definition: 18.7K USD
+    - heading "311.9K USD of target with no qualified deal behind it" [level=3]
+    - paragraph: "Across 4 quarters. A deal backs a forecast when it scores 75% or more on qualification and has both a champion and an economic buyer. Everything else is counted at zero here, however large it is — which is the point: a number nothing qualifies is the thing worth seeing before the quarter ends, not after."
+    - list:
+      - generic: Tailin
+      - generic: 1 deal not yet qualified
+      - generic: 20K USD
+      - generic: Scitek
+      - generic: 1 deal not yet qualified
+      - generic: 17.3K USD
+    - heading "2K USD of forecast the evidence does not support" [level=3]
+    - paragraph:
+      - text: These are marked down from the probability you declared, because nothing in the record backs it up any more. Memoire never marks a deal
+      - emphasis: up
+      - text: "- that judgement is yours."
+    - list:
+      - link "Apex Labs":
+        - /url: /app/opportunities?opportunityId=demo-opp-apex-service-renewal
+      - generic: Validated decontamination service renewal
+      - generic: 50% → 40%
+      - generic: (No open commitment to move it)
+      - generic: −2K USD
+  - region "What the number asks of you":
+    - heading "What the number asks of you" [level=2]
+    - paragraph: Your rates, not a benchmark
+    - paragraph: Short by 29.1K USD with 80 days left. On your own win rate and deal size that is 4 more deals in play - about 0.3 a week from here.
+    - paragraph: Wins needed
+    - paragraph: "3"
+    - paragraph: deals that must close Won
+    - paragraph: Pipeline needed
+    - paragraph: 48.5K USD
+    - paragraph: at your own win rate
+    - paragraph: Deals in play
+    - paragraph: "4"
+    - paragraph: about 0.3 a week
+    - paragraph: Quotes to issue
+    - paragraph: —
+    - paragraph: needs your quote conversion
+    - list:
+      - link "Put the evidence back under what you already forecast":
+        - /url: /app/opportunities?filter=needsAction
+        - text: Put the evidence back under what you already forecast
+      - generic: 2K USD
+      - paragraph: Across the forecast year, 1 deal are counted at a probability the records no longer support. Review their evidence and close dates before relying on them for this quarter.
+      - link "Move what is already in the quarter":
+        - /url: /app/opportunities
+        - text: Move what is already in the quarter
+      - generic: 37.3K USD
+      - paragraph: Deals already landing in this quarter, ranked by what is stuck.
+      - link "The shortest new conversations you have":
+        - /url: /app/vault
+        - text: The shortest new conversations you have
+      - paragraph: 2 customers with recorded Won deals have no recorded deal for 5 of your lines. Review their history and fit before starting a new conversation.
+      - link "Open new deals":
+        - /url: /app/capture?mode=quick
+        - text: Open new deals
+      - paragraph: New pipeline, at the weekly rate above.
+    - paragraph:
+      - text: Some of this is still blank because Memoire does not know your sales cycle and how often a quote of yours converts yet. Record the outcome of each deal you close and the missing numbers fill in on their own -
+      - link "see what is still needed":
+        - /url: /app/reviews?view=analytics
+      - text: .
+  - heading "Your principals" [level=2]
+  - paragraph: "The supply side of the same order. What you owe the brand - forecasts, POs, payment - and what the brand owes you: pricing, samples, documents, a ship date. A deal waiting on a principal is not a customer problem."
+  - button "Record":
+    - text: Record
+  - paragraph: Nothing recorded with a principal yet. Record the forecast you owe them, or the price you are waiting on, and it joins your week like any other commitment.
+  - generic "Commercial risk list 4 items to review":
+    - generic: Commercial risk list
+    - generic: 4 items to review
+  - generic "Money flow Every thread in one lifecycle · in motion 185.4K USD":
+    - generic: Money flow
+    - generic: Every thread in one lifecycle · in motion 185.4K USD
+  - generic "Value in motion Threads carrying money, quietest first":
+    - generic: Value in motion
+    - generic: Threads carrying money, quietest first
+  - generic "Route intelligenceWhich routes make money. 11 routes · win rate and money at stake":
+    - generic: Route intelligenceWhich routes make money.
+    - generic: 11 routes · win rate and money at stake

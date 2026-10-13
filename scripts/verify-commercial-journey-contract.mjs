@@ -105,7 +105,7 @@ function makeQuote(patch = {}) {
 // 5. Solo journey head (direction 7.3): the same derived state in the solo
 // operator's language. Money in motion speaks first; the stage speaks before.
 {
-  const paidQuote = makeQuote({ status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid', paymentDueDate: '' });
+  const paidQuote = makeQuote({ status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid', paymentReceiptVerified: true, paymentDueDate: '' });
   const quoted = buildCommercialJourneySnapshot({
     opportunity: makeOpportunity(), quotes: [makeQuote({ status: 'Sent', poStatus: 'None', deliveryStatus: 'Pending', paymentStatus: 'Not requested', paymentDueDate: '' })],
     activities: [makeActivity()], objections: [], today,

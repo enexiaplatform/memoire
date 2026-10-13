@@ -1,6 +1,6 @@
 .report-table th, .report-table td { padding: .75rem; border-bottom: 1px solid var(--border); vertical-align: top; }
 .report-table th { background: var(--page); color: var(--fg3); font-size: .6875rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
-.report-table td { max-width: 24rem; overflow-wrap: anywhere; }
+.report-table td { min-width: 9rem; max-width: 24rem; overflow-wrap: anywhere; }
 .report-table a { color: var(--brand-blue-dark); font-weight: 600; }
 .report-print { display: none; }
 @media print {
@@ -9,6 +9,7 @@
   .report-print h1 { font-size: 20pt; margin-bottom: 8mm; }
   .report-print p, .report-print footer { margin: 3mm 0; overflow-wrap: anywhere; }
   .report-print .report-table { table-layout: fixed; width: 100%; font-size: 8pt; }
+  .report-print .report-table td { min-width: 0; }
   .report-print .report-table th { background: white; color: black; font-size: 8pt; }
   .report-print thead { display: table-header-group; }
   .report-print tr { break-inside: avoid; }

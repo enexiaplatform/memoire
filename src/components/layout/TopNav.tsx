@@ -75,7 +75,7 @@ export function TopNav({ onOpenMenu }: { onOpenMenu: () => void }) {
         {!page.replacesSearch && (
           <>
             <span className="hidden truncate text-[13.5px] sm:inline">Search accounts, deals, notes</span>
-            <kbd className="ml-auto hidden font-mono text-[11px] font-normal lg:inline">&#8984;K</kbd>
+            <kbd className="ml-auto hidden font-mono text-[11px] font-normal lg:inline">{typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform) ? '⌘K' : 'Ctrl+K'}</kbd>
           </>
         )}
       </button>

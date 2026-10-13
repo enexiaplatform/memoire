@@ -1,7 +1,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import '../support/reportingCurrency.mjs';
-import { buildProfitAndLoss } from '../../src/utils/pnl.ts';
+import { buildProfitAndLoss as derivePnl } from '../../src/utils/pnl.ts';
 
 const quote = (overrides = {}) => ({
   id: `q-${Math.random().toString(36).slice(2)}`,
@@ -18,6 +18,12 @@ const expense = (overrides = {}) => ({
   status: 'Paid', expenseDate: '2026-07-06', dueDate: '', __deleted: false, ...overrides,
 });
 
+function buildProfitAndLoss(data) {
+ const quotes=data.quotes.map(quote=>({...quote,opportunityId:quote.id}));
+ const opportunities=quotes.filter(quote=>!quote.__deleted).map(quote=>({id:quote.id,accountName:quote.accountName,opportunityName:quote.title,status:'Won',stage:'Won',estimatedValue:quote.amount,currency:quote.currency,updatedAt:'2026-07-01T00:00:00Z'}));
+ const receivableRecords=quotes.filter(quote=>quote.paymentStatus==='Paid'&&!quote.__deleted).map(quote=>({id:'receivable-'+quote.id,opportunityId:quote.id,installments:[],receipts:[{id:'receipt-'+quote.id,amount:quote.amount,currency:quote.currency,receivedOn:quote.paymentDueDate||quote.quoteDate,method:'[SIMULATED] transfer',note:''}],deliveredOn:'',invoicedOn:'',note:'',createdAt:'2026-07-01T00:00:00Z',updatedAt:'2026-07-01T00:00:00Z'}));
+ return derivePnl({...data,quotes,opportunities,receivableRecords});
+}
 describe('buildProfitAndLoss', () => {
   test('nets paid revenue against paid cost for the month to date', () => {
     const pnl = buildProfitAndLoss({

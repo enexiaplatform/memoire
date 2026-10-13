@@ -72,9 +72,11 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
   const [loading, setLoading] = useState(!cached);
   const [syncing, setSyncing] = useState(false);
   const [loadError, setLoadError] = useState('');
-  const [filter, setFilter] = useState<'open' | 'overdue' | 'all'>('open');
   const [searchParams, setSearchParams] = useSearchParams();
-  const [expandedId, setExpandedId] = useState(searchParams.get('orderId') || '');
+  const [filter, setFilter] = useState<'open' | 'overdue' | 'all'>(() => searchParams.has('accountName') || searchParams.has('opportunityId') ? 'all' : 'open');
+  const accountScope = searchParams.get('accountName') || '';
+  const opportunityScope = searchParams.get('opportunityId') || '';
+  const [expandedId, setExpandedId] = useState(searchParams.get('orderId') || searchParams.get('opportunityId') || '');
 
   useEffect(() => {
     if (authLoading) return;
@@ -127,11 +129,12 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
     if (loadError) return { summary: empty, calculationError: '' };
     try {
       const book = buildOrderBook({ opportunities, quotes, milestoneRecords, costRecords, outcomes, receivableRecords: records, today });
-      return { summary: buildReceivables({ orders: book.orders, records, today }), calculationError: '' };
+      const scopedOrders = book.orders.filter(order => (!accountScope || order.accountName === accountScope) && (!opportunityScope || order.opportunityId === opportunityScope));
+      return { summary: buildReceivables({ orders: scopedOrders, records, today }), calculationError: '' };
     } catch (error) {
       return { summary: empty, calculationError: error instanceof Error ? error.message : 'Resolve the collection data before using totals.' };
     }
-  }, [costRecords, milestoneRecords, opportunities, outcomes, quotes, records, today, loadError]);
+  }, [costRecords, milestoneRecords, opportunities, outcomes, quotes, records, today, loadError, accountScope, opportunityScope]);
 
   useEffect(() => {
     const refresh = () => { try { setRecords(loadOrderReceivables()); } catch (error) { setLoadError(error instanceof Error ? error.message : 'Collections could not be loaded.'); } };
@@ -205,6 +208,10 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
            */
       />
 
+      {(accountScope || opportunityScope) && <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm">
+        <span>Showing {accountScope || opportunities.find(row => row.id === opportunityScope)?.opportunityName || 'the selected order'} only.</span>
+        <button type="button" className="font-bold text-blue-700" onClick={() => { const next = new URLSearchParams(searchParams); next.delete('accountName'); next.delete('opportunityId'); setSearchParams(next); }}>Show all collections</button>
+      </div>}
       {loading ? (
         <SkeletonScreen label="Loading cash collection">
           <SkeletonCard lines={4} />

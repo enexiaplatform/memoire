@@ -5,13 +5,13 @@ export type ReportRow = { id: string; values: Partial<Record<ReportField, Report
 export type ReportMeasure = { value: number | null; missing: number; denominator?: number };
 export type ReportGroup = { key: string; labels: string[]; sourceIds: string[]; metrics: Partial<Record<ReportMetric, ReportMeasure>> };
 /** The rows that actually supply a selected measure, rather than its full scope. */
-export function reportMetricContributors(metric: ReportMetric, rows: ReportRow[]): ReportRow[] {
+export function reportMetricContributors(metric: ReportMetric, rows: ReportRow[], nonZero = false): ReportRow[] {
   if (metric === 'recordCount') return rows;
   if (metric === 'pipeline' || metric === 'won') return rows.filter(row => row.fact.qualified
-    && row.fact.status === (metric === 'pipeline' ? 'Active' : 'Won') && row.fact.reportingValue !== null);
+    && row.fact.status === (metric === 'pipeline' ? 'Active' : 'Won') && row.fact.reportingValue !== null && (!nonZero || row.fact.reportingValue !== 0));
   if (metric === 'winRate') return rows.filter(row => row.fact.qualified && ['Won', 'Lost'].includes(row.fact.status));
   const field = metric === 'orderValue' ? 'reportingValue' : metric;
-  return rows.filter(row => typeof row.values[field] === 'number' && Number.isFinite(row.values[field]));
+  return rows.filter(row => typeof row.values[field] === 'number' && Number.isFinite(row.values[field]) && (!nonZero || row.values[field] !== 0));
 }
 export type ReportRun = {
   definition: ReportDefinition; scopeKey: string; runAt: string; timezone: string; today: string; sourceStatus: string;

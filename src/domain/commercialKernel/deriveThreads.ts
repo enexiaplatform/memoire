@@ -270,7 +270,7 @@ function moneyStateFromQuotes(quotes: QuoteRecord[]): MoneyState {
   // The furthest-along quote sets the thread's money position: a customer with
   // one paid quote and one draft is not "awaiting payment" overall.
   const ranked: MoneyState[] = quotes.map((quote) => {
-    if (quote.paymentStatus === 'Paid') return 'paid';
+    if (quote.paymentReceiptVerified === true) return 'paid';
     if (quote.deliveryStatus === 'Delivered') return 'awaiting_payment';
     if (quote.poStatus === 'Received') return 'awaiting_delivery';
     if (quote.status === 'Accepted') return 'awaiting_po';

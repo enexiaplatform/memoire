@@ -2,7 +2,7 @@ import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeSto
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore.ts';
 import { FORECAST_QUARTERS, quarterForDate, daysLeftInQuarter, type ForecastQuarter } from '../domain/commercialKernel/forecast.ts';
-import { sumMoneyInBase } from './money.ts';
+import { convertMoney, sumMoneyInBase } from './money.ts';
 import { isValidBusinessDate, timestampToLocalDateKey, todayDateKey } from './safeDate.ts';
 import { normalizeEntityName } from './accountIdentity.ts';
 import { countOutOfOfficeDays, isInPersonChannel } from './activityChannel.ts';
@@ -46,6 +46,7 @@ export type ScoreboardRange = {
 export type ScoreboardOutcomeTotals = {
   count: number;
   valueBase: number;
+  missingValueCount: number;
 };
 
 export type TargetProgress = {
@@ -105,6 +106,8 @@ export type OutcomeScoreboard = {
   /** One sentence saying where this leaves the year. Never invented. */
   verdict: string;
   hasTargets: boolean;
+  targetValuesUnavailable: number;
+  undatedClosedCount: number;
 };
 
 export type ScoreboardQuality = {
@@ -144,6 +147,7 @@ export type ScoreboardTarget = {
   period: ForecastQuarter;
   fiscalYear: number;
   amount: number;
+  currency?: string;
   fiscalYearStartMonth?: number;
 };
 
@@ -171,32 +175,8 @@ export function deriveOutcomesFromClosedDeals(
   return opportunities
     .filter((deal) => (deal.status === 'Won' || deal.status === 'Lost') && !recorded.has(deal.id))
     .map((deal) => {
-      /**
-       * The day the deal actually closed.
-       *
-       * This used to read `deal.expectedCloseDate` and fall back to
-       * `updatedAt`. There is no `expectedCloseDate` on an opportunity - the
-       * field is `expectedClosePeriod` - and because the input type declared it
-       * optional, TypeScript could not see that the branch was dead. Every
-       * derived close date was therefore the day the record was last edited.
-       *
-       * On the Porto book that meant a scoreboard headed "Closed this week"
-       * counting eight deals closed between 6 March and 4 August: their
-       * `updated_at` was 23 August 23:24 UTC, which in the operator's own
-       * timezone is the 24th, so the whole six months landed inside the week
-       * they happened to be edited in. A review exists to say what the week
-       * produced, and it was answering with the edit log.
-       *
-       * `closedOn` is the fact and leads. `expectedClosePeriod` is second and
-       * only when it parses as a real date - on a closed deal that is the CRM
-       * convention, and it is often "Q3 2026", which is not a day. The record's
-       * last edit stays last, because it is the only thing always present.
-       */
-      const closedOn = isValidBusinessDate(deal.closedOn || '')
-        ? String(deal.closedOn)
-        : isValidBusinessDate(deal.expectedClosePeriod || '')
-          ? String(deal.expectedClosePeriod)
-          : timestampToLocalDateKey(deal.updatedAt) || todayDateKey();
+      // Actual close dates only. Expected dates and later edits are not outcomes.
+      const closedOn = isValidBusinessDate(deal.closedOn || '') ? String(deal.closedOn) : '';
       return {
         id: `derived-outcome-${deal.id}`,
         opportunityId: deal.id,
@@ -234,7 +214,7 @@ type ClosedDealInput = {
   currency?: string;
   /** The day it was won or lost, when that is known. See the derivation above. */
   closedOn?: string;
-  /** Often a quarter label rather than a day; read only when it is a real date. */
+  /** Planning date retained on the input; never used as actual closure evidence. */
   expectedClosePeriod?: string;
   updatedAt?: string;
   forecastEvidenceCategory: OpportunityOutcomeRecord['forecastEvidenceCategoryBeforeOutcome'];
@@ -287,19 +267,20 @@ export function buildOutcomeScoreboard(input: ScoreboardInput): OutcomeScoreboar
   const quarterWindow = quarterWindowFor(currentQuarter, fiscalYear, fiscalYearStartMonth);
   const yearWindow = yearWindowFor(fiscalYear, fiscalYearStartMonth);
 
-  const quarterTarget = input.targets
-    .filter((target) => target.fiscalYear === fiscalYear && target.period === currentQuarter)
-    .reduce((sum, target) => sum + target.amount, 0);
-  const yearTarget = input.targets
-    .filter((target) => target.fiscalYear === fiscalYear)
-    .reduce((sum, target) => sum + target.amount, 0);
+  const yearTargets = input.targets.filter(target => target.fiscalYear === fiscalYear);
+  const targetValue = (target: ScoreboardTarget) => target.currency && Number.isFinite(target.amount)
+    ? convertMoney(target.amount, target.currency) : null;
+  const sumTargets = (targets: ScoreboardTarget[]) => targets.some(target => targetValue(target) === null)
+    ? null : targets.reduce((sum, target) => sum + (targetValue(target) ?? 0), 0);
+  const quarterTarget = sumTargets(yearTargets.filter(target => target.period === currentQuarter));
+  const yearTarget = sumTargets(yearTargets);
 
   const wonInQuarter = totals(outcomes.filter((outcome) =>
     outcome.outcome === 'Won' && inRange(outcome.outcomeDate, quarterWindow.start, quarterWindow.end)));
   const wonInYear = totals(outcomes.filter((outcome) =>
     outcome.outcome === 'Won' && inRange(outcome.outcomeDate, yearWindow.start, yearWindow.end)));
 
-  const quarter = quarterTarget > 0
+  const quarter = quarterTarget !== null && quarterTarget > 0 && wonInQuarter.missingValueCount === 0
     ? buildProgress({
       label: `${currentQuarter} FY${fiscalYear}`,
       target: quarterTarget,
@@ -311,7 +292,7 @@ export function buildOutcomeScoreboard(input: ScoreboardInput): OutcomeScoreboar
     })
     : null;
 
-  const year = yearTarget > 0
+  const year = yearTarget !== null && yearTarget > 0 && wonInYear.missingValueCount === 0
     ? buildProgress({
       label: `FY${fiscalYear}`,
       target: yearTarget,
@@ -343,6 +324,8 @@ export function buildOutcomeScoreboard(input: ScoreboardInput): OutcomeScoreboar
     year,
     verdict: buildVerdict({ quarter, year, won, period: input.period }),
     hasTargets: quarter !== null || year !== null,
+    targetValuesUnavailable: yearTargets.filter(target => targetValue(target) === null).length,
+    undatedClosedCount: outcomes.filter(outcome => ['Won', 'Lost'].includes(outcome.outcome) && !isValidBusinessDate(outcome.outcomeDate)).length,
   };
 }
 
@@ -409,11 +392,23 @@ function buildVerdict(input: {
 function totals(records: OpportunityOutcomeRecord[]): ScoreboardOutcomeTotals {
   return {
     count: records.length,
-    valueBase: sumMoneyInBase(records.map((record) => ({
-      amount: typeof record.finalAmount === 'number' ? record.finalAmount : 0,
-      currency: record.currency || 'VND',
+    missingValueCount: records.filter(record => record.finalAmount === null || !record.currency || convertMoney(record.finalAmount, record.currency) === null).length,
+    valueBase: sumMoneyInBase(records.filter(record => typeof record.finalAmount === 'number' && Boolean(record.currency)).map((record) => ({
+      amount: record.finalAmount,
+      currency: record.currency,
     }))),
   };
+}
+
+/** One outcome per commercial record, shared by period summaries and briefs. */
+export function canonicalReviewOutcomes(opportunities: ClosedDealInput[], outcomes: OpportunityOutcomeRecord[]) {
+  const latest = new Map<string, OpportunityOutcomeRecord>();
+  for (const outcome of outcomes) {
+    const old = latest.get(outcome.opportunityId);
+    if (!old || (outcome.updatedAt || '').localeCompare(old.updatedAt || '') > 0) latest.set(outcome.opportunityId, outcome);
+  }
+  const recorded = [...latest.values()];
+  return [...recorded, ...deriveOutcomesFromClosedDeals(opportunities, recorded)];
 }
 
 function inRange(value: unknown, start: string, end: string): boolean {

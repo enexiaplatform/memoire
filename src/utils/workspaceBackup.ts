@@ -355,7 +355,14 @@ export function buildRestorePlan(envelope: BackupEnvelope): RestorePlan {
     const parsedPortfolio = portfolio.map(parsePortfolioRecord);
     validatePortfolioCatalog(parsedPortfolio);
     const opportunityIds = new Set((normalized['memoire.opportunities.v1'] as CrmLiteOpportunity[] || []).map(row => row.id));
-    if (parsedPortfolio.some(row => row.kind === 'assignment' && !opportunityIds.has(row.opportunityId))) throw new Error('Portfolio classification source opportunity is missing from backup.');
+    const pending = normalized['memoire.brandWriteJournal.v1'];
+    const pendingCreates = new Set(Array.isArray(pending) ? pending.filter(row => row && row.schemaVersion === 1 && row.kind === 'create' && row.state === 'prepared' && typeof row.opportunityId === 'string' && row.input && typeof row.input.brand === 'string').map(row => row.opportunityId) : []);
+    if (parsedPortfolio.some(row => row.kind === 'assignment' && !opportunityIds.has(row.opportunityId) && !pendingCreates.has(row.opportunityId))) throw new Error('Portfolio classification source opportunity is missing from backup.');
+    // A prelinked draft is operational pending work, not a canonical deal. Its
+    // journal survives export; classification is recreated by explicit retry.
+      const retainedIds = new Set(parsedPortfolio.filter(row => row.kind !== 'assignment' || opportunityIds.has(row.opportunityId)).map(row => row.id));
+      // Validation must not replace the accepted payload or strip its metadata.
+      normalized['memoire.portfolioRecords.v1'] = portfolio.filter(row => retainedIds.has(row.id));
   }
   if(timing?.length) validateTimingAssertions(timing,{
     opportunities:normalized['memoire.opportunities.v1'] as CrmLiteOpportunity[] || [],

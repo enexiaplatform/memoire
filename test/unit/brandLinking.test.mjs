@@ -15,6 +15,34 @@ const brand = name => ({ kind: 'brand', name, code: '', description: '', status:
 const input = extra => ({ ...emptyOpportunityInput, accountName: 'Acme', opportunityName: 'Project', ...extra });
 beforeEach(() => { data.clear(); refused = ''; });
 
+test('a refused journal prevents both writes; retry after reload keeps optional input fields and one identity', async () => {
+  const {BRAND_WRITE_JOURNAL_KEY, pendingBrandWrites} = await import('../../src/services/brandWriteJournal.ts');
+  const {retryPendingOpportunityBrandWrites} = await import('../../src/services/opportunityStore.ts');
+  await savePortfolio(scope,{id:'b',state:brand('Tailin'),expectedVersion:0});
+  const commandInput=input({brand:'Tailin',brandCatalogId:'b',accountId:undefined});
+  refused=BRAND_WRITE_JOURNAL_KEY;
+  await assert.rejects(()=>createOpportunity(commandInput,null,tag));
+  assert.equal(portfolioAssignments(readPortfolio(scope)).length,0);
+  refused='memoire.opportunities.v1';
+  await assert.rejects(()=>createOpportunity(commandInput,null,tag));
+  const id=pendingBrandWrites(scope)[0].opportunityId;
+  refused='';await retryPendingOpportunityBrandWrites(scope);
+  assert.equal(JSON.parse(storage.getItem('memoire.opportunities.v1'))[0].id,id);
+  assert.equal(portfolioAssignments(readPortfolio(scope)).length,1);
+  assert.equal(pendingBrandWrites(scope).length,0);
+});
+
+test('pending Brand commands refuse a foreign account and demo commands are excluded from native restore', async () => {
+  const {beginBrandWrite,pendingBrandWrites,BRAND_WRITE_JOURNAL_KEY}=await import('../../src/services/brandWriteJournal.ts');
+  const {buildRestorePlan}=await import('../../src/utils/workspaceBackup.ts');
+  beginBrandWrite(scope,input({brand:'Tailin',brandCatalogId:'b'}));
+  storage.setItem('memoire.local-workspace-owner.v1','owner-a');
+  assert.throws(()=>pendingBrandWrites({userId:'owner-b',sampleDataActive:false}),/Workspace changed/);
+  const plan=buildRestorePlan({exportedAt:stampForBackup(),localBrowserData:{[BRAND_WRITE_JOURNAL_KEY]:JSON.parse(storage.getItem(BRAND_WRITE_JOURNAL_KEY))}});
+  assert.equal(plan.droppedSampleRecords,1);
+});
+function stampForBackup(){return new Date().toISOString();}
+
 test('Leads select a catalog ID, aliases resolve, and qualification keeps the link after rename', async () => {
   await savePortfolio(scope, { id: 'b', state: { ...brand('Tailin'), aliases: ['TL'] }, expectedVersion: 0 });
   const lead = await createLead({ accountName: 'Acme', brand: 'TL', brandCatalogId: 'b' }, null, tag);
@@ -73,12 +101,33 @@ test('legacy acceptance links exact names and Leads once, keeps existing classif
   await assert.rejects(createOpportunity(input({ brand: 'Tailin', brandCatalogId: node.id }), null, tag), /active Brand/);
 });
 
-test('a refused Brand write warns that the deal exists and requires repair', async () => {
+test('a refused Brand write rejects before saving the deal, and retry keeps one identity', async () => {
   refused = PORTFOLIO_STORAGE_KEY;
-  const result = await createOpportunity(input({ brand: 'Custom', brandCatalogId: '__others__' }), null, tag);
-  assert.ok(result.opportunity.id);
-  assert.match(result.warning, /Brand link could not be saved/);
+  const form=input({ brand: 'Custom', brandCatalogId: '__others__' });
+  await assert.rejects(createOpportunity(form,null,tag),/Save is not complete/);
+  assert.equal(JSON.parse(data.get('memoire.opportunities.v1') || '[]').length,0);
   assert.equal(readPortfolio(scope).length, 0);
+  const command=JSON.parse(data.get('memoire.brandWriteJournal.v1'))[0];
+  refused='';
+  const result=await createOpportunity(form,null,tag);
+  assert.equal(result.opportunity.id,command.opportunityId);
+  assert.equal(portfolioAssignments(readPortfolio(scope)).length,1);
+  assert.equal(JSON.parse(data.get('memoire.opportunities.v1')).length,1);
+  assert.equal(JSON.parse(data.get('memoire.brandWriteJournal.v1')).length,0);
+});
+
+test('a refused deal write preserves its Brand command and completes once through catalog retry',async()=>{
+  refused='memoire.opportunities.v1';
+  const form=input({brand:'Manual',brandCatalogId:'__others__'});
+  await assert.rejects(createOpportunity(form,null,tag),/Save is not complete/);
+  const command=JSON.parse(data.get('memoire.brandWriteJournal.v1'))[0];
+  assert.equal(portfolioAssignments(readPortfolio(scope))[0].opportunityId,command.opportunityId);
+  refused='';
+  const {retryPendingOpportunityBrandWrites}=await import('../../src/services/opportunityStore.ts');
+  await retryPendingOpportunityBrandWrites(scope);
+  await retryPendingOpportunityBrandWrites(scope);
+  assert.equal(JSON.parse(data.get('memoire.opportunities.v1')).length,1);
+  assert.equal(JSON.parse(data.get('memoire.brandWriteJournal.v1')).length,0);
 });
 
 test('classification cannot unlink a recorded Brand or accept unnamed Others', async () => {

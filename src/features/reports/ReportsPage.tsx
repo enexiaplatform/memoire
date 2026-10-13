@@ -43,6 +43,8 @@ function SummaryTable({ groups, definition, onGroup }: { groups: ReportGroup[]; 
 export function ReportsPage() {
   const [reportParams, setReportParams] = useSearchParams(), requestedReport = reportParams.get('report');
   const catalogKind = reportParams.get('catalogKind'), catalogId = reportParams.get('catalogId');
+  const requestedPopulation = reportParams.get('population') === 'all' ? 'all' : 'qualified';
+  const resultRef = useRef<HTMLElement | null>(null);
   const handledSelection = useRef('');
   const { user, loading: authLoading } = useAuthContext(), demo = useDemoWorkspaceMode(), sample = demo || hasLocalSampleData();
   const scope = useMemo<PortfolioScope>(() => ({ userId: sample ? null : user?.id || null, sampleDataActive: sample }), [sample, user?.id]);
@@ -65,7 +67,7 @@ export function ReportsPage() {
       .finally(() => { if (!cancelled) setBusy(''); });
     return () => { cancelled = true; };
   }, [runRequest, scope, scopeKey]);
-  const selectionKey = JSON.stringify([scopeKey, requestedReport || '', catalogKind || '', catalogId || '', reload]);
+  const selectionKey = JSON.stringify([scopeKey, requestedReport || '', catalogKind || '', catalogId || '', reload, requestedPopulation]);
   const [linkBlocked, setLinkBlocked] = useState(false);
   useEffect(() => {
     if (authLoading || handledSelection.current === selectionKey) return;
@@ -78,7 +80,7 @@ export function ReportsPage() {
           if (!record || record.archived) { setError('This saved report is unavailable or archived. Restore it or choose another report.'); setLinkBlocked(true); }
           else { setDefinition(record.definition); setEditing({ id: record.id, version: record.version }); setRunRequest({ definition: record.definition, scopeKey }); }
         } else if (catalogKind !== null || catalogId !== null) {
-          try { const draft = portfolioReportDraft(catalogKind, catalogId, portfolioNodes(catalog.records)); setDefinition(draft); setRunRequest({ definition: draft, scopeKey }); }
+          try { const draft = portfolioReportDraft(catalogKind, catalogId, portfolioNodes(catalog.records), requestedPopulation); setDefinition(draft); setRunRequest({ definition: draft, scopeKey }); }
           catch (failure) { setError(failure instanceof Error ? failure.message : 'Portfolio report unavailable.'); setLinkBlocked(true); }
         }
         if (!requestedReport && catalogKind === null && catalogId === null) setRunRequest({ definition: reportTemplate('portfolio'), scopeKey });
@@ -87,14 +89,15 @@ export function ReportsPage() {
     }).catch(failure => { if (!cancelled) setError(failure instanceof Error ? failure.message : 'Could not load reports.'); })
       .finally(() => { if (!cancelled) setBusy(''); });
     return () => { cancelled = true; };
-  }, [scope, scopeKey, authLoading, reload, requestedReport, catalogKind, catalogId, selectionKey]);
+  }, [scope, scopeKey, authLoading, reload, requestedReport, catalogKind, catalogId, selectionKey, requestedPopulation]);
   const current = library?.scopeKey === scopeKey ? library : null;
   const visibleRun = run?.scopeKey === scopeKey && JSON.stringify(run.definition) === JSON.stringify(definition) ? run : null;
+  useEffect(() => { if (visibleRun) { resultRef.current?.scrollIntoView({ block: 'start' }); resultRef.current?.focus({ preventScroll: true }); } }, [visibleRun]);
   const fields = fieldsForDataset(definition.dataset), metrics = (Object.keys(reportMetricDefinitions) as ReportMetric[]).filter(key => reportMetricDefinitions[key].datasets.includes(definition.dataset));
   const change = (next: ReportDefinition) => { setDefinition(next); setDrillGroup(null); setPage(0); setMessage(''); };
   const identify = (id: string, replace = false) => {
-    const next = new URLSearchParams(reportParams); next.set('report', id); next.delete('catalogKind'); next.delete('catalogId');
-    handledSelection.current = JSON.stringify([scopeKey, id, '', '', reload]); setReportParams(next, { replace }); setLinkBlocked(false); setError('');
+    const next = new URLSearchParams(reportParams); next.set('report', id); next.delete('catalogKind'); next.delete('catalogId'); next.delete('population');
+    handledSelection.current = JSON.stringify([scopeKey, id, '', '', reload, 'qualified']); setReportParams(next, { replace }); setLinkBlocked(false); setError('');
   };
   const selectSaved = (record: SavedReport) => { if (record.archived) { setMessage('Restore the archived report before editing it.'); return; } change(record.definition); setEditing({ id: record.id, version: record.version }); setRun(null); identify(record.id); setEditorOpen(false); setRunRequest({ definition: record.definition, scopeKey }); };
   const savedDefinition = current?.value.records.find(record => record.id === editing?.id && !record.archived);
@@ -133,7 +136,10 @@ export function ReportsPage() {
   const groups = visibleRun?.groups.slice(page * REPORT_PREVIEW_LIMIT, (page + 1) * REPORT_PREVIEW_LIMIT) || [];
   const detailView = Boolean(activeGroup) || definition.view === 'details';
   const count = detailView ? rows.length : visibleRun?.groups.length || 0;
-  const printAllowed = Boolean(visibleRun && (definition.view === 'summary' || definition.columns.length <= 8) && (definition.view === 'summary' ? visibleRun.groups.length : visibleRun.rows.length) <= 2000);
+  const printAllowed = Boolean(visibleRun && (definition.view === 'summary' ? visibleRun.groups.length : visibleRun.rows.length) <= 2000);
+  const printDefinition = visibleRun ? { ...visibleRun.definition, columns: visibleRun.definition.dataset === 'collections'
+    ? visibleRun.definition.columns.filter(column => ['account','orderRef','outstanding','overdue','received','nextDueDate','missingContext','nextAction'].includes(column.field)).slice(0,8)
+    : visibleRun.definition.columns.slice(0,8) } : definition;
   const updateFilter = (index: number, filter: ReportFilter) => change({ ...definition, filters: definition.filters.map((old, i) => i === index ? filter : old) });
   return <div className="reports-page min-w-0" data-testid="reports-page">
     <div className="report-screen flex min-w-0 flex-col gap-5">
@@ -142,13 +148,13 @@ export function ReportsPage() {
       {message && <p role="status" className="rounded-lg bg-tint-blue-bg p-3 text-sm text-ink">{message}</p>}
       {!current ? <p>{busy || authLoading ? 'Loading reports…' : 'Reload the library to try again.'}</p> : <>
         <p className="rounded-lg bg-tint-blue-bg p-3 text-sm text-ink">{current.value.message}</p>
-        {visibleRun && <section className="order-1 min-w-0 rounded-panel bg-white shadow-panel p-5" data-testid="report-result">
+        {visibleRun && <section ref={resultRef} tabIndex={-1} className="order-1 scroll-mt-24 min-w-0 rounded-panel bg-white shadow-panel p-5" data-testid="report-result">
           <h2 className="text-lg font-bold text-ink">{visibleRun.definition.name}</h2><MetricBasisNote /><p className="mt-2 text-sm text-muted">{visibleRun.rows.length} matching records from {visibleRun.sourceCount} loaded source records · {visibleRun.money.currency} · run {visibleRun.runAt}</p>
           <p className="mt-1 text-xs text-muted">{visibleRun.grain}. {visibleRun.sourceStatus} Timezone: {visibleRun.timezone}; planning FX {visibleRun.money.ratesAsOf}, workspace overrides captured.</p>
           {definition.dataset === 'collections' && <p className="mt-2 text-xs text-muted">Only quotes linked by ID are used; legacy name-only quotes are excluded. Open a row’s source deal or <Link className="font-semibold text-brand-blue" to={moneyViewHref('collections')}>open Collections</Link> to manage payments.</p>}
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{visibleRun.definition.metrics.map(key => <div key={key} className="rounded-lg bg-canvas p-3"><p className="text-xs text-muted">{reportMetricDefinitions[key].label}</p><p className="mt-1 font-bold text-ink">{metricLabel(key, visibleRun.totals[key])}</p></div>)}</div>
           <div className="my-4 flex flex-wrap gap-2"><button type="button" className={button} disabled={Boolean(busy)} onClick={() => void download()}>Export CSV pack</button><button type="button" className={secondary} disabled={!printAllowed || Boolean(busy)} onClick={() => { assertReportScope(scope); window.print(); }}>Print / save PDF</button>{activeGroup && <button type="button" className={secondary} onClick={() => { setDrillGroup(null); setPage(0); }}>Back to summary</button>}</div>
-          {!printAllowed && <p className="mb-3 text-xs text-muted">Print supports up to 8 detail columns and 2,000 rows/groups. Reduce columns or use grouped summary; CSV includes every matching row.</p>}
+          {!printAllowed && <p className="mb-3 text-xs text-muted">Print supports up to 2,000 rows/groups with a compact column layout. Use CSV for larger results; it includes every configured column and matching row.</p>}
           {activeGroup && <p className="mb-3 text-sm font-semibold text-ink">Source records: {activeGroup.labels.join(' / ') || 'All matching records'}</p>}
           <p className="mb-2 text-xs text-muted">Preview {count ? page * REPORT_PREVIEW_LIMIT + 1 : 0}–{Math.min((page + 1) * REPORT_PREVIEW_LIMIT, count)} of {count} {detailView ? 'records' : 'groups'}. Export uses the full filtered result.</p>
           <div className="min-w-0 overflow-x-auto">{detailView ? <DetailTable rows={preview} definition={visibleRun.definition} /> : <SummaryTable groups={groups} definition={visibleRun.definition} onGroup={key => { setDrillGroup(key); setPage(0); }} />}</div>
@@ -198,6 +204,6 @@ export function ReportsPage() {
 
       </>}
     </div>
-    {visibleRun && printAllowed && createPortal(<article className="report-print"><h1>{visibleRun.definition.name}</h1><p>{visibleRun.definition.description}</p><p>{visibleRun.grain} · {visibleRun.rows.length} records · {visibleRun.money.currency}</p><p>Run: {visibleRun.runAt}; timezone {visibleRun.timezone}; planning FX {visibleRun.money.ratesAsOf} with captured overrides.</p><p>{visibleRun.sourceStatus}</p><p>Scope: {visibleRun.definition.population}; filters ({visibleRun.definition.filterMode}): {JSON.stringify(visibleRun.definition.filters)}. Current run; not historical reconstruction.</p><ul>{visibleRun.definition.metrics.map(key => <li key={key}>{reportMetricDefinitions[key].label}: {metricLabel(key, visibleRun.totals[key])}</li>)}</ul>{visibleRun.definition.view === 'summary' ? <SummaryTable groups={visibleRun.groups} definition={visibleRun.definition} /> : <DetailTable rows={visibleRun.rows} definition={visibleRun.definition} links={false} />}<footer>Missing values are shown as —; partial sums exclude them. Won value is not cash or accounting revenue. Payment dates are planning schedules with confidence shown in the dataset. Full run definition/rates accompany the CSV pack.</footer></article>, document.body)}
+    {visibleRun && printAllowed && createPortal(<article className="report-print"><h1>{visibleRun.definition.name}</h1><p>{visibleRun.definition.description}</p><p>{visibleRun.grain} · {visibleRun.rows.length} records · {visibleRun.money.currency}</p><p>Run: {visibleRun.runAt}; timezone {visibleRun.timezone}; planning FX {visibleRun.money.ratesAsOf} with captured overrides.</p><p>{visibleRun.sourceStatus}</p><p>Scope: {visibleRun.definition.population}; filters ({visibleRun.definition.filterMode}): {JSON.stringify(visibleRun.definition.filters)}. Current run; not historical reconstruction.</p><ul>{visibleRun.definition.metrics.map(key => <li key={key}>{reportMetricDefinitions[key].label}: {metricLabel(key, visibleRun.totals[key])}</li>)}</ul>{visibleRun.definition.view === 'summary' ? <SummaryTable groups={visibleRun.groups} definition={visibleRun.definition} /> : <DetailTable rows={visibleRun.rows} definition={printDefinition} links={false} />}<footer>PDF uses a compact layout of up to 8 selected columns. CSV includes every configured column and record. Missing values are shown as —; partial sums exclude them. Won value is not cash or accounting revenue. Payment dates are planning schedules with confidence shown in the dataset. Full run definition/rates accompany the CSV pack.</footer></article>, document.body)}
   </div>;
 }

@@ -1,3 +1,4 @@
+import { withQuoteCollectionEvidence } from '../utils/quoteCollectionEvidence';
 import { loadAccounts, type AccountMemoryRecord } from './accountStore';
 import { loadAccountMergesForWorkspace, type AccountMergeRecord } from './accountMergeStore';
 import { loadActionOutcomes, loadActionOutcomesForUser, type ActionOutcomeRecord } from './actionOutcomeStore';
@@ -237,6 +238,8 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
     names.forEach((name, index) => {
       (workspace as Record<string, unknown>)[name] = results[index];
     });
+    workspace.quotes = withQuoteCollectionEvidence({quotes: workspace.quotes, opportunities: workspace.opportunities,
+      receivableRecords: workspace.receivableRecords || [], milestoneRecords: workspace.milestoneRecords || []});
     if(userId){await requireCloudHistoricalIntegrity(userId).catch(()=>{
       reportWorkspaceSyncError('Historical baseline is not active on the account. New covered changes will stay in this browser.');
     });}

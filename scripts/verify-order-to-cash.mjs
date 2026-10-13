@@ -89,7 +89,7 @@ const quote = (id, opportunityId, overrides = {}) => ({
 
   assert.equal(byKey.contract.evidence, 'quote', 'a received PO proves the contract');
   assert.equal(byKey.delivery.evidence, 'quote');
-  assert.equal(byKey.paid.evidence, 'quote');
+  assert.equal(byKey.paid.done, false, 'legacy Paid text is not a receipt');
   assert.equal(byKey.deposit.done, false, 'no record proves a deposit');
 
   // Unticking by hand must not undo what the quote says.
@@ -118,6 +118,9 @@ const quote = (id, opportunityId, overrides = {}) => ({
       quote('q1', 'collected', { paymentStatus: 'Paid' }),
       quote('q2', 'late', { paymentStatus: 'Due', paymentDueDate: '2026-07-01' }),
     ],
+    receivableRecords: [{ id: 'receipt-record', opportunityId: 'collected', installments: [],
+      receipts: [{ id: 'receipt', amount: 500_000, currency: 'VND', receivedOn: '2026-07-27', method: 'Bank transfer', note: '' }],
+      deliveredOn: '', invoicedOn: '', note: '', createdAt: '2026-07-27T00:00:00Z', updatedAt: '2026-07-27T00:00:00Z' }],
     milestoneRecords: [],
     today: '2026-07-28',
   });

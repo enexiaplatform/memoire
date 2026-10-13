@@ -31,7 +31,7 @@ export type MoneyConsequenceInput={opportunities:CrmLiteOpportunity[];quotes:Quo
   receivables?:MoneyReceivableFact[];today:string;calculatedAt:string;historicalQuoteCoverage?:'full'|'partial'|'unavailable';
   requirementResolutionOverrides?:ReadonlyMap<string,RequirementResolutionOverride>};
 
-const quoteState=(quote:QuoteRecord):MoneyRealizationState=>quote.paymentStatus==='Paid'?'cash_received'
+const quoteState=(quote:QuoteRecord):MoneyRealizationState=>quote.paymentReceiptVerified===true?'cash_received'
   :quote.paymentStatus==='Due'?'cash_due':quote.deliveryStatus==='Delivered'?'delivered'
     :quote.poStatus==='Received'?'ordered':'quoted';
 const unique=<T,>(values:T[])=>[...new Set(values)];

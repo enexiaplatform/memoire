@@ -61,10 +61,10 @@ export function buildCashPosition(input: CashPositionInput): CashPositionModel {
   const upcomingExpenses = activeExpenses.filter((expense) => expense.status === 'Upcoming');
 
   const paidQuotes = input.quotes.filter(
-    (quote) => !quote.__deleted && quote.paymentStatus === 'Paid',
+    (quote) => !quote.__deleted && quote.paymentReceiptVerified === true,
   );
   const awaitingPaymentQuotes = input.quotes.filter(
-    (quote) => !quote.__deleted && quote.paymentStatus !== 'Paid'
+    (quote) => !quote.__deleted && quote.paymentReceiptVerified !== true
       && (quote.status === 'Accepted' || quote.poStatus === 'Received' || quote.deliveryStatus === 'Delivered'),
   );
 

@@ -471,8 +471,8 @@ function CoverageCard() {
           <div>
             <h2 className="text-sm font-bold text-ink">Portfolio coverage</h2>
             <p className="mt-0.5 max-w-xl text-sm leading-6 text-gray-600">
-              Every customer against every line you carry. The squares you have never filled are the business you have
-              never asked for.
+              Every customer against every line you carry. Empty squares mean no deal is recorded; review the
+              customer’s history before starting a new conversation.
             </p>
           </div>
         </div>

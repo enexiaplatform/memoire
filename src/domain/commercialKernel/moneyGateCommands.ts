@@ -31,7 +31,7 @@ export function createCommercialMoneyGate(scope:CommercialScope,input:{opportuni
   if(input.moneySourceType==='opportunity_value'&&(!opportunity||opportunity.status!=='Active'
     ||typeof opportunity.estimatedValue!=='number'))return {ok:false,error:'Opportunity value must be active and recorded before it can be gated.'};
   if(input.moneySourceType==='quote_value'&&(!quote||quote.opportunityId!==input.opportunityId
-    ||typeof quote.amount!=='number'||!['Sent','Revised','Accepted'].includes(quote.status)||quote.paymentStatus==='Paid'))
+    ||typeof quote.amount!=='number'||!['Sent','Revised','Accepted'].includes(quote.status)||quote.paymentReceiptVerified===true))
     return {ok:false,error:'Quote value must be current, issued, and not paid before it can be gated.'};
   const now=new Date().toISOString();
   const row:CommercialMoneyGate={id:kernelId('money-gate'),userId:scope.userId,...input,basis:input.basis.trim(),lifecycle:'active',

@@ -5,7 +5,7 @@ import type { SalesWorkspaceData } from '../../services/workspaceData';
 import type { PlanRecord } from '../../utils/weeklyPlan';
 import { buildAccountAliasIndex } from '../../utils/accountAliases';
 import { buildOperatorProfile, type ProfileTrait } from '../../utils/operatorProfile';
-import { deriveOutcomesFromClosedDeals } from '../../utils/outcomeScoreboard';
+import { canonicalReviewOutcomes } from '../../utils/outcomeScoreboard';
 import { buildOperatorTrends, type MetricTrend, trendRules } from '../../utils/metricTrend';
 import { formatCompactBaseAmount } from '../../utils/money';
 import { Sparkline } from '../../components/charts/Sparkline';
@@ -44,10 +44,7 @@ export function OperatorProfileSection({
    * `reasonText` - a derived outcome carries no reason, and every reading here
    * needs only the outcome, its date and its value.
    */
-  const closedOutcomes = useMemo(() => [
-    ...workspace.opportunityOutcomes,
-    ...deriveOutcomesFromClosedDeals(workspace.opportunities, workspace.opportunityOutcomes),
-  ], [workspace.opportunities, workspace.opportunityOutcomes]);
+  const closedOutcomes = useMemo(() => canonicalReviewOutcomes(workspace.opportunities, workspace.opportunityOutcomes), [workspace.opportunities, workspace.opportunityOutcomes]);
 
   const profile = useMemo(() => buildOperatorProfile({
     opportunities: workspace.opportunities,

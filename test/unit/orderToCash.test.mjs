@@ -48,6 +48,10 @@ const quote = (id, opportunityId, overrides = {}) => ({
   ...overrides,
 });
 
+const payment = (opportunityId, amount) => ({ id: `receivable-${opportunityId}`, opportunityId, installments: [],
+  receipts: [{ id: `receipt-${opportunityId}`, amount, currency: 'VND', receivedOn: '2026-07-27', method: 'Bank transfer', note: '' }],
+  deliveredOn: '', invoicedOn: '', note: '', createdAt: '2026-07-27T00:00:00Z', updatedAt: '2026-07-27T00:00:00Z' });
+
 describe('order book: who is committed', () => {
   test('won, procurement, and 90%+ deals are committed; colder deals are not', () => {
     assert.equal(isCommittedToOrder(opportunity('a', { status: 'Won' })), true);
@@ -60,7 +64,7 @@ describe('order book: who is committed', () => {
 });
 
 describe('order book: milestones from quote evidence', () => {
-  test('a received PO proves the contract; a delivery proves delivery; payment proves invoice and collection', () => {
+  test('a PO and delivery prove their steps; legacy Paid text cannot prove collection', () => {
     const book = buildOrderBook({
       opportunities: [opportunity('a', { status: 'Won' })],
       quotes: [quote('q1', 'a', { poStatus: 'Received', deliveryStatus: 'Delivered', paymentStatus: 'Paid' })],
@@ -74,10 +78,10 @@ describe('order book: milestones from quote evidence', () => {
     assert.equal(byKey.contract.evidence, 'quote');
     assert.equal(byKey.delivery.done, true);
     assert.equal(byKey.invoice.done, true);
-    assert.equal(byKey.paid.done, true);
+    assert.equal(byKey.paid.done, false);
     // The deposit has no record to prove it - open until ticked by hand.
     assert.equal(byKey.deposit.done, false);
-    assert.equal(order.fullyCollected, true);
+    assert.equal(order.fullyCollected, false);
   });
 
   test('a hand tick fills a gap but never argues with quote evidence', () => {
@@ -120,6 +124,7 @@ describe('order book: ordering and totals', () => {
         quote('q2', 'openOrder', { amount: 300_000 }),
       ],
       milestoneRecords: [],
+      receivableRecords: [payment('paidOrder', 200_000)],
       today: '2026-07-28',
     });
 
@@ -161,6 +166,7 @@ describe('order book: where the order is standing', () => {
         createOrderMilestoneRecord({ opportunityId: 'delivering', milestone: 'deposit', done: true }),
         createOrderMilestoneRecord({ opportunityId: 'done', milestone: 'deposit', done: true }),
       ],
+      receivableRecords: [payment('done', 500_000)],
       today: '2026-07-28',
     });
 

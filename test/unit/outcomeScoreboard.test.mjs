@@ -31,7 +31,7 @@ const week = {
   end: '2026-07-19',
 };
 
-const target = (period, amount, fiscalYear = 2026) => ({ period, fiscalYear, amount });
+const target = (period, amount, fiscalYear = 2026) => ({ period, fiscalYear, amount, currency: 'VND' });
 
 describe('outcome scoreboard: what the period produced', () => {
   test('a period is graded on what closed in it, not on what the pipeline hopes', () => {
@@ -180,7 +180,7 @@ describe('outcome scoreboard: against the quarter and the year', () => {
       outcomes: [outcome('a', { outcomeDate: '2027-01-20', finalAmount: 100_000_000 })],
       quotes: [],
       activities: [],
-      targets: [{ period: 'Q4', fiscalYear: 2026, amount: 500_000_000, fiscalYearStartMonth: 4 }],
+      targets: [{ period: 'Q4', fiscalYear: 2026, amount: 500_000_000, currency: 'VND', fiscalYearStartMonth: 4 }],
       today: '2027-01-25',
     });
 

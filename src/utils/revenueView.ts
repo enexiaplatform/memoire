@@ -7,7 +7,7 @@ import {
   type QuoteRecord,
   type QuoteRisk,
 } from '../services/quoteStore.ts';
-import { BASE_CURRENCY, convertMoney, getReportingCurrency, sumMoneyInBase, type SupportedCurrency } from './money.ts';
+import { convertMoney, getReportingCurrency, sumMoneyInBase, type SupportedCurrency } from './money.ts';
 import { buildOrderBook, type OrderMilestoneRecord } from './orderToCash.ts';
 import { buildReceivables, type OrderReceivableRecord } from './receivables.ts';
 import { buildMoneyFlow } from './moneyFlow.ts';
@@ -32,7 +32,7 @@ export type RevenueActionItem = {
   id: string;
   accountName: string;
   label: string;
-  amount: number;
+  amount: number | null;
   currency: string;
   baseAmount: number;
   status: string;
@@ -155,6 +155,7 @@ export function buildRevenueView({
         poStatus: order.milestones.find(m => m.key === 'contract')?.done ? 'Received' as const : quote.poStatus,
         deliveryStatus: order.milestones.find(m => m.key === 'delivery')?.done ? 'Delivered' as const : quote.deliveryStatus,
         paymentStatus: collection.settled ? 'Paid' as const : collection.installments.some(installment => !installment.settled && installment.dateBasis === 'confirmed') ? 'Due' as const : 'Not due' as const,
+        paymentReceiptVerified: collection.settled && !collection.valueUnavailable,
         paymentDueDate: collection.installments.find(installment => !installment.settled && installment.dateBasis === 'confirmed' && installment.dueDate)?.dueDate || '',
         amount: collection.settled ? order.amount : collection.valueUnavailable ? null : convertMoney(collection.outstandingBase, getReportingCurrency(), order.currency as SupportedCurrency),
       };
@@ -201,7 +202,7 @@ function buildQuoteRevenueRisks(quotes: QuoteRecord[]): RevenueActionItem[] {
     const stage = getQuoteCommercialStage(quote);
     const mappedRisk = mapQuoteRisk(risk, stage, quote);
     if (!mappedRisk) return [];
-    const amount = quote.amount || 0;
+    const amount = quote.amount;
     return [{
       id: `quote-${quote.id}`,
       accountName: quote.accountName,
@@ -229,8 +230,8 @@ function buildPipelineRevenueRisks(opportunities: CrmLiteOpportunity[], quotedOp
       const explanation = explainPipelineRisk(opportunity);
       if (!explanation) return [];
 
-      const amount = opportunity.estimatedValue || opportunity.fy26Value || 0;
-      const currency = opportunity.currency || BASE_CURRENCY;
+      const amount = opportunity.estimatedValue ?? opportunity.fy26Value ?? null;
+      const currency = opportunity.currency || '';
       return [{
         id: `opportunity-${opportunity.id}`,
         accountName: opportunity.accountName || 'No account',

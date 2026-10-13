@@ -5,7 +5,7 @@ import { buildCashPosition } from '../../src/utils/cashPosition.ts';
 
 const paid = (amount, currency = 'VND') => ({
   __deleted: false, status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered',
-  paymentStatus: 'Paid', amount, currency, quoteDate: '2026-07-01', paymentDueDate: '2026-07-10',
+  paymentStatus: 'Paid', paymentReceiptVerified: true, amount, currency, quoteDate: '2026-07-01', paymentDueDate: '2026-07-10',
 });
 const awaiting = (amount, currency = 'VND') => ({
   __deleted: false, status: 'Accepted', poStatus: 'Received', deliveryStatus: 'Delivered',

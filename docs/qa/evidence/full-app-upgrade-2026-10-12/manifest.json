@@ -1,0 +1,557 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-10-13T06:34:49.328Z",
+  "baseline": "545b27b779260d7425729820334ef486cca33a4f",
+  "status": "local-acceptance-release-pending",
+  "excluded": [
+    "Email Digest"
+  ],
+  "findings": [
+    {
+      "id": "R2-01",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/10-quote-paid-proof.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/11-adjusted-collection.dom.txt",
+        "test/unit/round2CriticalRegression.test.mjs"
+      ]
+    },
+    {
+      "id": "R2-02",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/06-ask-partial-cash.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/23-payment-report-after-receipt.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/payments-report.zip"
+      ]
+    },
+    {
+      "id": "R2-03",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/15-vietnamese-capture.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/16-capture-saved.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/27-plan-capture-handoff.dom.txt"
+      ]
+    },
+    {
+      "id": "R2-04",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/19-review-period-targets.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/34-money-review-close-parity.dom.txt",
+        "test/unit/round2CriticalRegression.test.mjs"
+      ]
+    },
+    {
+      "id": "R2-05",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/18-coverage-semantics.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/36-unused-brand-coverage.dom.txt",
+        "test/unit/round2ProductRegression.test.mjs"
+      ]
+    },
+    {
+      "id": "R2-06",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/19-review-period-targets.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/20-review-analytics.dom.txt",
+        "test/unit/round2ProductRegression.test.mjs"
+      ]
+    },
+    {
+      "id": "R2-07",
+      "status": "implemented",
+      "evidence": [
+        "src/features/opportunities/OpportunitiesPage.tsx",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/smoke-opportunities.dom.txt"
+      ]
+    },
+    {
+      "id": "R2-08",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/17-account-collections-scope.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/27-plan-capture-handoff.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/38-legacy-deal-id.dom.txt"
+      ]
+    },
+    {
+      "id": "R2-09",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/02-brand-catalog.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/03-brand-report.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/14-others-linked-reload.dom.txt"
+      ]
+    },
+    {
+      "id": "R2-10",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/12-lead-evidence.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/smoke-playbook.dom.txt",
+        "src/utils/salesPlaybook.ts"
+      ]
+    },
+    {
+      "id": "R2-11",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/28-people-role-evidence.dom.txt",
+        "src/utils/meddicStakeholderMap.ts"
+      ]
+    },
+    {
+      "id": "R2-12",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/23-payment-report-after-receipt.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/payments-report.zip"
+      ]
+    },
+    {
+      "id": "R2-13",
+      "status": "implemented",
+      "evidence": [
+        "test/unit/round2ProductRegression.test.mjs",
+        "src/utils/revenueView.ts"
+      ]
+    },
+    {
+      "id": "R2-14",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/07-unsupported-ask.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/21-vault-gap-links.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/22-vault-question-answer.dom.txt"
+      ]
+    },
+    {
+      "id": "R2-15",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/39-print-layout.json",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/23-payment-report-after-receipt.dom.txt",
+        "src/features/reports/reports.css"
+      ]
+    },
+    {
+      "id": "R2-16",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/27-plan-capture-handoff.dom.txt",
+        "src/features/plan/WeeklyPlanPage.tsx"
+      ]
+    },
+    {
+      "id": "R2-17",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/32-cost-order-context.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/33-cost-saved.dom.txt"
+      ]
+    },
+    {
+      "id": "R2-18",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/02-brand-catalog.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/35-unused-brand-catalog.dom.txt"
+      ]
+    },
+    {
+      "id": "R2-19",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/08-quote-receipt-proof.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/24-dashboard-contributors.dom.txt",
+        "src/components/layout/TopNav.tsx"
+      ]
+    },
+    {
+      "id": "R2-20",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/31-verify-direct-recovery.dom.txt",
+        "scripts/verify-auth-recovery-contract.mjs"
+      ]
+    },
+    {
+      "id": "R2-21",
+      "status": "implemented",
+      "evidence": [
+        "src/components/marketing/charts.tsx",
+        "scripts/verify-trust-boundary-contract.mjs"
+      ]
+    },
+    {
+      "id": "R2-22",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/30-signup-controls.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/smoke-login.dom.txt"
+      ]
+    },
+    {
+      "id": "R2-23",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/25-dashboard-zero-valid.dom.txt",
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/26-dashboard-nonzero.dom.txt"
+      ]
+    },
+    {
+      "id": "R2-24",
+      "status": "implemented",
+      "evidence": [
+        "docs/qa/evidence/full-app-upgrade-2026-10-12/smoke-privacy.dom.txt",
+        "scripts/verify-trust-boundary-contract.mjs"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "file": "01-today.dom.txt",
+      "bytes": 12033,
+      "sha256": "93c13ecc67dfe44e4389579caf61a1f6f93f9483113d8e4b4ee2d944417740da"
+    },
+    {
+      "file": "01-today.png",
+      "bytes": 84575,
+      "sha256": "a4ec4330bbce602d5dbef4b0681bbd6d12e0cb449952aeadda75881904fdebeb"
+    },
+    {
+      "file": "02-brand-catalog.dom.txt",
+      "bytes": 5877,
+      "sha256": "dcfbf87cdb7da64ade5f92bd0093470fe7684aac0b843aac1cde35971976d232"
+    },
+    {
+      "file": "02-brand-catalog.png",
+      "bytes": 90289,
+      "sha256": "5e11a75fa65154e7ace09e29b526c258a240d9b70a6dfee57651bcdf2db1df15"
+    },
+    {
+      "file": "03-brand-report.dom.txt",
+      "bytes": 7960,
+      "sha256": "a5c34a5b4dacf54c59e291faccca7ed0d8912842367fe56f286693702d301a65"
+    },
+    {
+      "file": "03-brand-report.png",
+      "bytes": 84557,
+      "sha256": "fd466b5eb23ade9d114448506cf93e5be6a5314118011aa2f026a4ad215e75e3"
+    },
+    {
+      "file": "04-payments-report.dom.txt",
+      "bytes": 10755,
+      "sha256": "c88148b141e84cda5ab3993476c697bc1d8006ccf0937880971610846572df08"
+    },
+    {
+      "file": "04-payments-report.png",
+      "bytes": 87005,
+      "sha256": "35ba88011ae57d7a1f6010e079463b136ae30e6a7616bea4d9e2ffa03fced482"
+    },
+    {
+      "file": "05-partial-collection.dom.txt",
+      "bytes": 5413,
+      "sha256": "122e2062a87e74ebb7dae340f3347e06bab43c67d7a4874c92e653ad2bca29c2"
+    },
+    {
+      "file": "05-partial-collection.png",
+      "bytes": 96432,
+      "sha256": "f27ff9ca0fb83b218fb0605aea201ff8e727d9b09a15a95cc8797ec0b60f87a0"
+    },
+    {
+      "file": "06-ask-partial-cash.dom.txt",
+      "bytes": 4937,
+      "sha256": "a3562e2e11394c33f9d3112fb5cce0f0613887ff63c6e0a471e0a294d02160e2"
+    },
+    {
+      "file": "06-ask-partial-cash.png",
+      "bytes": 85641,
+      "sha256": "1d75f6d0ae02e108e4f474dc2f35fc6a31f056b32819d276aca02ebb60c248eb"
+    },
+    {
+      "file": "07-unsupported-ask.dom.txt",
+      "bytes": 3694,
+      "sha256": "8c669e3d6429ac0e17d33f96d9c06f84a6b92909ec9e0af6b0cb4ce3f9481b47"
+    },
+    {
+      "file": "07-unsupported-ask.png",
+      "bytes": 79530,
+      "sha256": "2af6771b69019ee41025167b487f0342102fb3642456d1c95fc1af32b82c7687"
+    },
+    {
+      "file": "08-quote-receipt-proof.dom.txt",
+      "bytes": 19492,
+      "sha256": "83bec75ead891235a3e5ed44da530ee3c71f0f956b506e6ac2677170b24aa947"
+    },
+    {
+      "file": "08-quote-receipt-proof.png",
+      "bytes": 87948,
+      "sha256": "76f22751a3ea225cce8d71773edb5a2d729520fb320ebe270ab6d185a396414e"
+    },
+    {
+      "file": "09-full-collection.dom.txt",
+      "bytes": 4445,
+      "sha256": "cdfc3d43787e2f824a6079eceb264f092778853a9eaa9aa8f0e8bef87e7288a7"
+    },
+    {
+      "file": "09-full-collection.png",
+      "bytes": 84040,
+      "sha256": "22c11ec35c1f0a8bb6a056c751c9755b4486a7a897d5a9392f8dc9199ba7bc25"
+    },
+    {
+      "file": "10-quote-paid-proof.dom.txt",
+      "bytes": 19363,
+      "sha256": "1d9ac249fcbfea2970ba9af19c04761944b46742218a018a1727ace94af0205d"
+    },
+    {
+      "file": "10-quote-paid-proof.png",
+      "bytes": 86276,
+      "sha256": "8a0765b2d88856df77fd08ee1d3a6669e2745371805f70b59a6b6ca44f729431"
+    },
+    {
+      "file": "11-adjusted-collection.dom.txt",
+      "bytes": 5120,
+      "sha256": "c6bd928afefd1a5132082b85b0b9507891ad1dcdd6b14510d41a44286e4e5e79"
+    },
+    {
+      "file": "12-lead-evidence.dom.txt",
+      "bytes": 9012,
+      "sha256": "c3c0bfdf9c5eacfa77c55c01f42b911649e2447e1208a94d434092b8b822d7f2"
+    },
+    {
+      "file": "13-others-required.dom.txt",
+      "bytes": 11107,
+      "sha256": "2c0e35c7c65c7435acdcb313626dff6068d1a70ad83da4d67d3b9dcea34414c1"
+    },
+    {
+      "file": "14-others-linked-reload.dom.txt",
+      "bytes": 7204,
+      "sha256": "2cfbcea29dee1f824bc6a0ae614e346c3b16e48df22c862dda202b50f3e71fa9"
+    },
+    {
+      "file": "14-others-linked-reload.png",
+      "bytes": 90243,
+      "sha256": "ac8beab68fb435095ebc8c4c86c9b35c42e1fa0dfedfaa952b525b2f40d841da"
+    },
+    {
+      "file": "15-vietnamese-capture.dom.txt",
+      "bytes": 12676,
+      "sha256": "f58c7bda1a0c6a8912ed8ec1aefb4c643a3f951317f81b97bfdffeb5c79374bc"
+    },
+    {
+      "file": "15-vietnamese-capture.png",
+      "bytes": 86737,
+      "sha256": "844fb01833fc19df5937d88d2de22d69521096dc568c5e33ef45dff43a2f6308"
+    },
+    {
+      "file": "16-capture-saved.dom.txt",
+      "bytes": 11735,
+      "sha256": "fd5ba72afba2dd529d9c748cb34d5f884f369ace0f3fb679de30278d0e7d5ce7"
+    },
+    {
+      "file": "17-account-collections-scope.dom.txt",
+      "bytes": 3866,
+      "sha256": "01de04ebc17d671742dd69fca210f7d6cf6e5ea4ceecbac63d66e94484e0c0ee"
+    },
+    {
+      "file": "18-coverage-semantics.dom.txt",
+      "bytes": 14196,
+      "sha256": "12530a4cca282d2bfcb0dbcfef5a59265ee968fcd4fd845ac0046afdc91d2573"
+    },
+    {
+      "file": "19-review-period-targets.dom.txt",
+      "bytes": 18742,
+      "sha256": "72295f8af212ce5b74a7b29fb2ae429e5f69dcd900621fa38635aa51ba22bd40"
+    },
+    {
+      "file": "20-review-analytics.dom.txt",
+      "bytes": 32318,
+      "sha256": "97a73ea8c171db6ffb3c6e40cf22a5d7d3dbb81b7efb88b3c23b2efa35b5b070"
+    },
+    {
+      "file": "21-vault-gap-links.dom.txt",
+      "bytes": 9131,
+      "sha256": "ff3caf7d12589bbb762d7a02db0491296ca2581c537d52e755e6572f2de13c9f"
+    },
+    {
+      "file": "22-vault-question-answer.dom.txt",
+      "bytes": 4155,
+      "sha256": "a3f2df55fd1880bf00eb9ce97a8fae98e9f5c7056073c29d4e979e37abd246cb"
+    },
+    {
+      "file": "23-payment-report-after-receipt.dom.txt",
+      "bytes": 10868,
+      "sha256": "14ff4432061a9fec3cb35b8026d7bd18cf7f7b6ce298f7c04bb88276b4499f84"
+    },
+    {
+      "file": "24-dashboard-contributors.dom.txt",
+      "bytes": 7643,
+      "sha256": "ae45b64d12af7835e45904c14855d50a67df771db3d4c8386ee1167f86fa25eb"
+    },
+    {
+      "file": "24-dashboard-contributors.png",
+      "bytes": 75378,
+      "sha256": "d9c478bb5b8856788ebf237a8d9dbb4ccf1a056e64d247851d0fe1c335669888"
+    },
+    {
+      "file": "25-dashboard-zero-valid.dom.txt",
+      "bytes": 8427,
+      "sha256": "1e2cd33ef8fa12b5eefb69a223331079c53fc70c6d7388aa38f5e89de437d0ce"
+    },
+    {
+      "file": "26-dashboard-nonzero.dom.txt",
+      "bytes": 7673,
+      "sha256": "2ca925fd7b3060b788708c0ce988621749c73a44439f12bea56437f45955034e"
+    },
+    {
+      "file": "27-plan-capture-handoff.dom.txt",
+      "bytes": 12250,
+      "sha256": "8f5a68ce5edc4f8198d56b190e20c499be9f57538a760819d8bfdc189193827f"
+    },
+    {
+      "file": "28-people-role-evidence.dom.txt",
+      "bytes": 10302,
+      "sha256": "f6e1c67064dec5b8df67aa0d0d9a78158d1754603a93740ccd103a20f67187cf"
+    },
+    {
+      "file": "29-fx-basis-warning.dom.txt",
+      "bytes": 15120,
+      "sha256": "5a6775b2464a1284bcd3222756541af1fb9e3c68b8e690a6f84f4837c6f1aa2b"
+    },
+    {
+      "file": "30-signup-controls.dom.txt",
+      "bytes": 1119,
+      "sha256": "a4f7f3c9b334edd5b79d66c756dc089f696702d8fdafc1966c9daba7d062631e"
+    },
+    {
+      "file": "31-verify-direct-recovery.dom.txt",
+      "bytes": 426,
+      "sha256": "ce2951acef7a1ffd30374a01e87d54c12016a8c9b2076912a5a42e3cfb29f3b8"
+    },
+    {
+      "file": "32-cost-order-context.dom.txt",
+      "bytes": 14958,
+      "sha256": "12498ca81c3a4f2f4cf3c6f0b8eb2983c924d9dfe9d185bde9a79256f0d584da"
+    },
+    {
+      "file": "32-cost-order-context.png",
+      "bytes": 79726,
+      "sha256": "877c3e659bbddc2a1c8cbb1f6d1a4d44667abe951380d3b7378ce57960acc8ed"
+    },
+    {
+      "file": "33-cost-saved.dom.txt",
+      "bytes": 7652,
+      "sha256": "0505bfd8418d9b15e575f9db296f06dd5f6b85368887a887c390e17f57f75082"
+    },
+    {
+      "file": "34-money-review-close-parity.dom.txt",
+      "bytes": 14863,
+      "sha256": "8a1c11459413624189b3e7ee1fa6a1a745f64d5f6d308ee9107bda62236ab894"
+    },
+    {
+      "file": "35-unused-brand-catalog.dom.txt",
+      "bytes": 6104,
+      "sha256": "38458eeb89bbf6bd0394d5e363af86ea97e968aaa3eeddccc71514e51600f631"
+    },
+    {
+      "file": "36-unused-brand-coverage.dom.txt",
+      "bytes": 17498,
+      "sha256": "db02df1ad7ac991cfd523c40cac93f37ee979ae6d8428980e07502a583be38c8"
+    },
+    {
+      "file": "37-unlinked-account-check.dom.txt",
+      "bytes": 33968,
+      "sha256": "7bf9098a2c30fdac5d9c7baf2d7004f5f005295e28fc0d72f83b18680003ddc9"
+    },
+    {
+      "file": "38-legacy-deal-id.dom.txt",
+      "bytes": 44757,
+      "sha256": "d0070d3acb42f58036f56de3cbbb1857e08170c212575e91a9b5a6179aefe896"
+    },
+    {
+      "file": "39-print-layout.json",
+      "bytes": 574,
+      "sha256": "ceb8d614a47f3d285a8fadaf61d76e52cefdc9ef0e1ee2f29fd80a2f98835644"
+    },
+    {
+      "file": "payments-report.zip",
+      "bytes": 4375,
+      "sha256": "f43b437a50fc987b89d1f3d392543ad281baca2cfd67b9cb76ce6582c20eb042"
+    },
+    {
+      "file": "smoke-admin-gate.dom.txt",
+      "bytes": 163,
+      "sha256": "5ee5d8df6f0f4e8dbc7efc33da3b59ad2b344fd65b55fbdc4b9dc420aaee933c"
+    },
+    {
+      "file": "smoke-assets.dom.txt",
+      "bytes": 8190,
+      "sha256": "ef712dd2281ea107379a8b00e05468635cfca7ef065161b52a785ffe84dc3290"
+    },
+    {
+      "file": "smoke-forgot-password.dom.txt",
+      "bytes": 296,
+      "sha256": "2c01f64868fec04bb805a714e41086cc79780b6273709a2f6aef3f2803ddc1b6"
+    },
+    {
+      "file": "smoke-import-gate.dom.txt",
+      "bytes": 12249,
+      "sha256": "14b090f0506e57b9764e4f5a2d522f9710f837a2fefc58703f305ef40a9c63cf"
+    },
+    {
+      "file": "smoke-login.dom.txt",
+      "bytes": 678,
+      "sha256": "76bd3c77210e9107c77b56ba0f71de33fd53023f7b71748627510ec4ccc0f012"
+    },
+    {
+      "file": "smoke-objections.dom.txt",
+      "bytes": 7059,
+      "sha256": "2913e6ae324c6ecdf27111378f31fa9179a5ddce63ece80c873299d189b7eed4"
+    },
+    {
+      "file": "smoke-operating-priorities.dom.txt",
+      "bytes": 2983,
+      "sha256": "d838091749f1af9ced27b237d9f96a412f1560eb4af43e7dfd2ee6378cbcd3cf"
+    },
+    {
+      "file": "smoke-opportunities.dom.txt",
+      "bytes": 30097,
+      "sha256": "613b905e21c63e1a947fa16074a30012c5ab44e26e034412f09ddb0ab95b1e25"
+    },
+    {
+      "file": "smoke-playbook.dom.txt",
+      "bytes": 23133,
+      "sha256": "8fd7d4826ceb146ec56e01bc7562c4184b16bd19a9c118e505502fa31ced574b"
+    },
+    {
+      "file": "smoke-pricing.dom.txt",
+      "bytes": 4445,
+      "sha256": "6917897f995e9f8fd0ea244054fcec2d32f19415aeb14cdc838f02577cb8a2c0"
+    },
+    {
+      "file": "smoke-privacy.dom.txt",
+      "bytes": 7346,
+      "sha256": "325d64899a8dbb9bc1312b9defe4d2abf8926f0876d8836e5bfc483188687c5a"
+    },
+    {
+      "file": "smoke-reset-password.dom.txt",
+      "bytes": 324,
+      "sha256": "cf7b4c3478525f163663af4609e82cdd763e6d1d40281a8f6213e73141174d70"
+    },
+    {
+      "file": "smoke-settings.dom.txt",
+      "bytes": 14922,
+      "sha256": "c7d5dc882a8f44cb12139a849a52f349792afbb95ef13dedb56165739aac674b"
+    },
+    {
+      "file": "smoke-terms.dom.txt",
+      "bytes": 4644,
+      "sha256": "034833c39ae032ac041456d473c7d9273203d390354408fcb9f5ed68550ec2be"
+    }
+  ]
+}

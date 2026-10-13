@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
+import type { AccountMemoryRecord } from '../../services/accountStore';
+import type { QuoteRecord } from '../../services/quoteStore';
+import { sameAccount } from '../../utils/accountIdentity';
 import { Grid3x3 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { hasLocalSampleData } from '../../utils/dataMode';
@@ -49,6 +52,8 @@ const stateStyles: Record<CoverageCellState, string> = {
   won: 'bg-emerald-50 text-emerald-700 ring-1 ring-inset ring-emerald-300',
   committed: 'bg-violet-50 text-violet-700 ring-1 ring-inset ring-violet-300',
   active: 'bg-blue-50 text-brand-blue ring-1 ring-inset ring-blue-300',
+  quoted: 'bg-cyan-50 text-cyan-700 ring-1 ring-inset ring-cyan-300',
+  lead: 'bg-amber-50 text-amber-700 ring-1 ring-inset ring-amber-200',
   lost: 'bg-gray-50 text-gray-400 ring-1 ring-inset ring-gray-200',
   // The empty square is the message of this page, so it reads as a slot that is
   // deliberately unfilled rather than as a blank card - and it is the only
@@ -61,11 +66,16 @@ const stateGlyph: Record<CoverageCellState, string> = {
   won: '●',
   committed: '◐',
   active: '○',
+  quoted: '◇',
+  lead: '·',
   lost: '×',
   none: '+',
 };
 
 export function PortfolioCoveragePage() {
+  const [params, setParams] = useSearchParams();
+  const requestedAccount = params.get('accountName') || '';
+  const requestedAccountId = params.get('accountId') || '';
   const { user } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
@@ -77,6 +87,8 @@ export function PortfolioCoveragePage() {
   );
   const [accountMerges, setAccountMerges] = useState<AccountMergeRecord[]>(cachedWorkspace?.accountMerges || []);
   const [portfolioRecords, setPortfolioRecords] = useState<PortfolioRecord[]>(cachedWorkspace?.portfolioRecords || []);
+  const [accounts, setAccounts] = useState<AccountMemoryRecord[]>(cachedWorkspace?.accounts || []);
+  const [quotes, setQuotes] = useState<QuoteRecord[]>(cachedWorkspace?.quotes || []);
   const [loadError, setLoadError] = useState(''), [reload, setReload] = useState(0);
 
   useEffect(() => {
@@ -86,6 +98,7 @@ export function PortfolioCoveragePage() {
       setOpportunities(workspace.opportunities);
       setAccountMerges(workspace.accountMerges);
       setPortfolioRecords(workspace.portfolioRecords || []);
+      setAccounts(workspace.accounts); setQuotes(workspace.quotes);
       setLoadError('');
     }).catch(() => { if (!cancelled) setLoadError('Coverage could not be refreshed. The last reading is kept; retry before relying on it.'); }); };
     refresh(); window.addEventListener(PORTFOLIO_UPDATED_EVENT, refresh);
@@ -99,9 +112,11 @@ export function PortfolioCoveragePage() {
     () => buildCoverageMatrix({
       opportunities: opportunities || [],
       portfolioRecords,
+      accounts: accounts.filter(account => (!requestedAccountId || account.id === requestedAccountId) && (!requestedAccount || sameAccount(account.accountName, requestedAccount))),
+      quotes,
       accountAliases: buildAccountAliasIndex(accountMerges),
     }),
-    [opportunities, accountMerges, portfolioRecords],
+    [opportunities, accountMerges, portfolioRecords, accounts, quotes, requestedAccount, requestedAccountId],
   );
 
   if (!opportunities) {
@@ -121,7 +136,7 @@ export function PortfolioCoveragePage() {
         icon={<Grid3x3 className="h-5 w-5" />}
         title="Portfolio Coverage"
         documentTitle="Portfolio Coverage"
-        description="Every customer against every line you carry. The filled squares are the business you have; the empty ones are the business you have never asked for."
+        description="Accounts against active catalog Brands. Each square describes recorded Lead, quote or deal evidence; an empty square means no recorded deal."
         actions={
           <Link
             to="/app/accounts"
@@ -131,6 +146,7 @@ export function PortfolioCoveragePage() {
           </Link>
         }
       />
+      {(requestedAccount || requestedAccountId) && <p className="text-sm">Customer scope: {requestedAccount || accounts.find(account => account.id === requestedAccountId)?.accountName || 'Unavailable customer'} · <button className="min-h-11 font-bold text-brand-blue" onClick={() => setParams({})}>Show all customers</button></p>}
 
       {!matrix.hasEnoughBrands ? (
         <EmptyState brandCount={matrix.brands.length} />
@@ -146,12 +162,12 @@ export function PortfolioCoveragePage() {
                 <p className="text-2xl font-black text-ink">
                   {matrix.gaps.length}
                   <span className="text-base font-bold text-gray-400">
-                    {' '}of {matrix.rows.length} customers buy only part of the range
+                    {' '}of {matrix.rows.length} customers have Won deals and unrecorded Brand combinations
                   </span>
                 </p>
                 <p className="mt-1 text-sm text-gray-500">
                   {matrix.totalCells - matrix.filledCells} of {matrix.totalCells} customer &times; line squares have
-                  never been taken to the customer. Click an empty square to start that opportunity.
+                  no recorded deal. Check the customer’s history before starting a new opportunity.
                 </p>
               </div>
               <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-bold text-brand-blue">
@@ -222,7 +238,7 @@ export function PortfolioCoveragePage() {
                       </span>
                     </div>
                     <p className="mt-1 text-xs font-semibold text-amber-900">
-                      Never offered: {gap.missingBrands.join(', ')}
+                      No recorded deal: {gap.missingBrands.join(', ')}
                     </p>
                   </li>
                 ))}
@@ -241,7 +257,7 @@ function MatrixCell({ cell }: { cell: CoverageCell }) {
     // An empty square now says what it is for, because "nothing here" is not a
     // finding an operator can act on - "you have never offered this line to a
     // customer who already buys from you" is.
-    ? `${cell.accountName} has never been offered ${cell.brand} — start that opportunity`
+    ? `No ${cell.brand} deal is recorded for ${cell.accountName} — review the account before starting an opportunity`
     : `${cell.accountName} · ${cell.brand} — ${coverageCellLabel(cell.state)}${
       money > 0 ? ` · ${formatBaseCurrencyAmount(money, true)}` : ''
     }`;
@@ -275,7 +291,7 @@ function Legend() {
     { state: 'committed', label: 'Committed to order' },
     { state: 'active', label: 'In play' },
     { state: 'lost', label: 'Tried and lost' },
-    { state: 'none', label: 'Never taken to them' },
+    { state: 'none', label: 'No recorded deal' },
   ];
 
   return (

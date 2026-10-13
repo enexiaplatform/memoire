@@ -339,7 +339,7 @@ const paidQuote = {
   id: 'q-paid-1', quoteId: 'Q-PAID-1', accountName: 'Retention Pharma', opportunityId: '', opportunityName: 'Analyzer order',
   title: 'Analyzer order', quoteDate: '2026-05-15', validUntil: '2026-06-15', amount: 250_000_000, currency: 'VND',
   grossMarginEstimate: null, discount: null, paymentTerm: '', status: 'Accepted', poStatus: 'Received',
-  deliveryStatus: 'Delivered', expectedDeliveryDate: '', paymentStatus: 'Paid', paymentDueDate: '',
+  deliveryStatus: 'Delivered', expectedDeliveryDate: '', paymentStatus: 'Paid', paymentReceiptVerified: true, paymentDueDate: '',
   nextAction: '', notes: '', createdAt: '', updatedAt: '',
 };
 const retentionTouchOld = { ...oldActivity, id: 'activity-retention-old', accountName: 'Retention Pharma', activityDate: '2026-06-10' };
@@ -373,7 +373,7 @@ const retentionTouchOld = { ...oldActivity, id: 'activity-retention-old', accoun
   assert.ok(noTouch, 'paid account with no captured touch should still nudge');
   assert.ok(noTouch.reason.includes('no touch has been captured since'), 'no-history retention must say so plainly');
 
-  const unpaid = { ...paidQuote, id: 'q-unpaid', paymentStatus: 'Due' };
+  const unpaid = { ...paidQuote, id: 'q-unpaid', paymentStatus: 'Due', paymentReceiptVerified: false };
   assert.equal(buildProactiveNudges({ quotes: [unpaid], activities: [], today, limit: 20 })
     .allActiveNudges.some((nudge) => nudge.title === 'Paid customer going quiet'), false,
   'retention only speaks after the money actually landed');

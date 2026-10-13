@@ -72,7 +72,7 @@ for (const marker of [
   // email provider, and puts shared-brief content in a URL anyone can read.
   'Lemon Squeezy',
   'transactional email provider',
-  'the part after the # - which browsers do not send to any server',
+  'Reader and reviewer roles grant different access to the selected view',
   // The address itself is no longer typed here. It was typed literally in five
   // places - both legal documents, the marketing footer, the Settings export
   // panel and the early-access form - all of them `hello@memoire.app`, on a

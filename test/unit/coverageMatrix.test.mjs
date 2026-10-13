@@ -94,8 +94,8 @@ describe('coverage matrix: gaps worth closing', () => {
   test('gaps rank by what the relationship is already worth', () => {
     const matrix = buildCoverageMatrix({
       opportunities: [
-        deal('big', { accountName: 'Bidiphar', brand: 'Sartorius', estimatedValue: 900 }),
-        deal('small', { accountName: 'Tenamyd', brand: 'Sartorius', estimatedValue: 10 }),
+        deal('big', { accountName: 'Bidiphar', brand: 'Sartorius', estimatedValue: 900, status: 'Won' }),
+        deal('small', { accountName: 'Tenamyd', brand: 'Sartorius', estimatedValue: 10, status: 'Won' }),
         deal('other', { accountName: 'Rohto', brand: 'Cobetter', estimatedValue: 50 }),
       ],
     });
@@ -118,7 +118,7 @@ describe('coverage matrix: gaps worth closing', () => {
 
   test('the shortlist is capped so it stays a shortlist', () => {
     const opportunities = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((name, index) =>
-      deal(name, { accountName: `Account ${name}`, brand: 'Sartorius', estimatedValue: 100 - index }));
+      deal(name, { accountName: `Account ${name}`, brand: 'Sartorius', estimatedValue: 100 - index, status: 'Won' }));
     opportunities.push(deal('other', { accountName: 'Elsewhere', brand: 'Cobetter' }));
 
     const matrix = buildCoverageMatrix({ opportunities, gapLimit: 3 });
@@ -147,7 +147,7 @@ describe('coverage matrix: when it should not be shown at all', () => {
 
 describe('coverage matrix: squares explain themselves', () => {
   test('every state has wording an operator can act on', () => {
-    assert.equal(coverageCellLabel('none'), 'Never taken to them');
+    assert.equal(coverageCellLabel('none'), 'No recorded deal');
     assert.equal(coverageCellLabel('lost'), 'Tried and lost');
     assert.equal(coverageCellLabel('won'), 'Won');
   });
@@ -177,7 +177,7 @@ describe('a customer whose deals are in an unpriced currency', () => {
     const matrix = buildCoverageMatrix({
       opportunities: [
         // SEK ships no planning rate, so every figure for this account is 0.
-        deal('n1', { accountName: 'Nordic Labs', brand: 'Alpha', estimatedValue: 90_000, currency: 'SEK' }),
+        deal('n1', { accountName: 'Nordic Labs', brand: 'Alpha', estimatedValue: 90_000, currency: 'SEK', status: 'Won' }),
         deal('t1', { accountName: 'Truong Son', brand: 'Alpha', estimatedValue: 100_000_000, currency: 'VND' }),
         deal('t2', { accountName: 'Truong Son', brand: 'Beta', estimatedValue: 50_000_000, currency: 'VND' }),
       ],

@@ -1,0 +1,4 @@
+- heading "Sign in to continue" [level=1]
+- paragraph: The operator console reads business-wide figures, so it needs an account.
+- link "Sign in":
+  - /url: /login

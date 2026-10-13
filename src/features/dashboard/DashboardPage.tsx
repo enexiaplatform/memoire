@@ -2438,9 +2438,9 @@ function QuoteFollowUpCard({
         <div className="flex flex-wrap gap-2">
           {focusQuote && progressAction ? (
             <>
-              {progressAction.kind === 'schedule-delivery' ? (
+              {progressAction.kind === 'schedule-delivery' || progressAction.kind === 'record-payment' ? (
                 <Link
-                  to={getQuoteWorkspaceHref(focusQuote)}
+                  to={progressAction.kind === 'record-payment' ? `/app/cash-collection?opportunityId=${encodeURIComponent(focusQuote.opportunityId || '')}` : getQuoteWorkspaceHref(focusQuote)}
                   className="inline-flex w-fit shrink-0 items-center gap-2 rounded-full bg-navy px-4 py-2 text-sm font-bold text-white"
                 >
                   <CalendarDays className="h-4 w-4" />

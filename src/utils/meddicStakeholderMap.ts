@@ -195,7 +195,6 @@ function getRoleConfidence(stakeholder: StakeholderRecord, role: MeddicStakehold
   if (role === 'Unknown') return 'needs confirmation';
   if (stakeholder.tags.includes('role-inferred')) return 'inferred';
   if (stakeholder.tags.includes('role-confirmed')) return 'confirmed';
-  if (/confirmed|owns budget|signs off|champion|procurement owner|technical owner/i.test(stakeholder.notes)) return 'confirmed';
   return 'needs confirmation';
 }
 

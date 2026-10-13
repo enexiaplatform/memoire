@@ -35,6 +35,8 @@ import {
   type PurchaseOrderStatus,
 } from '../../services/quoteStore';
 import { loadSalesWorkspaceData } from '../../services/workspaceData';
+import { withQuoteCollectionEvidence } from '../../utils/quoteCollectionEvidence';
+import type { OrderReceivableRecord } from '../../utils/receivables';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import {
   formatBaseCurrencyAmount as formatBaseMoney,
@@ -58,7 +60,8 @@ export function QuotesPage() {
   const requestedQuoteId = searchParams.get('quoteId') || '';
   const requestedSearch = requestedOpportunityName || requestedAccountName;
   const createRequested = searchParams.get('create') === '1';
-  const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
+  const [rawQuotes, setQuotes] = useState<QuoteRecord[]>([]);
+  const [receivableRecords, setReceivableRecords] = useState<OrderReceivableRecord[]>([]);
   const [accounts, setAccounts] = useState<AccountMemoryRecord[]>([]);
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -71,6 +74,7 @@ export function QuotesPage() {
   const [message, setMessage] = useState('');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+  const quotes = useMemo(() => withQuoteCollectionEvidence({quotes: rawQuotes, opportunities, receivableRecords}), [rawQuotes, opportunities, receivableRecords]);
 
   useEffect(() => {
     let mounted = true;
@@ -85,6 +89,7 @@ export function QuotesPage() {
         setAccounts(workspaceData.accounts);
         setOpportunities(workspaceData.opportunities);
         setQuotes(quoteData);
+        setReceivableRecords(workspaceData.receivableRecords || []);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -261,7 +266,7 @@ export function QuotesPage() {
     // the marketing one - the only page in the app where it did.
     <PageContainer>
       <PageHeader
-        eyebrow="Opened from Orders"
+        eyebrow="Quotes"
         title="Quotes"
         description="Track expiry, PO, delivery, payment, and the next commercial action."
         actions={
@@ -498,8 +503,13 @@ function QuotePanel({
               </SelectInput>
               <DateInput label="Expected delivery" value={form.expectedDeliveryDate} onChange={(value) => onChange('expectedDeliveryDate', value)} />
               <SelectInput label="Payment" value={form.paymentStatus} onChange={(value) => onChange('paymentStatus', value as PaymentStatus)}>
-                {paymentStatuses.map((status) => <option key={status} value={status}>{status}</option>)}
+                {paymentStatuses.filter(status => status !== 'Paid').map((status) => <option key={status} value={status}>{status}</option>)}
+                {form.paymentStatus === 'Paid' && <option value="Paid" disabled>Legacy Paid claim — reconcile in Collections</option>}
               </SelectInput>
+              <div className="text-sm text-gray-600 md:col-span-2">
+                <p>{editingQuote?.paymentReceiptVerified ? 'Paid — confirmed by recorded receipts.' : form.paymentStatus === 'Paid' ? 'This old Paid claim has no confirmed receipt evidence. Review it in Collections.' : 'Payment is confirmed by receipts in Collections.'}</p>
+                <Link className="font-semibold text-brand-blue underline" to={`/app/cash-collection?opportunityId=${encodeURIComponent(form.opportunityId || '')}`}>Record or review payment</Link>
+              </div>
               <DateInput label="Payment due" value={form.paymentDueDate} onChange={(value) => onChange('paymentDueDate', value)} />
             </FormSection>
           )}
@@ -763,7 +773,7 @@ function commercialStageLabel(quote: QuoteRecord) {
 }
 
 function commercialStageTone(quote: QuoteRecord): 'green' | 'amber' | 'blue' {
-  if (quote.paymentStatus === 'Paid') return 'green';
+  if (quote.paymentReceiptVerified === true) return 'green';
   if (quote.deliveryStatus === 'Delivered') return 'amber';
   return 'blue';
 }

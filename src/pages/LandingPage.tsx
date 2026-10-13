@@ -1304,7 +1304,7 @@ function VaultMock() {
 
       <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-[11px] leading-5 text-slate-600">
         <span className="font-bold text-slate-800">Portfolio coverage:</span> every customer against every line you
-        carry. The squares you have never filled are the business you have never asked for.
+        carry. Empty squares mean no deal is recorded; review the customer’s history before starting a new conversation.
       </div>
     </MockFrame>
   );

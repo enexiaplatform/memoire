@@ -53,6 +53,7 @@ export type QuoteRecord = {
   deliveryStatus: DeliveryStatus;
   expectedDeliveryDate: string;
   paymentStatus: PaymentStatus;
+  paymentReceiptVerified?: boolean;
   paymentDueDate: string;
   nextAction: string;
   notes: string;
@@ -170,6 +171,7 @@ function persistQuotes(quotes: QuoteRecord[], syncCloud: boolean) {
 }
 
 export function createQuote(input: QuoteInput) {
+  if (input.paymentStatus === 'Paid') throw new Error('Record a receipt in Collections to confirm payment.');
   const now = new Date().toISOString();
   const quote = sanitizeQuote({
     ...input,
@@ -187,6 +189,7 @@ export function createQuote(input: QuoteInput) {
 }
 
 export function updateQuote(quote: QuoteRecord, input: QuoteInput) {
+  if (input.paymentStatus === 'Paid' && quote.paymentStatus !== 'Paid') throw new Error('Record a receipt in Collections to confirm payment.');
   const updated = sanitizeQuote({
     ...quote,
     ...input,
@@ -220,15 +223,12 @@ export function advanceQuoteCommercialProgress(quote: QuoteRecord) {
     return updateQuote(quote, {
       ...input,
       deliveryStatus: 'Delivered',
-      paymentStatus: quote.paymentStatus === 'Paid' ? 'Paid' : 'Due',
+      paymentStatus: 'Due',
       nextAction: action.nextAction,
     });
   }
-  return updateQuote(quote, {
-    ...input,
-    paymentStatus: 'Paid',
-    nextAction: action.nextAction,
-  });
+  // Opening Collections is the only payment action. A quote edit is not a receipt.
+  return null;
 }
 
 export function deleteQuote(quoteId: string) {
@@ -258,7 +258,8 @@ export function getQuoteRisk(quote: QuoteRecord): QuoteRisk {
   if (activeQuote && quote.validUntil && daysUntil(quote.validUntil) <= 7) return 'Expiring soon';
   const checkpointRisk = getCommercialCheckpointRisk(quote);
   if (checkpointRisk) return checkpointRisk;
-  if (quote.status === 'Accepted' && quote.paymentStatus === 'Paid') return 'None';
+  if (quote.status === 'Accepted' && quote.paymentStatus === 'Paid' && !quote.paymentReceiptVerified) return 'Needs commercial follow-up';
+  if (quote.status === 'Accepted' && quote.paymentReceiptVerified === true) return 'None';
   if (quote.status === 'Accepted' && (!quote.paymentTerm.trim() || !quote.nextAction.trim())) return 'Needs commercial follow-up';
   if ((quote.discount !== null && quote.discount >= 20) || (quote.grossMarginEstimate !== null && quote.grossMarginEstimate < 25)) return 'Margin check';
   return 'None';

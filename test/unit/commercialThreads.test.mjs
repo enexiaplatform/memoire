@@ -91,7 +91,7 @@ describe('resolveCommercialThreads', () => {
       opportunities: [opportunity()],
       quotes: [
         quote({ id: 'q-2', status: 'Draft' }),
-        quote({ id: 'q-1', paymentStatus: 'Paid', deliveryStatus: 'Delivered', poStatus: 'Received', status: 'Accepted' }),
+        quote({ id: 'q-1', paymentStatus: 'Paid', paymentReceiptVerified: true, deliveryStatus: 'Delivered', poStatus: 'Received', status: 'Accepted' }),
       ],
     }));
     assert.equal(threads[0].currentMoneyState, 'paid');

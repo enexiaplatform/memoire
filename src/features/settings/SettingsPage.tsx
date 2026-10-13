@@ -443,7 +443,7 @@ function ExchangeRatesCard({ reportingCurrency }: { reportingCurrency: Supported
           <p className="mt-1 text-sm text-gray-500">
             A deal in another currency is converted at these rates before it is added to any total.
             They are planning rates set on {EXCHANGE_RATES_AS_OF}, not a live feed, and they are stored
-            in this browser. Enter your own where you know better.
+            in this browser. Custom rates do not sync to another device. Match these rates on each device before comparing totals.
           </p>
         </div>
         <button

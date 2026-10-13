@@ -99,6 +99,7 @@ const ALLOWED_OMISSIONS = {
   'salesActivityStore.rowToRecord': { pendingSync: 'a cloud row is never pending' },
   // Local records are always local; the cloud reader sets its own.
   'opportunityStore.loadLocalOpportunities': {},
+  'quoteStore.sanitizeQuote': { paymentReceiptVerified: 'transient receipt-ledger projection; persisting it would turn cached proof into an editable payment claim' },
 };
 
 const TARGETS = [

@@ -209,6 +209,7 @@ export type OrderBook = {
   collectedCount: number;
   /** Committed money not yet fully collected, in the base currency. */
   awaitingBase: number;
+  awaitingMissingValueCount: number;
   overdueCount: number;
   /** Open orders with no dated step that have not moved in a long time. */
   stalledCount: number;
@@ -423,15 +424,13 @@ export function buildOrderBook(input: {
       || a.doneCount - b.doneCount
       || b.amountBase - a.amountBase);
 
+  const balances = orders.map(order => buildOneReceivable(order, collectionsByOrder.get(order.opportunityId), today));
   return {
     orders,
     totalCount: orders.length,
     collectedCount: orders.filter((order) => order.fullyCollected).length,
-    awaitingBase: sumMoneyInBase(
-      orders
-        .filter((order) => !order.fullyCollected)
-        .map((order) => ({ amount: order.amount || 0, currency: order.currency })),
-    ),
+    awaitingBase: balances.reduce((sum, balance) => sum + (balance.valueUnavailable ? 0 : balance.outstandingBase), 0),
+    awaitingMissingValueCount: balances.filter(balance => balance.valueUnavailable).length,
     overdueCount: orders.filter((order) => order.overdue).length,
     stalledCount: orders.filter((order) => order.stalled).length,
     // Every stage is reported, including the empty ones: a row of counters
@@ -500,13 +499,13 @@ function deriveMilestone(
   const proof = quoteEvidence(key, quotes);
   // Quote evidence can only assert done, never undone: unticking by hand does
   // not argue with a received PO. A manual tick fills in where quotes are silent.
-  const done = proof.done || manual?.done === true;
+  const done = key === 'paid' ? false : proof.done || manual?.done === true;
   const dueDate = proof.dueDate;
   return {
     key,
     label: orderMilestoneLabels[key],
     done,
-    evidence: proof.done ? 'quote' : manual?.done ? 'manual' : null,
+    evidence: done ? proof.done ? 'quote' : 'manual' : null,
     dueDate,
     doneAt: done && manual?.done ? timestampToLocalDateKey(manual.doneAt) : '',
     overdue: !done && isValidBusinessDate(dueDate) && compareSafeBusinessDate(dueDate, today) < 0,
@@ -535,8 +534,7 @@ function quoteEvidence(key: OrderMilestoneKey, quotes: QuoteRecord[]): { done: b
       };
     case 'paid':
       return {
-        done: quotes.length > 0 && quotes.every((quote) => quote.paymentStatus === 'Paid' || quote.status !== 'Accepted')
-          && quotes.some((quote) => quote.paymentStatus === 'Paid'),
+        done: false,
         dueDate: earliest(quotes.map((quote) => quote.paymentDueDate)),
       };
   }

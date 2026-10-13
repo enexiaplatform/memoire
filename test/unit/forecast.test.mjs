@@ -200,7 +200,7 @@ describe('coverage', () => {
     const report = run({
       targets: [{ quarter: 'Q3', amount: 1000 }],
       opportunities: [
-        opp({ id: 'won', status: 'Won', quarterValues: { Q3: 400 } }),
+        opp({ id: 'won', status: 'Won', closedOn: '2026-08-12', estimatedValue: 400, quarterValues: { Q3: 400 } }),
         opp({ id: 'open', pipelineProbability: 50, quarterValues: { Q3: 400 } }),
       ],
       threads: [thread({ opportunityId: 'open' })],
@@ -278,7 +278,7 @@ describe('coverage', () => {
   test('an over-covered quarter reports a negative gap, not a fake zero', () => {
     const report = run({
       targets: [{ quarter: 'Q3', amount: 100 }],
-      opportunities: [opp({ status: 'Won', quarterValues: { Q3: 250 } })],
+      opportunities: [opp({ status: 'Won', closedOn: '2026-08-12', estimatedValue: 250, quarterValues: { Q3: 250 } })],
     });
     const q3 = report.quarters.find((q) => q.quarter === 'Q3');
     assert.equal(q3.gap, -150);

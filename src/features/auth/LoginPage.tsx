@@ -3,6 +3,7 @@ import { Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react
 import { useAuth } from '../../hooks/useAuth';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
+import { PasswordInput } from '../../components/ui/PasswordInput';
 import { GoogleAuthButton } from '../../components/auth/GoogleAuthButton';
 import { BrandWordmark } from '../../components/brand/BrandWordmark';
 import { NoIndex } from '../../components/marketing/PageSeo';
@@ -88,9 +89,8 @@ export function LoginPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <Input
+            <PasswordInput
               label="Password"
-              type="password"
               autoComplete="current-password"
               placeholder="Enter your password"
               value={password}

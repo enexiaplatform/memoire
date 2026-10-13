@@ -913,7 +913,7 @@ function CostFields({
   const valid = [amountText, freightText, dutyText, otherText].every((text) => !text.trim() || parseAmount(text) !== null);
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-3"><p className="sticky left-0 w-fit max-w-[calc(100vw-4rem)] rounded-lg bg-blue-50 px-3 py-2 text-sm font-bold text-ink">{order.accountName} · {order.orderName} · {order.currency}</p>
       <div className="flex flex-wrap items-end gap-2">
         <AmountField label="Goods" value={amountText} onChange={setAmountText} placeholder="What the principal charged" autoFocus width="w-40" />
         <CurrencyField label="Currency" value={currency} onChange={setCurrency} />

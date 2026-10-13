@@ -1,0 +1,233 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 4 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "4 open": "4"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 4 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic: 1 need action
+  - button "Add lead":
+    - generic: Add lead
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - heading "3 leads, 1 need action" [level=1]
+  - generic: Who is worth progressing, nurturing or dropping. Qualify moves a lead into Opportunities with everything recorded on it.
+  - group "Filter leads by state":
+    - button "All open3" [pressed]
+    - button "New1"
+    - button "Needs action1"
+    - button "Ready to qualify1"
+  - searchbox "Search leads"
+  - region "Leads":
+    - heading "Leads to work" [level=2]
+    - paragraph: "Ordered by what needs doing: revisits and missing steps first, then ready, quiet, new and parked."
+    - generic: 3 leads
+    - 'table "Ordered by what needs doing: revisits and missing steps first, then ready, quiet, new and parked."':
+      - caption: "Ordered by what needs doing: revisits and missing steps first, then ready, quiet, new and parked."
+      - rowgroup:
+        - row "Lead State Source Last touch Evidence Next step Actions":
+          - columnheader "Lead"
+          - columnheader "State"
+          - columnheader "Source"
+          - columnheader "Last touch"
+          - columnheader "Evidence"
+          - columnheader "Next step"
+          - columnheader "Actions":
+            - generic: Actions
+      - rowgroup:
+        - row "Riverside Foods Allergen testing Nobody named yet Needs action Revisit is due in 2 days. Referral Referred by the Northstar Foods QA team No touch yet Added 60d ago 2 of 5 - Fit, Need New Revisit Oct 14, 2026 Budget opens in the new fiscal year Qualify Riverside Foods Reschedule revisit for Riverside Foods Disqualify Riverside Foods":
+          - cell "Riverside Foods Allergen testing Nobody named yet":
+            - generic: RF
+            - button "Riverside Foods"
+            - paragraph: Allergen testing
+            - paragraph: Nobody named yet
+          - cell "Needs action Revisit is due in 2 days.":
+            - generic: Needs action
+            - paragraph: Revisit is due in 2 days.
+          - cell "Referral Referred by the Northstar Foods QA team":
+            - generic: Referral
+            - paragraph: Referred by the Northstar Foods QA team
+          - cell "No touch yet Added 60d ago":
+            - paragraph: No touch yet
+            - paragraph: Added 60d ago
+          - cell "2 of 5 - Fit, Need New":
+            - 'generic "✓ Fit: Recorded against Allergen test kits. — Contact: Nobody is named - there is no route into the account. ✓ Need: Wants in-house allergen screening once the new fiscal year budget opens. — Engagement: No linked touch has been captured yet. — Next move: Nothing is scheduled, so nothing will bring this back to you."':
+              - img "2 of 5 - Fit, Need"
+              - generic: New
+          - cell "Revisit Oct 14, 2026 Budget opens in the new fiscal year":
+            - paragraph:
+              - text: Revisit Oct 14, 2026
+            - paragraph: Budget opens in the new fiscal year
+          - cell "Qualify Riverside Foods Reschedule revisit for Riverside Foods Disqualify Riverside Foods":
+            - button "Qualify Riverside Foods":
+              - text: Qualify
+              - generic: Riverside Foods
+            - button "Reschedule revisit for Riverside Foods":
+              - generic: Reschedule
+            - button "Disqualify Riverside Foods":
+              - generic: Disqualify
+        - row "Delta Nutrition Second QC line Ms. Quinn Ready to qualify Fit, a contact, a stated need and a captured touch - enough to take into Discovery. Existing account Starter package customer Oct 10, 2026 5 of 5 - Fit, Contact, Need, Engagement, Next move Ready to qualify Send the rapid testing overview Oct 16, 2026 Qualify Delta Nutrition Nurture Delta Nutrition Disqualify Delta Nutrition":
+          - cell "Delta Nutrition Second QC line Ms. Quinn":
+            - generic: DN
+            - button "Delta Nutrition"
+            - paragraph: Second QC line
+            - paragraph: Ms. Quinn
+          - cell "Ready to qualify Fit, a contact, a stated need and a captured touch - enough to take into Discovery.":
+            - generic: Ready to qualify
+            - paragraph: Fit, a contact, a stated need and a captured touch - enough to take into Discovery.
+          - cell "Existing account Starter package customer":
+            - generic: Existing account
+            - paragraph: Starter package customer
+          - cell "Oct 10, 2026":
+            - paragraph: Oct 10, 2026
+          - cell "5 of 5 - Fit, Contact, Need, Engagement, Next move Ready to qualify":
+            - 'generic "✓ Fit: Delta Nutrition is an account on your books. ✓ Contact: Ms. Quinn, QA manager is on the record. ✓ Need: Building a second QC line next year. ✓ Engagement: 1 touch recorded. ✓ Next move: Send the rapid testing overview - Oct 16, 2026"':
+              - img "5 of 5 - Fit, Contact, Need, Engagement, Next move"
+              - generic: Ready to qualify
+          - cell "Send the rapid testing overview Oct 16, 2026":
+            - paragraph: Send the rapid testing overview
+            - paragraph: Oct 16, 2026
+          - cell "Qualify Delta Nutrition Nurture Delta Nutrition Disqualify Delta Nutrition":
+            - button "Qualify Delta Nutrition":
+              - text: Qualify
+              - generic: Delta Nutrition
+            - button "Nurture Delta Nutrition":
+              - generic: Nurture
+            - button "Disqualify Delta Nutrition":
+              - generic: Disqualify
+        - row "Harbor Diagnostics New microbiology lab Nobody named yet New No linked touch has been captured yet. Trade show Lab expo stand visit No touch yet Quiet 9d Added 9d ago 0 of 5 - nothing recorded yet New No next step Qualify Harbor Diagnostics Nurture Harbor Diagnostics Disqualify Harbor Diagnostics":
+          - cell "Harbor Diagnostics New microbiology lab Nobody named yet":
+            - generic: HD
+            - button "Harbor Diagnostics"
+            - paragraph: New microbiology lab
+            - paragraph: Nobody named yet
+          - cell "New No linked touch has been captured yet.":
+            - generic: New
+            - paragraph: No linked touch has been captured yet.
+          - cell "Trade show Lab expo stand visit":
+            - generic: Trade show
+            - paragraph: Lab expo stand visit
+          - cell "No touch yet Quiet 9d Added 9d ago":
+            - paragraph: No touch yet
+            - paragraph: Quiet 9d
+            - paragraph: Added 9d ago
+          - cell "0 of 5 - nothing recorded yet New":
+            - 'generic "— Fit: No account record and no product line - nothing says this is a customer you could serve. — Contact: Nobody is named - there is no route into the account. — Need: Nothing recorded about what they are trying to solve. — Engagement: No linked touch has been captured yet. — Next move: Nothing is scheduled, so nothing will bring this back to you."':
+              - img "0 of 5 - nothing recorded yet"
+              - generic: New
+          - cell "No next step":
+            - paragraph: No next step
+          - cell "Qualify Harbor Diagnostics Nurture Harbor Diagnostics Disqualify Harbor Diagnostics":
+            - button "Qualify Harbor Diagnostics":
+              - text: Qualify
+              - generic: Harbor Diagnostics
+            - button "Nurture Harbor Diagnostics":
+              - generic: Nurture
+            - button "Disqualify Harbor Diagnostics":
+              - generic: Disqualify
+  - button "Close Add a lead"
+  - dialog "Add a lead":
+    - paragraph: Leads
+    - heading "New lead" [level=2]
+    - button "Close":
+    - text: Brand / principal
+    - combobox "Brand / principal":
+      - option "No brand yet"
+      - option "Tailin"
+      - option "Scitek"
+      - option "PMM"
+      - option "MicroView"
+      - option "Others — enter manually" [selected]
+    - text: Other brand name
+    - textbox "Other brand name"
+    - paragraph:
+      - text: Choose a catalog Brand or enter a name under Others.
+      - link "Manage Brands":
+        - /url: /app/products
+    - generic: Customer *
+    - generic: The company. Type to match one you already have, or write a new one.
+    - combobox "Customer *": "[SIMULATED QC] New customer"
+    - generic: What it could be about
+    - textbox "What it could be about":
+      - /placeholder: The project, line or need in a few words
+      - text: Brand manual validation
+    - generic: Who you spoke to
+    - generic: Saved as a person on the lead, with no role assumed.
+    - textbox "Who you spoke to"
+    - generic: Their job
+    - textbox "Their job":
+      - /placeholder: As they described it
+    - generic: Source
+    - combobox "Source":
+      - option "Not stated" [selected]
+      - option "Referral"
+      - option "Inbound"
+      - option "Cold outreach"
+      - option "Existing account"
+      - option "Distributor / Partner"
+      - option "Trade show"
+      - option "Tender / RFQ"
+      - option "Website"
+      - option "LinkedIn"
+      - option "Other"
+    - generic: Source detail
+    - textbox "Source detail":
+      - /placeholder: The event, the person who referred, the tender number
+    - generic: Next step
+    - textbox "Next step":
+      - /placeholder: What you said you would do
+    - generic: By when
+    - textbox "By when"
+    - paragraph:
+      - text: A lead with nothing scheduled will go quiet, and the queue will tell you so. A next step is the one field worth filling in now.
+    - button "Add lead" [active]:
+      - text: Add lead
+    - button "Cancel"
+    - generic: Enter a brand name for Others.

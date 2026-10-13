@@ -7,6 +7,7 @@ import { GoogleAuthButton } from '../../components/auth/GoogleAuthButton';
 import { BrandWordmark } from '../../components/brand/BrandWordmark';
 import { trackProductEvent } from '../../utils/productAnalytics';
 import { PASSWORD_MIN_LENGTH, PASSWORD_POLICY_HELPER } from '../../auth/passwordPolicy';
+import { PasswordInput } from '../../components/ui/PasswordInput';
 import { isSampleDataLoaded } from '../../utils/sampleData';
 import { NoIndex } from '../../components/marketing/PageSeo';
 import { useDocumentTitle } from '../../hooks/useDocumentTitle';
@@ -91,9 +92,8 @@ export function SignupPage() {
               onChange={(e) => setEmail(e.target.value)}
               required
             />
-            <Input
+            <PasswordInput
               label="Password"
-              type="password"
               autoComplete="new-password"
               placeholder="Create a strong password"
               value={password}
@@ -110,6 +110,7 @@ export function SignupPage() {
             <Button type="submit" loading={submitting} className="w-full">
               Create account
             </Button>
+            <p className="text-xs leading-5 text-muted">Read our <Link className="font-semibold text-brand-blue underline" to="/privacy">Privacy policy</Link> and <Link className="font-semibold text-brand-blue underline" to="/terms">Terms</Link> before creating your account.</p>
           </form>
 
           <p className="text-center text-sm text-muted mt-6">

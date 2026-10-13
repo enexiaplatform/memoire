@@ -1,4 +1,5 @@
 import { isDisqualifiedLeadOutcome } from './leadIdentity.ts';
+import { canonicalReviewOutcomes } from './outcomeScoreboard.ts';
 import type { AccountMemoryRecord } from '../services/accountStore.ts';
 import type { OperatingContextRecord } from '../services/operatingContextStore.ts';
 import type { OpportunityOutcomeRecord } from '../services/opportunityOutcomeStore.ts';
@@ -102,7 +103,7 @@ export function buildWeeklyBusinessReview(input: WeeklyBusinessReviewInput): Wee
   const today = sanitizeBusinessDate(input.today) || todayDateKey();
   const moneyFlow = buildMoneyFlow({ ...input, today });
 
-  const periodOutcomes = input.opportunityOutcomes.filter((outcome) => (
+  const periodOutcomes = canonicalReviewOutcomes(input.opportunities, input.opportunityOutcomes).filter((outcome) => (
     !isDisqualifiedLeadOutcome(outcome) && isBusinessDateInRange(outcome.outcomeDate, input.period.start, input.period.end)
   ));
   const wins = periodOutcomes.filter((outcome) => outcome.outcome === 'Won');

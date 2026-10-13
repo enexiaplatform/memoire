@@ -5,8 +5,10 @@ import { registerHooks } from 'node:module';
 // Substitute only the network client. All stores, codecs, commands, guards and
 // event ordering execute their real source. No credentials or network access.
 const rows = new Map();
+const catalogRows = new Map();
 const calls = [];
 let rejectCloud = false;
+let loseCreateAck = false;
 const client = {
   auth: { getUser: async () => ({ data: { user: null }, error: null }) },
   rpc: async () => ({ data: '2026-09-20T00:00:00Z', error: null }),
@@ -16,15 +18,20 @@ const client = {
     const query = {
       insert(value) { payload = value; inserting = true; return query; },
       update(value) { payload = value; return query; },
+      async upsert(values) { for (const row of values) catalogRows.set(row.id,row); return {error:null}; },
       select() { return query; },
       eq(key, value) { if (key === 'id') id = value; return query; },
       order() { return query; },
-      async range() { return { data: table === 'accounts' ? [] : [...rows.values()], error: null }; },
+      async range() { return { data: table === 'accounts' ? [] : table === 'portfolio_records' ? [...catalogRows.values()] : [...rows.values()], error: null }; },
       async single() {
         if (rejectCloud) return { data: null, error: { message: 'Cloud refused write' } };
-        if (inserting) id = `cloud-${rows.size + 1}`;
+        if (inserting) {
+          id = payload.id || `cloud-${rows.size + 1}`;
+          if (rows.has(id)) return {data:null,error:{code:'23505',message:'Duplicate identity'}};
+        }
         const row = { ...rows.get(id), ...payload, id };
         rows.set(id, row);
+        if (inserting && loseCreateAck) {loseCreateAck=false;return {data:null,error:{message:'Acknowledgement lost'}};}
         return { data: row, error: null };
       },
     };
@@ -61,8 +68,48 @@ const { createOpportunity, emptyOpportunityInput, OPPORTUNITY_STORAGE_KEY } = aw
 const { loadEvents, EVENT_STORAGE_KEY } = await import('../../src/services/commercialKernel/eventStore.ts');
 hooks.deregister();
 
-beforeEach(() => { rows.clear(); calls.length = 0; data.clear(); refused.clear(); rejectCloud = false; });
+beforeEach(() => { rows.clear(); catalogRows.clear(); calls.length = 0; data.clear(); refused.clear(); rejectCloud = false; loseCreateAck=false; });
 const real = { source: 'user', isSample: false };
+
+test('Brand cloud create survives a lost acknowledgement and refuses a duplicate on explicit retry', async () => {
+  const {savePortfolio,readPortfolio}=await import('../../src/services/portfolioStore.ts');
+  const {pendingBrandWrites}=await import('../../src/services/brandWriteJournal.ts');
+  const {retryPendingOpportunityBrandWrites}=await import('../../src/services/opportunityStore.ts');
+  const scope={userId:'owner',sampleDataActive:false};
+  storage.setItem('memoire.local-workspace-owner.v1','owner');
+  await savePortfolio(scope,{id:'b',expectedVersion:0,state:{kind:'brand',name:'[SIMULATED] Tailin',code:'',description:'',status:'active',parentId:null,brandId:null,groupId:null,aliases:[]}});
+  const input={...emptyOpportunityInput,accountName:'[SIMULATED] Customer',opportunityName:'Brand retry test',brand:'[SIMULATED] Tailin',brandCatalogId:'b'};
+  loseCreateAck=true;
+  const result=await createOpportunity(input,'owner',real);
+  assert.equal(rows.size,1);assert.equal(result.opportunity.id,[...rows.keys()][0]);
+  assert.equal(readPortfolio(scope).filter(row=>row.kind==='assignment').length,1);
+  await retryPendingOpportunityBrandWrites(scope);await retryPendingOpportunityBrandWrites(scope);
+  assert.equal(rows.size,1);assert.equal(pendingBrandWrites(scope).length,0);
+});
+
+test('Brand pending create remains visible after cloud reload and retries with its original identity and date', async () => {
+  const {savePortfolio}=await import('../../src/services/portfolioStore.ts');
+  const {pendingBrandWrites}=await import('../../src/services/brandWriteJournal.ts');
+  const {loadOpportunities,retryPendingOpportunityBrandWrites}=await import('../../src/services/opportunityStore.ts');
+  const scope={userId:'owner',sampleDataActive:false};
+  storage.setItem('memoire.local-workspace-owner.v1','owner');
+  await savePortfolio(scope,{id:'b',expectedVersion:0,state:{kind:'brand',name:'[SIMULATED] Brand',code:'',description:'',status:'active',parentId:null,brandId:null,groupId:null,aliases:[]}});
+  rejectCloud=true;
+  const first=await createOpportunity({...emptyOpportunityInput,accountName:'[SIMULATED] Offline buyer',opportunityName:'Recovery test',brand:'[SIMULATED] Brand',brandCatalogId:'b'},'owner',real);
+  assert.equal(first.mode,'local');
+  assert.equal(rows.size,0);
+  assert.equal(pendingBrandWrites(scope).length,1);
+  const originalDate=first.opportunity.createdAt;
+  assert.equal((await loadOpportunities('owner')).find(row=>row.id===first.opportunity.id)?.createdAt,originalDate);
+  rejectCloud=false;
+  await retryPendingOpportunityBrandWrites(scope);
+  assert.equal(rows.size,1);
+  assert.equal([...rows.values()][0].id,first.opportunity.id);
+  assert.equal([...rows.values()][0].created_at,originalDate);
+  assert.equal(pendingBrandWrites(scope).length,0);
+  await retryPendingOpportunityBrandWrites(scope);
+  assert.equal(rows.size,1);
+});
 
 test('accepted cloud qualification remains successful when browser mirror is refused', async () => {
   const lead = (await createLead({ accountName: 'Customer' }, 'owner', real)).opportunity;

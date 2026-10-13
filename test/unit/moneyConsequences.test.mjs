@@ -54,11 +54,13 @@ test('resolved gating path means no current blocker, not received cash',()=>{
 });
 
 test('a paid Quote is realized and no longer propagates its old blocker',()=>{
-  const quote={id:'q',quoteId:'Q-1',opportunityId:'o',accountId:'a',accountName:'Acme',status:'Accepted',paymentStatus:'Paid',
+  const quote={id:'q',quoteId:'Q-1',opportunityId:'o',accountId:'a',accountName:'Acme',status:'Accepted',paymentStatus:'Paid',paymentReceiptVerified:true,
     deliveryStatus:'Delivered',poStatus:'Received',amount:1_200_000_000,currency:'VND',createdAt:at,updatedAt:at};
   const value=derive({quotes:[quote],gates:[gate({moneySourceType:'quote_value',moneySourceId:'q'})]});
   assert.deepEqual(value.consequences[0].consequenceKinds,['realized']);
   assert.equal(value.consequences[0].blockers.length,0);
+  const unverified=derive({quotes:[{...quote,paymentReceiptVerified:false}],gates:[gate({moneySourceType:'quote_value',moneySourceId:'q'})]});
+  assert.notEqual(unverified.consequences[0].realizationState,'cash_received','legacy Paid text cannot remove blockers as realized cash');
 });
 
 test('contradicted Requirement remains structurally gated without probability',()=>{

@@ -1,0 +1,14 @@
+{
+  "columns": [
+    "Account",
+    "Order reference",
+    "Outstanding",
+    "Confirmed overdue balance",
+    "Recorded receipts",
+    "Next payment due",
+    "Missing context / blocker",
+    "Next action"
+  ],
+  "footer": "PDF uses a compact layout of up to 8 selected columns. CSV includes every configured column and record. Missing values are shown as —; partial sums exclude them. Won value is not cash or accounting revenue. Payment dates are planning schedules with confidence shown in the dataset. Full run definition/rates accompany the CSV pack.",
+  "rows": 2
+}

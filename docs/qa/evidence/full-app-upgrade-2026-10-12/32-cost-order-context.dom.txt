@@ -1,0 +1,477 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 4 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "4 open": "4"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 4 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Money
+  - heading "Margin" [level=1]
+  - generic: What your committed orders cost you, against what you sold them for. Orders follows the money to the bank; this says whether the work paid. Yours only — nothing here changes an order or reaches a customer.
+  - tablist "Money view":
+    - tab "Orders"
+    - tab "Collections"
+    - tab "Margin" [selected]
+  - button "Reload orders from cloud":
+  - heading "Cost analysis" [level=2]
+  - paragraph: What each committed order landed at — goods, freight, duty and everything else — against what you sold it for. Record the costs on the orders you know; leave the rest blank and they stay out of every figure here.
+  - textbox:
+    - /placeholder: Search order, customer, reference...
+  - button "Missing a cost (4)"
+  - paragraph: 4 of 4
+  - table:
+    - rowgroup:
+      - row "Order Sold for Goods + Landed Supplier Gross margin Kept vs target":
+        - columnheader "Order"
+        - columnheader "Sold for"
+        - columnheader "Goods"
+        - columnheader "+ Landed"
+        - columnheader "Supplier"
+        - columnheader "Gross margin"
+        - columnheader "Kept"
+        - columnheader "vs target"
+        - columnheader
+    - rowgroup:
+      - row "Orion Pharma Q-DEMO-ORION-01 · Procurement review 900,000,000 VND Not recorded — — — — — Add cost":
+        - cell "Orion Pharma Q-DEMO-ORION-01 · Procurement review":
+          - paragraph: Orion Pharma
+          - paragraph: Q-DEMO-ORION-01 · Procurement review
+        - cell "900,000,000 VND"
+        - cell "Not recorded"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "Add cost":
+          - button "Add cost":
+            - text: Add cost
+      - row "Summit Diagnostics Q-DEMO-SUMMIT-01 · QC workflow 650,000,000 VND Summit Diagnostics · QC workflow · VND Goods Currency VND Freight Duty / tax Other Extras in USD Supplier Note Save Cancel":
+        - cell "Summit Diagnostics Q-DEMO-SUMMIT-01 · QC workflow":
+          - paragraph: Summit Diagnostics
+          - paragraph: Q-DEMO-SUMMIT-01 · QC workflow
+        - cell "650,000,000 VND"
+        - cell "Summit Diagnostics · QC workflow · VND Goods Currency VND Freight Duty / tax Other Extras in USD Supplier Note Save Cancel":
+          - paragraph: Summit Diagnostics · QC workflow · VND
+          - text: Goods
+          - textbox "Goods" [active]:
+            - /placeholder: What the principal charged
+          - text: Currency
+          - combobox "Currency":
+            - option "AED"
+            - option "AUD"
+            - option "CAD"
+            - option "CHF"
+            - option "CNY"
+            - option "EUR"
+            - option "GBP"
+            - option "HKD"
+            - option "IDR"
+            - option "INR"
+            - option "JPY"
+            - option "KRW"
+            - option "MYR"
+            - option "NZD"
+            - option "PHP"
+            - option "SAR"
+            - option "SGD"
+            - option "THB"
+            - option "TWD"
+            - option "USD"
+            - option "VND" [selected]
+            - option "AFN"
+            - option "ALL"
+            - option "AMD"
+            - option "ANG"
+            - option "AOA"
+            - option "ARS"
+            - option "AWG"
+            - option "AZN"
+            - option "BAM"
+            - option "BBD"
+            - option "BDT"
+            - option "BGN"
+            - option "BHD"
+            - option "BIF"
+            - option "BMD"
+            - option "BND"
+            - option "BOB"
+            - option "BRL"
+            - option "BSD"
+            - option "BTN"
+            - option "BWP"
+            - option "BYN"
+            - option "BZD"
+            - option "CDF"
+            - option "CLP"
+            - option "COP"
+            - option "CRC"
+            - option "CUC"
+            - option "CUP"
+            - option "CVE"
+            - option "CZK"
+            - option "DJF"
+            - option "DKK"
+            - option "DOP"
+            - option "DZD"
+            - option "EGP"
+            - option "ERN"
+            - option "ETB"
+            - option "FJD"
+            - option "FKP"
+            - option "GEL"
+            - option "GHS"
+            - option "GIP"
+            - option "GMD"
+            - option "GNF"
+            - option "GTQ"
+            - option "GYD"
+            - option "HNL"
+            - option "HRK"
+            - option "HTG"
+            - option "HUF"
+            - option "ILS"
+            - option "IQD"
+            - option "IRR"
+            - option "ISK"
+            - option "JMD"
+            - option "JOD"
+            - option "KES"
+            - option "KGS"
+            - option "KHR"
+            - option "KMF"
+            - option "KPW"
+            - option "KWD"
+            - option "KYD"
+            - option "KZT"
+            - option "LAK"
+            - option "LBP"
+            - option "LKR"
+            - option "LRD"
+            - option "LSL"
+            - option "LYD"
+            - option "MAD"
+            - option "MDL"
+            - option "MGA"
+            - option "MKD"
+            - option "MMK"
+            - option "MNT"
+            - option "MOP"
+            - option "MRU"
+            - option "MUR"
+            - option "MVR"
+            - option "MWK"
+            - option "MXN"
+            - option "MZN"
+            - option "NAD"
+            - option "NGN"
+            - option "NIO"
+            - option "NOK"
+            - option "NPR"
+            - option "OMR"
+            - option "PAB"
+            - option "PEN"
+            - option "PGK"
+            - option "PKR"
+            - option "PLN"
+            - option "PYG"
+            - option "QAR"
+            - option "RON"
+            - option "RSD"
+            - option "RUB"
+            - option "RWF"
+            - option "SBD"
+            - option "SCR"
+            - option "SDG"
+            - option "SEK"
+            - option "SHP"
+            - option "SLL"
+            - option "SOS"
+            - option "SRD"
+            - option "SSP"
+            - option "STN"
+            - option "SVC"
+            - option "SYP"
+            - option "SZL"
+            - option "TJS"
+            - option "TMT"
+            - option "TND"
+            - option "TOP"
+            - option "TRY"
+            - option "TTD"
+            - option "TZS"
+            - option "UAH"
+            - option "UGX"
+            - option "UYU"
+            - option "UZS"
+            - option "VES"
+            - option "VUV"
+            - option "WST"
+            - option "XAF"
+            - option "XCD"
+            - option "XDR"
+            - option "XOF"
+            - option "XPF"
+            - option "XSU"
+            - option "YER"
+            - option "ZAR"
+            - option "ZMW"
+            - option "ZWL"
+          - text: Freight
+          - textbox "Freight":
+            - /placeholder: Shipping in
+          - text: Duty / tax
+          - textbox "Duty / tax":
+            - /placeholder: Import duty
+          - text: Other
+          - textbox "Other":
+            - /placeholder: Install, warranty
+          - text: Extras in
+          - combobox "Extras in":
+            - option "AED"
+            - option "AUD"
+            - option "CAD"
+            - option "CHF"
+            - option "CNY"
+            - option "EUR"
+            - option "GBP"
+            - option "HKD"
+            - option "IDR"
+            - option "INR"
+            - option "JPY"
+            - option "KRW"
+            - option "MYR"
+            - option "NZD"
+            - option "PHP"
+            - option "SAR"
+            - option "SGD"
+            - option "THB"
+            - option "TWD"
+            - option "USD" [selected]
+            - option "VND"
+            - option "AFN"
+            - option "ALL"
+            - option "AMD"
+            - option "ANG"
+            - option "AOA"
+            - option "ARS"
+            - option "AWG"
+            - option "AZN"
+            - option "BAM"
+            - option "BBD"
+            - option "BDT"
+            - option "BGN"
+            - option "BHD"
+            - option "BIF"
+            - option "BMD"
+            - option "BND"
+            - option "BOB"
+            - option "BRL"
+            - option "BSD"
+            - option "BTN"
+            - option "BWP"
+            - option "BYN"
+            - option "BZD"
+            - option "CDF"
+            - option "CLP"
+            - option "COP"
+            - option "CRC"
+            - option "CUC"
+            - option "CUP"
+            - option "CVE"
+            - option "CZK"
+            - option "DJF"
+            - option "DKK"
+            - option "DOP"
+            - option "DZD"
+            - option "EGP"
+            - option "ERN"
+            - option "ETB"
+            - option "FJD"
+            - option "FKP"
+            - option "GEL"
+            - option "GHS"
+            - option "GIP"
+            - option "GMD"
+            - option "GNF"
+            - option "GTQ"
+            - option "GYD"
+            - option "HNL"
+            - option "HRK"
+            - option "HTG"
+            - option "HUF"
+            - option "ILS"
+            - option "IQD"
+            - option "IRR"
+            - option "ISK"
+            - option "JMD"
+            - option "JOD"
+            - option "KES"
+            - option "KGS"
+            - option "KHR"
+            - option "KMF"
+            - option "KPW"
+            - option "KWD"
+            - option "KYD"
+            - option "KZT"
+            - option "LAK"
+            - option "LBP"
+            - option "LKR"
+            - option "LRD"
+            - option "LSL"
+            - option "LYD"
+            - option "MAD"
+            - option "MDL"
+            - option "MGA"
+            - option "MKD"
+            - option "MMK"
+            - option "MNT"
+            - option "MOP"
+            - option "MRU"
+            - option "MUR"
+            - option "MVR"
+            - option "MWK"
+            - option "MXN"
+            - option "MZN"
+            - option "NAD"
+            - option "NGN"
+            - option "NIO"
+            - option "NOK"
+            - option "NPR"
+            - option "OMR"
+            - option "PAB"
+            - option "PEN"
+            - option "PGK"
+            - option "PKR"
+            - option "PLN"
+            - option "PYG"
+            - option "QAR"
+            - option "RON"
+            - option "RSD"
+            - option "RUB"
+            - option "RWF"
+            - option "SBD"
+            - option "SCR"
+            - option "SDG"
+            - option "SEK"
+            - option "SHP"
+            - option "SLL"
+            - option "SOS"
+            - option "SRD"
+            - option "SSP"
+            - option "STN"
+            - option "SVC"
+            - option "SYP"
+            - option "SZL"
+            - option "TJS"
+            - option "TMT"
+            - option "TND"
+            - option "TOP"
+            - option "TRY"
+            - option "TTD"
+            - option "TZS"
+            - option "UAH"
+            - option "UGX"
+            - option "UYU"
+            - option "UZS"
+            - option "VES"
+            - option "VUV"
+            - option "WST"
+            - option "XAF"
+            - option "XCD"
+            - option "XDR"
+            - option "XOF"
+            - option "XPF"
+            - option "XSU"
+            - option "YER"
+            - option "ZAR"
+            - option "ZMW"
+            - option "ZWL"
+          - text: Supplier
+          - textbox "Supplier":
+            - /placeholder: Who you bought from
+          - text: Note
+          - textbox "Note":
+            - /placeholder: Anything this cost needs explaining by
+          - button "Save"
+          - button "Cancel"
+      - row "Northstar Foods Q-DEMO-NORTHSTAR-AUDIT · Line audit service 480,000,000 VND Not recorded — — — — — Add cost":
+        - cell "Northstar Foods Q-DEMO-NORTHSTAR-AUDIT · Line audit service":
+          - paragraph: Northstar Foods
+          - paragraph: Q-DEMO-NORTHSTAR-AUDIT · Line audit service
+        - cell "480,000,000 VND"
+        - cell "Not recorded"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "Add cost":
+          - button "Add cost":
+            - text: Add cost
+      - row "Northstar Foods Q-DEMO-NORTHSTAR-02 · Reagent resupply 180,000,000 VND Not recorded — — — — — Add cost":
+        - cell "Northstar Foods Q-DEMO-NORTHSTAR-02 · Reagent resupply":
+          - paragraph: Northstar Foods
+          - paragraph: Q-DEMO-NORTHSTAR-02 · Reagent resupply
+        - cell "180,000,000 VND"
+        - cell "Not recorded"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "Add cost":
+          - button "Add cost":
+            - text: Add cost
+  - paragraph: Red is an order sold below what it cost — a fact, not a judgement. Amber is under the 20% you set as your target. Neither line is learned from your data. Leave the cost blank on orders you do not know or do not care about — those are left out of every figure here, on both sides, rather than counted as free.
