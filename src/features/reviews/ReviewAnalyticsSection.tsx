@@ -25,6 +25,7 @@ import { ForecastCalibrationPanel } from './ForecastCalibrationPanel';
 import { ProbabilityCalibrationPanel } from './ProbabilityCalibrationPanel';
 import { deriveForecastPortfolio } from '../../domain/commercialKernel/deriveForecastDefensibility';
 import { ForecastDefensibilityReview } from './ForecastDefensibilityReview';
+import { VisualExplorer } from './VisualExplorer';
 
 // Chart palette: fixed hex values (not Tailwind classes) so the SVGs survive
 // serialization to PNG for the presentation export.
@@ -175,7 +176,7 @@ export function ReviewAnalyticsSection() {
   };
 
   return (
-    <div className="flex w-full max-w-none flex-col gap-5">
+    <div className="review-analytics flex min-w-0 w-full max-w-none flex-col gap-5">
       <MetricBasisNote />
       <header className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
         <div>
@@ -221,6 +222,7 @@ export function ReviewAnalyticsSection() {
         <DashboardEmptyState />
       ) : (
         <>
+          {workspace && <VisualExplorer key={`${dataUserId || 'local'}:${sampleDataActive}`} opportunities={workspace.opportunities} accountMerges={workspace.accountMerges} sample={sampleDataActive} />}
           {/* ---------------------------------------------------------------
               One analytical hierarchy, in four readings.
 
