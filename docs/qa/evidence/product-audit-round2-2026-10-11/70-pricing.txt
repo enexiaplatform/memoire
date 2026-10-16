@@ -1,0 +1,99 @@
+- navigation:
+  - link "Memoire home":
+    - /url: /
+    - generic: Memoire
+  - link "Use Cases":
+    - /url: /use-cases
+  - link "Pricing":
+    - /url: /pricing
+  - link "Log in":
+    - /url: /login
+  - link "Talk to us":
+    - /url: /request-access
+  - link "Create Account":
+    - /url: /signup
+- main:
+  - paragraph: Pricing
+  - paragraph:
+    - text: Free while in preview
+  - heading "Free while it is in preview. $10 a month after." [level=1]:
+    - text: Free while it is in preview.
+    - generic: $10 a month after.
+  - paragraph: "Memoire is being run by its first operators before the store opens. Until it opens the whole product is free: signup asks for no card, no trial is counting down, and there is nothing to cancel. When the preview ends it is $10 a month for one person, and you will hear that from us before it happens. Payment will then be taken by Lemon Squeezy, the merchant of record and the seller on your invoice, and Memoire never sees your card number."
+  - article:
+    - heading "Preview access" [level=2]
+    - generic: Right now
+    - paragraph: $0while the preview lasts
+    - paragraph: The whole product, on your own work, with nothing held back and no card asked for.
+    - list:
+      - text: Every feature the paid plan will have
+      - text: No card at signup and no trial clock
+      - text: Nothing renews, because nothing was started
+      - text: Your data stays readable and exportable either way
+    - paragraph: "It is a preview, not a free tier: it ends, and you will be told before it does."
+  - article:
+    - heading "Personal" [level=2]
+    - paragraph: $10per month, after the preview
+    - paragraph: For one operator running the whole commercial loop - capture, quote, deliver, collect, review.
+    - list:
+      - text: Unlimited capture and unlimited records
+      - text: "Leads: a work queue from first conversation to qualified deal"
+      - text: Search & Insights over everything you have written down
+      - text: "Cost Analysis: landed cost and margin before you quote"
+      - text: "Cash Collection: aging from the payment terms on the quote"
+      - text: "Money at risk: won with no PO, delivered and not invoiced, promises to pay missed"
+      - text: "Business Vault: your accounts, people and deals as one map"
+      - text: MEDDIC scoring on every qualified deal, from what you have already recorded
+    - paragraph: Nothing is charged today and no card is taken. When the preview ends it is $10 a month for one person, and every account here hears it from us first - nothing starts billing on its own.
+  - article:
+    - heading "Team" [level=2]
+    - paragraph: Later
+    - paragraph: A shared workspace for the people you sell alongside. Not available yet, and not sold yet.
+    - list:
+      - text: Shared workspace and review standards
+      - text: Manager workflows
+      - text: Team security review
+      - text: CRM sync
+    - paragraph: The individual loop gets finished before anything is charged for a team.
+  - heading "Use it on your own week, while it costs nothing." [level=2]
+  - paragraph: "It runs on your real work, not on a sample company - a week of capture is enough to see what it caught. There is nothing to start and nothing to cancel: the billing screen in Settings under Billing is closed until the preview ends, so no card can be taken from you today."
+  - link "Start free — no card":
+    - /url: /signup
+    - text: Start free — no card
+  - link "Request guided access":
+    - /url: /request-access
+- contentinfo:
+  - link "Memoire home":
+    - /url: /
+    - generic: Memoire
+  - link "support@memoire-official.com":
+    - /url: mailto:support@memoire-official.com
+  - heading "Product" [level=4]
+  - list:
+    - link "Features":
+      - /url: /#features
+    - link "Use Cases":
+      - /url: /use-cases
+    - link "Pricing":
+      - /url: /pricing
+    - link "Talk to us":
+      - /url: /request-access
+    - link "Create Account":
+      - /url: /signup
+    - link "Log in":
+      - /url: /login
+  - heading "Guides" [level=4]
+  - list:
+    - link "Why deals go quiet":
+      - /url: /why-deals-go-quiet
+    - link "Quote to cash":
+      - /url: /quote-to-cash
+  - heading "Legal" [level=4]
+  - list:
+    - link "Privacy Policy":
+      - /url: /legal/privacy
+    - link "Terms of Service":
+      - /url: /legal/terms
+    - link "Product Boundaries":
+      - /url: /legal/boundaries
+  - generic: © 2026 Memoire. All rights reserved.

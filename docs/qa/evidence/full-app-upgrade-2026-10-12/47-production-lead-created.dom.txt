@@ -1,0 +1,102 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities":
+    - /url: /app/opportunities
+    - text: Opportunities
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: "[Q"
+  - generic "[SIMULATED QC R5] Orion Calibration Partners"
+  - generic: Personal workspace
+  - button "Account and settings for [SIMULATED QC R5] Orion Calibration Partners":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic: 2 never contacted
+  - button "Add lead":
+    - generic: Add lead
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - heading "14 leads, 2 never contacted" [level=1]
+  - generic: Who is worth progressing, nurturing or dropping. Qualify moves a lead into Opportunities with everything recorded on it.
+  - group "Filter leads by state":
+    - button "All open14" [pressed]
+    - button "New2"
+    - button "Ready to qualify12"
+  - status: "[SIMULATED QC UPGRADE] Brand cloud acceptance is in the queue as a new lead."
+  - button "Dismiss"
+  - searchbox "Search leads" [active]: "[SIMULATED QC UPGRADE] Brand cloud acceptance"
+  - region "Leads":
+    - heading "Leads to work" [level=2]
+    - paragraph: "Ordered by what needs doing: revisits and missing steps first, then ready, quiet, new and parked."
+    - generic: 1 lead
+    - 'table "Ordered by what needs doing: revisits and missing steps first, then ready, quiet, new and parked."':
+      - caption: "Ordered by what needs doing: revisits and missing steps first, then ready, quiet, new and parked."
+      - rowgroup:
+        - row "Lead State Source Last touch Evidence Next step Actions":
+          - columnheader "Lead"
+          - columnheader "State"
+          - columnheader "Source"
+          - columnheader "Last touch"
+          - columnheader "Evidence"
+          - columnheader "Next step"
+          - columnheader "Actions":
+            - generic: Actions
+      - rowgroup:
+        - row "[SIMULATED QC UPGRADE] Brand cloud acceptance [SIMULATED QC UPGRADE] Catalog link acceptance 2026-10-13 Nobody named yet New No linked touch has been captured yet. Not recorded No touch yet Added today 1 of 5 - Fit New No next step Qualify [SIMULATED QC UPGRADE] Brand cloud acceptance Nurture [SIMULATED QC UPGRADE] Brand cloud acceptance Disqualify [SIMULATED QC UPGRADE] Brand cloud acceptance":
+          - cell "[SIMULATED QC UPGRADE] Brand cloud acceptance [SIMULATED QC UPGRADE] Catalog link acceptance 2026-10-13 Nobody named yet":
+            - generic: SQ
+            - button "[SIMULATED QC UPGRADE] Brand cloud acceptance"
+            - paragraph: "[SIMULATED QC UPGRADE] Catalog link acceptance 2026-10-13"
+            - paragraph: Nobody named yet
+          - cell "New No linked touch has been captured yet.":
+            - generic: New
+            - paragraph: No linked touch has been captured yet.
+          - cell "Not recorded"
+          - cell "No touch yet Added today":
+            - paragraph: No touch yet
+            - paragraph: Added today
+          - cell "1 of 5 - Fit New":
+            - 'generic "✓ Fit: Recorded against [SIM QC R5] CalPro. — Contact: Nobody is named - there is no route into the account. — Need: Nothing recorded about what they are trying to solve. — Engagement: No linked touch has been captured yet. — Next move: Nothing is scheduled, so nothing will bring this back to you."':
+              - img "1 of 5 - Fit"
+              - generic: New
+          - cell "No next step":
+            - paragraph: No next step
+          - cell "Qualify [SIMULATED QC UPGRADE] Brand cloud acceptance Nurture [SIMULATED QC UPGRADE] Brand cloud acceptance Disqualify [SIMULATED QC UPGRADE] Brand cloud acceptance":
+            - button "Qualify [SIMULATED QC UPGRADE] Brand cloud acceptance":
+              - text: Qualify
+              - generic: "[SIMULATED QC UPGRADE] Brand cloud acceptance"
+            - button "Nurture [SIMULATED QC UPGRADE] Brand cloud acceptance":
+              - generic: Nurture
+            - button "Disqualify [SIMULATED QC UPGRADE] Brand cloud acceptance":
+              - generic: Disqualify

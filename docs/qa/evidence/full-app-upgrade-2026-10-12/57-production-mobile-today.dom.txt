@@ -1,0 +1,252 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - button "Close navigation":
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities":
+    - /url: /app/opportunities
+    - text: Opportunities
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: "[Q"
+  - generic "[SIMULATED QC R5] Orion Calibration Partners"
+  - generic: Personal workspace
+  - button "Account and settings for [SIMULATED QC R5] Orion Calibration Partners":
+- banner:
+  - link "Memoire home":
+    - /url: /app/today
+    - generic: Memoire
+  - button "Search Memoire":
+  - generic "Pipeline records, review packs, assets, and action outcomes sync to your account. Lightweight setup preferences may remain in this browser. Cloud records are available across devices. Browser preferences may reset when browser data is cleared.":
+    - generic: Cloud + browser
+  - link "Capture":
+    - /url: /app/capture
+- main "Memoire workspace" [active]:
+  - paragraph: Tuesday 13 October
+  - heading "Good afternoon, [SIMULATED QC R5] Orion Calibration Partners." [level=1]
+  - generic "Morning brief":
+    - paragraph:
+      - strong: 5 priority flags need attention before anything else.
+      - text: "Payment overdue: [SIM QC R5] US Precision Lab 02 / [SIM QC R5] Calibration equipment. No touches captured yesterday. Capture the first one right after your next call."
+    - paragraph:
+      - generic: "Ask:"
+      - link "Where does [SIM QC R5] US Precision Lab 02 stand?":
+        - /url: /app/ask?question=Where+does+%5BSIM+QC+R5%5D+US+Precision+Lab+02+stand%3F
+      - link "Which customers should I check back with?":
+        - /url: /app/ask?question=Which+customers+should+I+check+back+with%3F
+  - button "Reload from cloud":
+  - link "Ask Memoire":
+    - /url: /app/ask
+    - text: Ask Memoire
+  - link "Start the day":
+    - /url: /app/quotes?quoteId=3fd9e469-dc56-421d-8eda-213a3e0d2141
+    - text: Start the day
+  - region "The picture":
+    - 'link "Open pipeline 181.7KUSD Proposal: 181.7K USD, 12 deals 12 deals · 181.7K USD at Proposal or later"':
+      - /url: /app/opportunities
+      - generic: Open pipeline
+      - generic: 181.7KUSD
+      - 'img "Proposal: 181.7K USD, 12 deals"':
+        - generic "Proposal · 181.7K USD · 12 deals"
+      - generic: 12 deals · 181.7K USD at Proposal or later
+    - 'link "Going silent 9 deals 7-13 days: 3; 14-20 days: 0; 21-29 days: 3; 30-59 days: 3; 60+ days: 3 Quiet 14+ days · 132.4K USD at stake · 3 more at risk"':
+      - /url: /app/opportunities?opportunityId=fbe6f5cb-c0c2-4b33-85a5-d9911bfea44c
+      - generic: Going silent
+      - generic: "9"
+      - generic: deals
+      - 'img "7-13 days: 3; 14-20 days: 0; 21-29 days: 3; 30-59 days: 3; 60+ days: 3"':
+        - generic "Quiet 7-13 days · 3 deals"
+        - generic "Quiet 14-20 days · 0 deals"
+        - generic "Quiet 21-29 days · 3 deals"
+        - generic "Quiet 30-59 days · 3 deals"
+        - generic "Quiet 60+ days · 3 deals"
+      - generic: Quiet 14+ days · 132.4K USD at stake · 3 more at risk
+    - 'link "Overdue cash 85.7KUSD Not overdue / date to confirm: 0 USD; 1-30 days confirmed late: 9.5K USD; 31-60 days confirmed late: 9.1K USD; Over 60 days confirmed late: 67.1K USD 12 orders late · oldest 360 days"':
+      - /url: /app/revenue?view=collections&orderId=372a0982-2fdb-4479-8c06-fa03314950f5
+      - generic: Overdue cash
+      - generic: 85.7KUSD
+      - 'img "Not overdue / date to confirm: 0 USD; 1-30 days confirmed late: 9.5K USD; 31-60 days confirmed late: 9.1K USD; Over 60 days confirmed late: 67.1K USD"':
+        - generic "1-30 days confirmed late · 9.5K USD"
+        - generic "31-60 days confirmed late · 9.1K USD"
+        - generic "Over 60 days confirmed late · 67.1K USD"
+      - text: 12 orders late · oldest
+      - generic: 360 days
+    - link "Planned tasks done 1 / 3 33% of this week's plan done 33% of this week done · 100 overdue incl. backlog":
+      - /url: /app/timeline?view=upcoming
+      - generic: Planned tasks done
+      - generic: "1"
+      - generic: / 3
+      - img "33% of this week's plan done"
+      - text: 33% of this week done ·
+      - generic: 100 overdue incl. backlog
+  - region "Your moves":
+    - heading "Your 3 moves" [level=2]
+    - paragraph: What Memoire would start with, ranked across money, deals, leads and capture
+    - link "See all 12 deals":
+      - /url: /app/opportunities
+    - list:
+      - generic "[SIM QC R5] US Precision Lab 02 / [SIM QC R5] Calibration equipment": "[SIM QC R5] US Precision Lab 02"
+      - generic: Critical
+      - generic: Revenue
+      - generic: 4 deals
+      - paragraph: Check collection
+      - paragraph: "Why now: 4 deals need this. Start with [SIM QC R5] US Precision Lab 02 (4,125 EUR · 4,759.62 USD)."
+      - generic "What this is based on"
+      - generic: 4,125 EUR
+      - generic: 4,759.62 USD
+      - generic: Due Oct 18, 2025
+      - link "Open":
+        - /url: /app/quotes?quoteId=3fd9e469-dc56-421d-8eda-213a3e0d2141
+        - text: Open
+      - generic "[SIM QC R5] US Precision Lab 05 / [SIM QC R5] 2025-10 Calibration station 5": "[SIM QC R5] US Precision Lab 05"
+      - generic: Critical
+      - generic: Opportunity
+      - generic: 12 deals
+      - paragraph: Confirm service coverage
+      - paragraph: "Why now: 12 deals need this. Start with [SIM QC R5] US Precision Lab 05 (9,000 EUR · 10,384.62 USD)."
+      - generic "What this is based on"
+      - generic: 9,000 EUR
+      - generic: 10,384.62 USD
+      - generic: Due Oct 28, 2025
+      - link "Open":
+        - /url: /app/opportunities?opportunityId=89a61af8-1d0e-4751-87e5-ba7e4e7150cd
+        - text: Open
+      - generic "12 leads / Leads": 12 leads
+      - generic: High
+      - generic: Lead
+      - paragraph: Qualify [SIM QC R5] APAC Precision Lab 06, [SIM QC R5] APAC Precision Lab 06 and 10 more
+      - paragraph: "Why now: 12 leads have enough evidence to qualify. Fit, a contact, a stated need and a captured touch are all on record. Until it is qualified it is not in the pipeline, the forecast or Review."
+      - generic "What this is based on"
+      - generic: No due date
+      - link "Open":
+        - /url: /app/leads?state=ready
+        - text: Open
+  - region "Leads that need you":
+    - heading "Leads that need you" [level=2]
+    - link "Open Leads":
+      - /url: /app/leads
+    - list:
+      - link "2 new leads have never been contacted Make first contact, starting with [SIM QC R5 FIX] Northstar Calibration":
+        - /url: /app/leads?state=new
+        - generic: 2 new leads have never been contacted
+        - generic: Make first contact, starting with [SIM QC R5 FIX] Northstar Calibration
+  - generic "Context for the three moves · business questions and money"
+  - generic "How to read these numbers · scope, cash and exchange rates"
+  - region "Watch-list":
+    - paragraph: Proactive Nudges
+    - heading "The few things that could embarrass you in review." [level=2]
+    - generic: Capped at five · never changes CRM data
+    - article:
+      - heading "[SIM QC R5] US Precision Lab 02" [level=3]
+      - paragraph: 2 things to answer
+      - generic: Critical
+      - generic: revenue
+      - generic: Oct 18, 2025
+      - link "Payment overdue":
+        - /url: /app/quotes?quoteId=3fd9e469-dc56-421d-8eda-213a3e0d2141
+      - paragraph: "[SIM QC R5] Calibration equipment"
+      - paragraph: "Payment overdue: [SIM QC R5] US Precision Lab 02 / [SIM QC R5] Calibration equipment"
+      - paragraph: Check collection4,125 EUR · 4.8K USD
+      - button "Mark done"
+      - button "Dismiss"
+      - button "Snooze tomorrow"
+      - button "Snooze next week"
+      - generic: Critical
+      - generic: revenue
+      - generic: Feb 18, 2026
+      - link "Payment overdue":
+        - /url: /app/quotes?quoteId=cf28b136-5c6a-4bda-8771-6782bdbda7ba
+      - paragraph: "[SIM QC R5] Calibration equipment"
+      - paragraph: "Payment overdue: [SIM QC R5] US Precision Lab 02 / [SIM QC R5] Calibration equipment"
+      - paragraph: Check collection5,625 EUR · 6.5K USD
+      - button "Mark done"
+      - button "Dismiss"
+      - button "Snooze tomorrow"
+      - button "Snooze next week"
+    - article:
+      - heading "[SIM QC R5] US Precision Lab 08" [level=3]
+      - paragraph: 1 thing to answer
+      - generic: Critical
+      - generic: revenue
+      - generic: Dec 18, 2025
+      - link "Payment overdue":
+        - /url: /app/quotes?quoteId=c1196308-36ff-4593-85a7-f9be30c78d4b
+      - paragraph: "[SIM QC R5] Calibration equipment"
+      - paragraph: "Payment overdue: [SIM QC R5] US Precision Lab 08 / [SIM QC R5] Calibration equipment"
+      - paragraph: Check collection4,875 EUR · 5.6K USD
+      - button "Mark done"
+      - button "Dismiss"
+      - button "Snooze tomorrow"
+      - button "Snooze next week"
+    - article:
+      - heading "[SIM QC R5] US Precision Lab 11" [level=3]
+      - paragraph: 1 thing to answer
+      - generic: Critical
+      - generic: revenue
+      - generic: Jan 18, 2026
+      - link "Payment overdue":
+        - /url: /app/quotes?quoteId=3bcc76e2-9dfb-479f-8217-4ef27639e9fb
+      - paragraph: "[SIM QC R5] Calibration equipment"
+      - paragraph: "Payment overdue: [SIM QC R5] US Precision Lab 11 / [SIM QC R5] Calibration equipment"
+      - paragraph: Check collection5,250 EUR · 6.1K USD
+      - button "Mark done"
+      - button "Dismiss"
+      - button "Snooze tomorrow"
+      - button "Snooze next week"
+    - article:
+      - heading "[SIM QC R5] US Precision Lab 05" [level=3]
+      - paragraph: 1 thing to answer
+      - generic: Critical
+      - generic: revenue
+      - generic: Mar 18, 2026
+      - link "Payment overdue":
+        - /url: /app/quotes?quoteId=c6f0bf8c-9f0e-4a1d-8e28-fb6fbc8af616
+      - paragraph: "[SIM QC R5] Calibration equipment"
+      - paragraph: "Payment overdue: [SIM QC R5] US Precision Lab 05 / [SIM QC R5] Calibration equipment"
+      - paragraph: Check collection6,000 EUR · 6.9K USD
+      - button "Mark done"
+      - button "Dismiss"
+      - button "Snooze tomorrow"
+      - button "Snooze next week"
+    - button "Bring back the ones I dismissed"
+    - button "Reset every nudge on this device"
+- navigation "Quick navigation":
+  - link "Today":
+    - /url: /app/today
+    - generic: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - generic: Plan
+  - link "Accounts":
+    - /url: /app/accounts
+    - generic: Accounts
+  - link "Deals":
+    - /url: /app/opportunities
+    - generic: Deals
+  - button "More":
+    - text: More

@@ -1,0 +1,114 @@
+{
+  "report": {
+    "schemaVersion": 1,
+    "dataset": "collections",
+    "datasetVersion": 1,
+    "name": "[SIMULATED R2] Collections audit",
+    "description": "One expected or confirmed qualified order per row. Check order stage for PO status; confirmed overdue and planning dates are separate.",
+    "population": "qualified",
+    "columns": [
+      {
+        "field": "account",
+        "label": "Account"
+      },
+      {
+        "field": "orderRef",
+        "label": "Order reference"
+      },
+      {
+        "field": "orderStage",
+        "label": "Order stage"
+      },
+      {
+        "field": "outstanding",
+        "label": "Outstanding"
+      },
+      {
+        "field": "overdue",
+        "label": "Confirmed overdue balance"
+      },
+      {
+        "field": "plannedOverdue",
+        "label": "Planning dates to confirm"
+      },
+      {
+        "field": "received",
+        "label": "Recorded receipts"
+      },
+      {
+        "field": "reportingCurrency",
+        "label": "Reporting currency"
+      },
+      {
+        "field": "nextDueDate",
+        "label": "Next payment due"
+      },
+      {
+        "field": "missingContext",
+        "label": "Missing context / blocker"
+      },
+      {
+        "field": "nextAction",
+        "label": "Next action"
+      }
+    ],
+    "filters": [],
+    "filterMode": "all",
+    "groupBy": [
+      "businessUnit"
+    ],
+    "metrics": [
+      "recordCount",
+      "outstanding",
+      "overdue",
+      "received"
+    ],
+    "sort": {
+      "field": "nextDueDate",
+      "direction": "asc"
+    },
+    "view": "details"
+  },
+  "runAt": "2026-10-11T10:43:35.120Z",
+  "timezone": "Asia/Saigon",
+  "today": "2026-10-11",
+  "grain": "One expected or confirmed qualified order per row; inspect order stage and date basis",
+  "rows": 4,
+  "sourceCount": 4,
+  "sourceStatus": "Demo sources; no live cloud data.",
+  "money": {
+    "currency": "USD",
+    "ratesToVnd": {
+      "USD": 26000,
+      "VND": 1
+    },
+    "ratesAsOf": "2026-08-01"
+  },
+  "metricVersions": {
+    "recordCount": 1,
+    "outstanding": 1,
+    "overdue": 2,
+    "received": 1
+  },
+  "totals": {
+    "recordCount": {
+      "value": 4,
+      "missing": 0
+    },
+    "outstanding": {
+      "value": 55769.230769230766,
+      "missing": 0
+    },
+    "overdue": {
+      "value": 21153.846153846152,
+      "missing": 0
+    },
+    "received": {
+      "value": 29230.76923076923,
+      "missing": 0
+    }
+  },
+  "mode": "Captured current run; not historical reconstruction",
+  "collections": "Only explicitly ID-linked quotes are used, ordered by quote date, then revision timestamp and ID. Payments are recorded receipts; dates/amounts follow the existing planning schedule model. Unlinked legacy quotes are excluded.",
+  "csv": "Blank cells mean missing, ratios are fractions, amounts use reportingCurrency except Original value. User text that resembles spreadsheet formulas is escaped."
+}

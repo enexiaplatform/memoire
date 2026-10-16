@@ -86,8 +86,9 @@ export function TimelinePage() {
       : `${formatCount(heading.done)} of ${formatCount(heading.total)} planned ${heading.total === 1 ? 'item' : 'items'} done`;
 
   return (
-    <PageContainer>
+    <PageContainer density="compact">
       <PageHeader
+        size="compact"
         eyebrow={view === 'upcoming' ? heading?.eyebrow || 'Plan' : 'Plan · History'}
         title={view === 'upcoming' ? upcomingTitle : 'What already happened'}
         documentTitle="Plan"

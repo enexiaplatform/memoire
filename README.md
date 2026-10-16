@@ -53,11 +53,11 @@ A lead is not a second record type. It is an opportunity at the Lead stage, and 
 2. **Commercial Commitment Ledger** - who owes what, to whom, by when, with what impact. Three parties: I owe, the customer owes, internal owes. A rescheduled promise keeps the date it was first made.
 3. **Saved by Memoire** - an optional, inline record of whether Memoire actually produced commercial value. "I would have done it anyway" is a first-class answer.
 
-## No AI dependency
+## Local core and optional AI chat
 
-Capture parsing, prioritisation, search, and every recommendation are deterministic and computed on the user's device. Nothing is sent to an AI service, no AI SDK is installed, and no AI key is required to run or deploy Memoire.
+Capture parsing, prioritisation and Local insights are deterministic and computed on the user's device. No AI key is required to run or deploy Memoire. Ask Memoire also offers optional multi-turn Groq chat, deal analysis and follow-up drafts. Before sending, the user chooses to share a bounded, visible context preview and recent conversation. Source IDs are checked with the user's JWT and RLS; calculated money facts reuse the existing browser engines and are explicitly labelled as browser snapshots.
 
-This is a trust differentiator, not the promise. `npm run verify:no-ai` fails the build if an AI SDK, endpoint, or key placeholder is reintroduced, and `/api/health` reports a warning if an AI key is present in the environment.
+Chat is read-only. Suggested plan items require review and confirmation; drafts are copy-only. Conversations stay in page memory and clear when leaving or changing context. Groq is the only provider, with no paid-model or provider fallback. `npm run verify:no-ai` now protects the optional-AI boundary and the ability to operate without AI. See [AI chat setup and verification](docs/product/ai-chat-2026-10-16.md).
 
 ## Architecture
 
@@ -84,7 +84,7 @@ npm install
 npm run dev
 ```
 
-Copy `.env.example` to `.env` and fill in the Supabase values. There are deliberately no AI keys to set.
+Copy `.env.example` to `.env.local` and fill in the Supabase values. For optional chat, set the server-only `GROQ_API_KEY` and `AI_CHAT_ENABLED=true`. Keep Groq on its Free Plan and configure its data controls. Leaving either unset keeps chat unavailable and the core app operational. `npm run dev` serves the local chat endpoint as well as the frontend.
 
 Apply the migrations in `supabase/migrations/` in filename order.
 
@@ -109,7 +109,7 @@ The contracts that protect the product boundaries:
 - `verify:commercial-kernel` - relational tables, RLS, indexes, explainable rules, threads derived not migrated.
 - `verify:kernel-surface` - one thread component and one ledger across every surface.
 - `verify:product-analytics` - one taxonomy in three places, five fields, no customer content.
-- `verify:no-ai` - no AI SDK, endpoint, key, or health requirement.
+- `verify:no-ai` - optional, consent-gated Groq chat; no browser secrets, automatic data sharing or required AI configuration.
 - `verify:data-isolation` - demo records never reach a real workspace or the cloud.
 
 ## Data principles

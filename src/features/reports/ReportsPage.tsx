@@ -142,8 +142,8 @@ export function ReportsPage() {
     : visibleRun.definition.columns.slice(0,8) } : definition;
   const updateFilter = (index: number, filter: ReportFilter) => change({ ...definition, filters: definition.filters.map((old, i) => i === index ? filter : old) });
   return <div className="reports-page min-w-0" data-testid="reports-page">
-    <div className="report-screen flex min-w-0 flex-col gap-5">
-      <PageHeader eyebrow="Analysis" title="Reports" description="Ask a repeatable question, inspect the source records, then export the same result." actions={<button type="button" className={secondary} disabled={Boolean(busy)} onClick={() => setReload(value => value + 1)}>Reload library</button>} />
+    <div className="report-screen flex min-w-0 flex-col gap-3">
+      <PageHeader size="compact" descriptionDisclosure title="Reports" description="Ask a repeatable question, inspect the source records, then export the same result." actions={<button type="button" className={secondary} disabled={Boolean(busy)} onClick={() => setReload(value => value + 1)}>Reload library</button>} />
       {error && <p role="alert" className="rounded-lg bg-tint-red-bg p-3 text-sm text-tint-red-ink">{error}</p>}
       {message && <p role="status" className="rounded-lg bg-tint-blue-bg p-3 text-sm text-ink">{message}</p>}
       {!current ? <p>{busy || authLoading ? 'Loading reports…' : 'Reload the library to try again.'}</p> : <>
@@ -152,7 +152,7 @@ export function ReportsPage() {
           <h2 className="text-lg font-bold text-ink">{visibleRun.definition.name}</h2><MetricBasisNote /><p className="mt-2 text-sm text-muted">{visibleRun.rows.length} matching records from {visibleRun.sourceCount} loaded source records · {visibleRun.money.currency} · run {visibleRun.runAt}</p>
           <p className="mt-1 text-xs text-muted">{visibleRun.grain}. {visibleRun.sourceStatus} Timezone: {visibleRun.timezone}; planning FX {visibleRun.money.ratesAsOf}, workspace overrides captured.</p>
           {definition.dataset === 'collections' && <p className="mt-2 text-xs text-muted">Only quotes linked by ID are used; legacy name-only quotes are excluded. Open a row’s source deal or <Link className="font-semibold text-brand-blue" to={moneyViewHref('collections')}>open Collections</Link> to manage payments.</p>}
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{visibleRun.definition.metrics.map(key => <div key={key} className="rounded-lg bg-canvas p-3"><p className="text-xs text-muted">{reportMetricDefinitions[key].label}</p><p className="mt-1 font-bold text-ink">{metricLabel(key, visibleRun.totals[key])}</p></div>)}</div>
+          <div className="mt-3 grid grid-cols-2 gap-2 lg:grid-cols-4">{visibleRun.definition.metrics.map(key => <div key={key} className="rounded-lg bg-canvas p-3"><p className="text-xs text-muted">{reportMetricDefinitions[key].label}</p><p className="mt-1 font-bold text-ink">{metricLabel(key, visibleRun.totals[key])}</p></div>)}</div>
           <div className="my-4 flex flex-wrap gap-2"><button type="button" className={button} disabled={Boolean(busy)} onClick={() => void download()}>Export CSV pack</button><button type="button" className={secondary} disabled={!printAllowed || Boolean(busy)} onClick={() => { assertReportScope(scope); window.print(); }}>Print / save PDF</button>{activeGroup && <button type="button" className={secondary} onClick={() => { setDrillGroup(null); setPage(0); }}>Back to summary</button>}</div>
           {!printAllowed && <p className="mb-3 text-xs text-muted">Print supports up to 2,000 rows/groups with a compact column layout. Use CSV for larger results; it includes every configured column and matching row.</p>}
           {activeGroup && <p className="mb-3 text-sm font-semibold text-ink">Source records: {activeGroup.labels.join(' / ') || 'All matching records'}</p>}

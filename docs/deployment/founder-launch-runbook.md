@@ -36,14 +36,16 @@ Expect to see which checks fail before touching anything. The health endpoint co
 
 Verify: health probe shows `app_url_matches_request_host: true` and zero warnings for app URL. Then run one real signup + email verification + password reset on the production host.
 
-## Step 2 - No AI configuration is required (and none should be set)
+## Step 2 - No AI configuration is required for the core app
 
-Memoire has no AI dependency. Capture parsing, prioritisation, search and every recommendation are deterministic and computed on the user's device.
+Capture, prioritisation and Local insights work without AI. Optional chat uses Groq and stays unavailable unless both server settings below are configured.
 
-- Do **not** set `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, `GROQ_API_KEY` or any `CAPTURE_AI_*` variable.
-- If any of them is still present from an earlier phase, delete it in Vercel and redeploy.
+- Set `GROQ_API_KEY` and `AI_CHAT_ENABLED=true` on the server only if enabling chat. Never prefix the key with `VITE_`.
+- Keep the Groq account on its Free Plan and configure Data Controls / Zero Data Retention before sending confidential records. The app cannot make a paid provider account free.
+- Do **not** set unsupported `OPENAI_API_KEY`, `ANTHROPIC_API_KEY` or `CAPTURE_AI_*` variables.
+- Application throttles are per server instance; Groq account limits remain the shared upstream ceiling. Do not treat these as a global spending cap.
 
-Verify: `/api/health` returns `ok: true` with `no_ai_provider_configured` passing. A leftover key is reported as a warning, never as a required failure - production health does not depend on AI configuration.
+Verify: `/api/health` returns `ok: true` without an AI key. `ai_chat_available` describes optional configuration. An enabled chat without a key raises a warning, not a required failure. Test an authenticated conversation separately; configuration alone does not prove that Groq accepts the key or has remaining quota.
 
 ## Step 3 - Error and event visibility
 

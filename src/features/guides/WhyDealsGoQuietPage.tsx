@@ -196,8 +196,8 @@ export function WhyDealsGoQuietPage() {
           derived from the terms already written on the quote.
         </p>
         <p>
-          There is no AI service behind any of it, and no writeback to your CRM. Your customer names, prices and
-          notes stay yours.
+          These core signals are computed on your device, with no writeback to your CRM. Optional AI chat
+          shares previewed context with Groq only when you choose to use it.
         </p>
       </GuideSection>
 

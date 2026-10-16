@@ -101,8 +101,8 @@ assert.ok(
   'runbook must state that no AI configuration is required',
 );
 assert.ok(
-  runbook.includes('Do not** set') || runbook.includes('Do **not** set'),
-  'runbook must explicitly tell the operator not to set AI provider keys',
+  runbook.includes('GROQ_API_KEY') && runbook.includes('AI_CHAT_ENABLED') && runbook.includes('Free Plan'),
+  'runbook must explain optional Groq configuration and the Free Plan boundary',
 );
 assert.equal(
   runbook.includes('capture-ai-classify'),

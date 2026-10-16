@@ -77,7 +77,7 @@ These may appear descriptively where a sentence needs them. None may be the head
 - "All-in-one business management"
 - "Generic productivity OS"
 
-**No AI dependency** is a trust differentiator, not the promise. Parsing, prioritisation, search and recommendations are deterministic and run on the user's device. Say it where trust is the question; never lead with it.
+**No required AI dependency** remains a trust differentiator. Capture, prioritisation and Local insights run on the user's device. Optional Chat AI uses Groq only after the user chooses to share a visible context preview; answers and drafts require review. Never imply that optional chat is local or that its generated answers are canonical calculations.
 
 ## Product phase
 

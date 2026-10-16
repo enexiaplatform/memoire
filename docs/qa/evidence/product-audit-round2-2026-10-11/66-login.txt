@@ -1,0 +1,21 @@
+- link "Memoire home":
+  - /url: /
+  - generic: Memoire
+- heading "Welcome back" [level=1]
+- paragraph: Sign in to your Memoire account
+- button "Continue with Google"
+- generic: or
+- generic: Email address
+- textbox "Email address":
+  - /placeholder: you@company.com
+- generic: Password
+- textbox "Password":
+  - /placeholder: Enter your password
+- link "Forgot password?":
+  - /url: /forgot-password
+- generic: Supabase cloud sync is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to enable Google sign-in and cloud persistence.
+- button "Sign in"
+- paragraph:
+  - text: Don't have an account?
+  - link "Sign up":
+    - /url: /signup

@@ -1,0 +1,955 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 5 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "5 open": "5"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 5 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: ⌘K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - heading "Opportunities" [level=1]
+  - paragraph: 9 shown of 9 · loaded Oct 11, 2026
+  - text: Qualified pipeline.
+  - link "3 leads are on Leads":
+    - /url: /app/leads
+  - text: until qualified.
+  - button "Add":
+    - text: Add
+  - generic "More":
+    - text: More
+  - textbox:
+    - /placeholder: Search account, deal, brand, channel...
+  - generic: Stage
+  - combobox "Stage":
+    - option "Stage" [selected]
+    - option "Discovery"
+    - option "Qualification"
+    - option "Technical discussion"
+    - option "Demo"
+    - option "Proposal"
+    - option "Negotiation"
+    - option "Procurement"
+    - option "Won"
+    - option "Lost"
+    - option "On hold"
+  - generic: Status
+  - combobox "Status":
+    - option "Status" [selected]
+    - option "Active"
+    - option "Won"
+    - option "Lost"
+    - option "On hold"
+  - generic: Forecast
+  - combobox "Forecast":
+    - option "Forecast" [selected]
+    - option "Defensible"
+    - option "Weak but recoverable"
+    - option "Hope-based"
+    - option "Unsupported"
+  - generic: Decision
+  - combobox "Decision":
+    - option "Decision" [selected]
+    - option "Defend"
+    - option "Downgrade"
+    - option "Rescue"
+    - option "Monitor"
+    - option "Deprioritize"
+  - generic: Brand
+  - combobox "Brand":
+    - option "Brand" [selected]
+    - option "[SIMULATED R2] New instrument"
+    - option "MicroView"
+    - option "PMM"
+    - option "Scitek"
+    - option "Tailin"
+  - generic: Close
+  - combobox "Close":
+    - option "Close" [selected]
+    - option "Q4 2026"
+    - option "Q1 2027"
+  - button "All pipeline"
+  - button "Imported core"
+  - button "Stage inferred"
+  - button "FY26 value"
+  - button "FY27 value"
+  - button "Needs action"
+  - button "Going silent"
+  - button "No champion"
+  - heading "Opportunity Master List" [level=2]
+  - paragraph: 9 after filters / 12 total · open pipeline first, closed deals last
+  - text: Rows
+  - combobox "Rows":
+    - option "25" [selected]
+    - option "50"
+    - option "100"
+  - table:
+    - rowgroup:
+      - row "Deal Not sorted Close Sorted asc Stage Not sorted MEDDIC Not sorted Value Not sorted Brand Health Not sorted Next action Not sorted Last touch Not sorted Open":
+        - columnheader "Deal Not sorted":
+          - button "Deal Not sorted":
+            - text: Deal
+            - generic: Not sorted
+        - columnheader "Close Sorted asc":
+          - button "Close Sorted asc":
+            - text: Close
+            - generic: Sorted asc
+        - columnheader "Stage Not sorted":
+          - button "Stage Not sorted":
+            - text: Stage
+            - generic: Not sorted
+        - columnheader "MEDDIC Not sorted":
+          - button "MEDDIC Not sorted":
+            - text: MEDDIC
+            - generic: Not sorted
+        - columnheader "Value Not sorted":
+          - button "Value Not sorted":
+            - text: Value
+            - generic: Not sorted
+        - columnheader "Brand"
+        - columnheader "Health Not sorted":
+          - button "Health Not sorted":
+            - text: Health
+            - generic: Not sorted
+        - columnheader "Next action Not sorted":
+          - button "Next action Not sorted":
+            - text: Next action
+            - generic: Not sorted
+        - columnheader "Last touch Not sorted":
+          - button "Last touch Not sorted":
+            - text: Last touch
+            - generic: Not sorted
+        - columnheader "Open":
+          - generic: Open
+          - text: ·
+    - rowgroup:
+      - row "Q4 2026 2 deals 37,307.69 USD":
+        - cell "Q4 2026 2 deals 37,307.69 USD":
+          - generic: Q4 2026
+          - generic: 2 deals
+          - generic: 37,307.69 USD
+      - 'row "Apex Labs Validated decontamination service renewal Q4 ''26 This month Proposal Active Needs action · 2 checkpoints 17/3253% Identify the pain: Strong; Metrics: Missing; Urgency: Strong; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 520,000,000 VND Tailin Needs cleanup Weak but recoverable · Monitor 1 record gap · 1 touch Confirm renewal PO timing with engineering manager Oct 13, 2026 Oct 5, 2026"':
+        - cell "Apex Labs Validated decontamination service renewal":
+          - paragraph: Apex Labs
+          - paragraph: Validated decontamination service renewal
+        - cell "Q4 '26 This month":
+          - generic "Recorded as \"This month\"":
+            - generic: Q4 '26
+            - generic: This month
+        - cell "Proposal Active Needs action · 2 checkpoints":
+          - text: Proposal
+          - paragraph: Active
+          - paragraph: Needs action · 2 checkpoints
+        - 'cell "17/3253% Identify the pain: Strong; Metrics: Missing; Urgency: Strong; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "17"
+            - generic: /32
+            - generic: 53%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Strong; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Strong"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "520,000,000 VND"
+        - cell "Tailin":
+          - generic: Tailin
+        - cell "Needs cleanup Weak but recoverable · Monitor 1 record gap · 1 touch":
+          - text: Needs cleanup
+          - paragraph: Weak but recoverable · Monitor
+          - paragraph: 1 record gap · 1 touch
+        - cell "Confirm renewal PO timing with engineering manager Oct 13, 2026":
+          - paragraph: Confirm renewal PO timing with engineering manager
+          - paragraph: Oct 13, 2026
+        - cell "Oct 5, 2026":
+          - paragraph: Oct 5, 2026
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "Northstar Foods Lab workflow Q4 ''26 Next month Proposal Active Needs action · 3 checkpoints 15/3247% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Partial; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion 450,000,000 VND Scitek High risk Weak but recoverable · Rescue 2 record gaps · 1 touch Send local support proof and lead time response Oct 18, 2026 Oct 10, 2026"':
+        - cell "Northstar Foods Lab workflow":
+          - paragraph: Northstar Foods
+          - paragraph: Lab workflow
+        - cell "Q4 '26 Next month":
+          - generic "Recorded as \"Next month\"":
+            - generic: Q4 '26
+            - generic: Next month
+        - cell "Proposal Active Needs action · 3 checkpoints":
+          - text: Proposal
+          - paragraph: Active
+          - paragraph: Needs action · 3 checkpoints
+        - 'cell "15/3247% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Partial; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion"':
+          - paragraph:
+            - text: "15"
+            - generic: /32
+            - generic: 47%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Partial; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Partial"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "450,000,000 VND"
+        - cell "Scitek":
+          - generic: Scitek
+        - cell "High risk Weak but recoverable · Rescue 2 record gaps · 1 touch":
+          - text: High risk
+          - paragraph: Weak but recoverable · Rescue
+          - paragraph: 2 record gaps · 1 touch
+        - cell "Send local support proof and lead time response Oct 18, 2026":
+          - paragraph: Send local support proof and lead time response
+          - paragraph: Oct 18, 2026
+        - cell "Oct 10, 2026":
+          - paragraph: Oct 10, 2026
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+    - rowgroup:
+      - row "Q1 2027 1 deal 92,307.69 USD":
+        - cell "Q1 2027 1 deal 92,307.69 USD":
+          - generic: Q1 2027
+          - generic: 1 deal
+          - generic: 92,307.69 USD
+      - 'row "Apex Labs Validation Expansion Q1 ''27 Next quarter Negotiation Active Needs action · 1 checkpoint 23/3272% Identify the pain: Strong; Metrics: Missing; Urgency: Strong; Decision criteria: Partial; Decision process: Strong; Champion: Strong; Economic buyer: Partial; Paper process: Strong; Competition: Strong Below the 75% gate 2,400,000,000 VND Tailin Healthy Defensible · Defend 0 record gaps · 2 touches Send revised quote and procurement checklist Oct 16, 2026 Oct 11, 2026"':
+        - cell "Apex Labs Validation Expansion":
+          - paragraph: Apex Labs
+          - paragraph: Validation Expansion
+        - cell "Q1 '27 Next quarter":
+          - generic "Recorded as \"Next quarter\"":
+            - generic: Q1 '27
+            - generic: Next quarter
+        - cell "Negotiation Active Needs action · 1 checkpoint":
+          - text: Negotiation
+          - paragraph: Active
+          - paragraph: Needs action · 1 checkpoint
+        - 'cell "23/3272% Identify the pain: Strong; Metrics: Missing; Urgency: Strong; Decision criteria: Partial; Decision process: Strong; Champion: Strong; Economic buyer: Partial; Paper process: Strong; Competition: Strong Below the 75% gate"':
+          - paragraph:
+            - text: "23"
+            - generic: /32
+            - generic: 72%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Strong; Decision criteria: Partial; Decision process: Strong; Champion: Strong; Economic buyer: Partial; Paper process: Strong; Competition: Strong"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Strong"'
+            - 'generic "Decision criteria: Partial"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Strong"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Strong"'
+          - paragraph: Below the 75% gate
+        - cell "2,400,000,000 VND"
+        - cell "Tailin":
+          - generic: Tailin
+        - cell "Healthy Defensible · Defend 0 record gaps · 2 touches":
+          - text: Healthy
+          - paragraph: Defensible · Defend
+          - paragraph: 0 record gaps · 2 touches
+        - cell "Send revised quote and procurement checklist Oct 16, 2026":
+          - paragraph: Send revised quote and procurement checklist
+          - paragraph: Oct 16, 2026
+        - cell "Oct 11, 2026":
+          - paragraph: Oct 11, 2026
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+    - rowgroup:
+      - row "No close date 2 deals 34,615.38 USD":
+        - cell "No close date 2 deals 34,615.38 USD":
+          - generic: No close date
+          - generic: 2 deals
+          - generic: 34,615.38 USD
+      - 'row "Orion Pharma Procurement review Decision maker not marked No close date Procurement Active Needs action · 5 checkpoints 9/3228% Identify the pain: Partial; Metrics: Missing; Urgency: Partial; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Missing; Paper process: Strong; Competition: Partial No champion · no economic buyer 900,000,000 VND Scitek High risk Hope-based · Rescue 5 record gaps · 2 touches Clarify tender timeline and committee owner Oct 18, 2026 Oct 11, 2026"':
+        - cell "Orion Pharma Procurement review Decision maker not marked":
+          - paragraph: Orion Pharma
+          - paragraph: Procurement review
+          - paragraph: Decision maker not marked
+        - cell "No close date":
+          - generic "No close period on this deal": No close date
+        - cell "Procurement Active Needs action · 5 checkpoints":
+          - text: Procurement
+          - paragraph: Active
+          - paragraph: Needs action · 5 checkpoints
+        - 'cell "9/3228% Identify the pain: Partial; Metrics: Missing; Urgency: Partial; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Missing; Paper process: Strong; Competition: Partial No champion · no economic buyer"':
+          - paragraph:
+            - text: "9"
+            - generic: /32
+            - generic: 28%
+          - 'img "Identify the pain: Partial; Metrics: Missing; Urgency: Partial; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Missing; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Partial"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Partial"'
+            - 'generic "Decision process: Partial"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Missing (blocks the forecast)"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion · no economic buyer
+        - cell "900,000,000 VND"
+        - cell "Scitek":
+          - generic: Scitek
+        - cell "High risk Hope-based · Rescue 5 record gaps · 2 touches":
+          - text: High risk
+          - paragraph: Hope-based · Rescue
+          - paragraph: 5 record gaps · 2 touches
+        - cell "Clarify tender timeline and committee owner Oct 18, 2026":
+          - paragraph: Clarify tender timeline and committee owner
+          - paragraph: Oct 18, 2026
+        - cell "Oct 11, 2026":
+          - paragraph: Oct 11, 2026
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIMULATED R2] Atlas Lab Round 2 qualification test Decision maker not marked No close date Discovery Active Needs action · 5 checkpoints 1/323% Identify the pain: Missing; Metrics: Missing; Urgency: Missing; Decision criteria: Missing; Decision process: Missing; Champion: Missing; Economic buyer: Missing; Paper process: Missing; Competition: Partial No champion · no economic buyer — [SIMULATED R2] New instrument High risk Unsupported · Monitor 4 record gaps · 0 touches Confirm testing needs No due date No touch yet Record updated Oct 11, 2026"':
+        - cell "[SIMULATED R2] Atlas Lab Round 2 qualification test Decision maker not marked":
+          - paragraph: "[SIMULATED R2] Atlas Lab"
+          - paragraph: Round 2 qualification test
+          - paragraph: Decision maker not marked
+        - cell "No close date":
+          - generic "No close period on this deal": No close date
+        - cell "Discovery Active Needs action · 5 checkpoints":
+          - text: Discovery
+          - paragraph: Active
+          - paragraph: Needs action · 5 checkpoints
+        - 'cell "1/323% Identify the pain: Missing; Metrics: Missing; Urgency: Missing; Decision criteria: Missing; Decision process: Missing; Champion: Missing; Economic buyer: Missing; Paper process: Missing; Competition: Partial No champion · no economic buyer"':
+          - paragraph:
+            - text: "1"
+            - generic: /32
+            - generic: 3%
+          - 'img "Identify the pain: Missing; Metrics: Missing; Urgency: Missing; Decision criteria: Missing; Decision process: Missing; Champion: Missing; Economic buyer: Missing; Paper process: Missing; Competition: Partial"':
+            - 'generic "Identify the pain: Missing"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Missing"'
+            - 'generic "Decision criteria: Missing"'
+            - 'generic "Decision process: Missing"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Missing (blocks the forecast)"'
+            - 'generic "Paper process: Missing"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion · no economic buyer
+        - cell "—"
+        - cell "[SIMULATED R2] New instrument":
+          - generic: "[SIMULATED R2] New instrument"
+        - cell "High risk Unsupported · Monitor 4 record gaps · 0 touches":
+          - text: High risk
+          - paragraph: Unsupported · Monitor
+          - paragraph: 4 record gaps · 0 touches
+        - cell "Confirm testing needs No due date":
+          - paragraph: Confirm testing needs
+          - paragraph: No due date
+        - cell "No touch yet Record updated Oct 11, 2026":
+          - paragraph: No touch yet
+          - paragraph: Record updated Oct 11, 2026
+        - cell:
+          - button "Open opportunity details":
+    - rowgroup:
+      - row "Closed · won and lost 4 deals":
+        - cell "Closed · won and lost 4 deals":
+          - generic: Closed · won and lost
+          - generic: 4 deals
+      - 'row "Orion Pharma LIMS expansion No close date Lost Lost Closed · 2 checkpoints 12/3238% Identify the pain: Strong; Metrics: Missing; Urgency: Missing; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 1,200,000,000 VND Scitek High risk Unsupported · Downgrade 5 record gaps · 0 touches No next action No touch yet Record updated Jul 23, 2026"':
+        - cell "Orion Pharma LIMS expansion":
+          - paragraph: Orion Pharma
+          - paragraph: LIMS expansion
+        - cell "No close date":
+          - generic "No close period on this deal": No close date
+        - cell "Lost Lost Closed · 2 checkpoints":
+          - text: Lost
+          - paragraph: Lost
+          - paragraph: Closed · 2 checkpoints
+        - 'cell "12/3238% Identify the pain: Strong; Metrics: Missing; Urgency: Missing; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "12"
+            - generic: /32
+            - generic: 38%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Missing; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Missing"'
+            - 'generic "Decision criteria: Partial"'
+            - 'generic "Decision process: Partial"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "1,200,000,000 VND"
+        - cell "Scitek":
+          - generic: Scitek
+        - cell "High risk Unsupported · Downgrade 5 record gaps · 0 touches":
+          - text: High risk
+          - paragraph: Unsupported · Downgrade
+          - paragraph: 5 record gaps · 0 touches
+        - cell "No next action":
+          - paragraph: No next action
+        - cell "No touch yet Record updated Jul 23, 2026":
+          - paragraph: No touch yet
+          - paragraph: Record updated Jul 23, 2026
+        - cell:
+          - button "Open opportunity details":
+      - 'row "Summit Diagnostics QC workflow No close date Won Won Completed 13/3241% Identify the pain: Strong; Metrics: Missing; Urgency: Missing; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion 650,000,000 VND MicroView High risk Defensible · Defend 2 record gaps · 1 touch Confirm payment release date with finance Oct 10, 2026 Sep 25, 2026"':
+        - cell "Summit Diagnostics QC workflow":
+          - paragraph: Summit Diagnostics
+          - paragraph: QC workflow
+        - cell "No close date":
+          - generic "No close period on this deal": No close date
+        - cell "Won Won Completed":
+          - text: Won
+          - paragraph: Won
+          - paragraph: Completed
+        - 'cell "13/3241% Identify the pain: Strong; Metrics: Missing; Urgency: Missing; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion"':
+          - paragraph:
+            - text: "13"
+            - generic: /32
+            - generic: 41%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Missing; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Missing"'
+            - 'generic "Decision criteria: Partial"'
+            - 'generic "Decision process: Partial"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "650,000,000 VND"
+        - cell "MicroView":
+          - generic: MicroView
+        - cell "High risk Defensible · Defend 2 record gaps · 1 touch":
+          - text: High risk
+          - paragraph: Defensible · Defend
+          - paragraph: 2 record gaps · 1 touch
+        - cell "Confirm payment release date with finance Oct 10, 2026":
+          - paragraph: Confirm payment release date with finance
+          - paragraph: Oct 10, 2026
+        - cell "Sep 25, 2026":
+          - paragraph: Sep 25, 2026
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "Northstar Foods Line audit service No close date Won Won Needs action · 2 checkpoints 10/3231% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion 480,000,000 VND PMM High risk Defensible · Defend 2 record gaps · 2 touches No next action Oct 9, 2026"':
+        - cell "Northstar Foods Line audit service":
+          - paragraph: Northstar Foods
+          - paragraph: Line audit service
+        - cell "No close date":
+          - generic "No close period on this deal": No close date
+        - cell "Won Won Needs action · 2 checkpoints":
+          - text: Won
+          - paragraph: Won
+          - paragraph: Needs action · 2 checkpoints
+        - 'cell "10/3231% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion"':
+          - paragraph:
+            - text: "10"
+            - generic: /32
+            - generic: 31%
+          - 'img "Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Missing"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Partial"'
+            - 'generic "Decision process: Partial"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "480,000,000 VND"
+        - cell "PMM":
+          - generic: PMM
+        - cell "High risk Defensible · Defend 2 record gaps · 2 touches":
+          - text: High risk
+          - paragraph: Defensible · Defend
+          - paragraph: 2 record gaps · 2 touches
+        - cell "No next action":
+          - paragraph: No next action
+        - cell "Oct 9, 2026":
+          - paragraph: Oct 9, 2026
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "Northstar Foods Reagent resupply No close date Won Won Needs action · 2 checkpoints 9/3228% Identify the pain: Missing; Metrics: Missing; Urgency: Missing; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion 180,000,000 VND PMM High risk Defensible · Defend 2 record gaps · 0 touches No next action No touch yet Record updated Sep 25, 2026"':
+        - cell "Northstar Foods Reagent resupply":
+          - paragraph: Northstar Foods
+          - paragraph: Reagent resupply
+        - cell "No close date":
+          - generic "No close period on this deal": No close date
+        - cell "Won Won Needs action · 2 checkpoints":
+          - text: Won
+          - paragraph: Won
+          - paragraph: Needs action · 2 checkpoints
+        - 'cell "9/3228% Identify the pain: Missing; Metrics: Missing; Urgency: Missing; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion"':
+          - paragraph:
+            - text: "9"
+            - generic: /32
+            - generic: 28%
+          - 'img "Identify the pain: Missing; Metrics: Missing; Urgency: Missing; Decision criteria: Partial; Decision process: Partial; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Missing"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Missing"'
+            - 'generic "Decision criteria: Partial"'
+            - 'generic "Decision process: Partial"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "180,000,000 VND"
+        - cell "PMM":
+          - generic: PMM
+        - cell "High risk Defensible · Defend 2 record gaps · 0 touches":
+          - text: High risk
+          - paragraph: Defensible · Defend
+          - paragraph: 2 record gaps · 0 touches
+        - cell "No next action":
+          - paragraph: No next action
+        - cell "No touch yet Record updated Sep 25, 2026":
+          - paragraph: No touch yet
+          - paragraph: Record updated Sep 25, 2026
+        - cell:
+          - button "Open opportunity details":
+  - paragraph: Showing 1-9 of 9
+  - button "Previous page" [disabled]:
+  - generic: Page 1 / 1
+  - button "Next page" [disabled]:
+  - generic "Pipeline analysisquality, shape, forecast and import coverage Open":
+    - generic: Pipeline analysisquality, shape, forecast and import coverage
+    - generic: Open
+  - region "Commercial threads":
+    - heading "Commercial threads" [level=2]
+    - paragraph: Quietest first
+    - article:
+      - heading "Validated decontamination service renewal" [level=3]
+      - generic: active
+      - paragraph: Apex Labs · Service renewal and validation support
+      - link "Open":
+        - /url: /app/opportunities?opportunityId=demo-opp-apex-service-renewal
+        - text: Open
+      - term: "Money:"
+      - definition: No money in play yet
+      - term: "Waiting:"
+      - definition: Nobody is waiting
+      - term: "Quiet for:"
+      - definition: 6 days
+      - term: "Next commitment:"
+      - definition: None — nothing is scheduled to move this
+    - article:
+      - heading "Second QC line" [level=3]
+      - generic: active
+      - paragraph: Delta Nutrition · Rapid microbial testing
+      - link "Open":
+        - /url: /app/opportunities?opportunityId=demo-lead-delta-second-qc-line
+        - text: Open
+      - term: "Money:"
+      - definition: No money in play yet
+      - term: "Waiting:"
+      - definition: They are waiting on you
+      - term: "Quiet for:"
+      - definition: 2 days
+      - term: "Next commitment:"
+      - definition: Send the overview · Oct 16, 2026
+    - article:
+      - heading "Lab workflow" [level=3]
+      - generic: active
+      - paragraph: Northstar Foods · Lab workflow
+      - link "Open":
+        - /url: /app/opportunities?opportunityId=demo-opp-northstar-foods-lab
+        - text: Open
+      - term: "Money:"
+      - definition: Waiting on delivery
+      - term: "Waiting:"
+      - definition: They are waiting on you
+      - term: "Quiet for:"
+      - definition: 1 day
+      - term: "Next commitment:"
+      - definition: Send local support proof · Oct 17, 2026
+    - article:
+      - heading "Round 2 qualification test" [level=3]
+      - generic: active
+      - paragraph: "[SIMULATED R2] Atlas Lab"
+      - link "Open":
+        - /url: /app/opportunities?opportunityId=a2cb6052-49e0-4819-9c0c-b6faa99e952d
+        - text: Open
+      - term: "Money:"
+      - definition: No money in play yet
+      - term: "Waiting:"
+      - definition: Nobody is waiting
+      - term: "Quiet for:"
+      - definition: 0 days
+      - term: "Next commitment:"
+      - definition: None — nothing is scheduled to move this
+    - article:
+      - heading "New microbiology lab" [level=3]
+      - generic: active
+      - paragraph: Harbor Diagnostics
+      - link "Open":
+        - /url: /app/opportunities?opportunityId=demo-lead-harbor-diagnostics
+        - text: Open
+      - term: "Money:"
+      - definition: No money in play yet
+      - term: "Waiting:"
+      - definition: Nobody is waiting
+      - term: "Quiet for:"
+      - definition: 0 days
+      - term: "Next commitment:"
+      - definition: None — nothing is scheduled to move this
+    - article:
+      - heading "Allergen testing" [level=3]
+      - generic: active
+      - paragraph: Riverside Foods · Allergen test kits
+      - link "Open":
+        - /url: /app/opportunities?opportunityId=demo-lead-riverside-foods
+        - text: Open
+      - term: "Money:"
+      - definition: No money in play yet
+      - term: "Waiting:"
+      - definition: Nobody is waiting
+      - term: "Quiet for:"
+      - definition: 0 days
+      - term: "Next commitment:"
+      - definition: None — nothing is scheduled to move this
+  - button "Close opportunity details"
+  - dialog "Add opportunity":
+    - paragraph: Add Opportunity
+    - heading "New deal record" [level=2]
+    - button "Close" [active]:
+    - region "Next customer step":
+      - heading "Next customer step" [level=3]
+      - text: Next action
+      - textbox "Next action"
+      - text: Next action date
+      - textbox "Next action date"
+    - generic: Account *
+    - textbox "Account *":
+      - /placeholder: Your customer's company
+      - text: Apex Labs
+    - paragraph: Linked to Apex Labs, a customer you already have.
+    - generic: Opportunity *
+    - textbox "Opportunity *"
+    - paragraph: Where this deal stands
+    - paragraph: Step 2 of 8 · Discovery · normally 10%
+    - button "Move this deal to Lead":
+      - generic: Lead
+    - button "Move this deal to Discovery":
+      - generic: Discovery
+    - button "Move this deal to Qualification":
+      - generic: Qualification
+    - button "Move this deal to Technical discussion":
+      - generic: Technical discussion
+    - button "Move this deal to Demo":
+      - generic: Demo
+    - button "Move this deal to Proposal":
+      - generic: Proposal
+    - button "Move this deal to Negotiation":
+      - generic: Negotiation
+    - button "Move this deal to Procurement":
+      - generic: Procurement
+    - text: Stage
+    - combobox "Stage":
+      - option "Lead"
+      - option "Discovery" [selected]
+      - option "Qualification"
+      - option "Technical discussion"
+      - option "Demo"
+      - option "Proposal"
+      - option "Negotiation"
+      - option "Procurement"
+      - option "Won"
+      - option "Lost"
+      - option "On hold"
+    - text: Status
+    - combobox "Status":
+      - option "Active" [selected]
+      - option "Won"
+      - option "Lost"
+      - option "On hold"
+    - text: Probability %
+    - combobox "Probability %":
+      - option "Use the stage default" [selected]
+      - option "0%"
+      - option "5%"
+      - option "10%"
+      - option "25%"
+      - option "50%"
+      - option "75%"
+      - option "90%"
+      - option "100%"
+    - paragraph: Discovery normally runs at 10%.
+    - text: Estimated value
+    - spinbutton "Estimated value"
+    - text: Currency
+    - combobox "Currency":
+      - option "AED"
+      - option "AUD"
+      - option "CAD"
+      - option "CHF"
+      - option "CNY"
+      - option "EUR"
+      - option "GBP"
+      - option "HKD"
+      - option "IDR"
+      - option "INR"
+      - option "JPY"
+      - option "KRW"
+      - option "MYR"
+      - option "NZD"
+      - option "PHP"
+      - option "SAR"
+      - option "SGD"
+      - option "THB"
+      - option "TWD"
+      - option "USD" [selected]
+      - option "VND"
+      - option "AFN"
+      - option "ALL"
+      - option "AMD"
+      - option "ANG"
+      - option "AOA"
+      - option "ARS"
+      - option "AWG"
+      - option "AZN"
+      - option "BAM"
+      - option "BBD"
+      - option "BDT"
+      - option "BGN"
+      - option "BHD"
+      - option "BIF"
+      - option "BMD"
+      - option "BND"
+      - option "BOB"
+      - option "BRL"
+      - option "BSD"
+      - option "BTN"
+      - option "BWP"
+      - option "BYN"
+      - option "BZD"
+      - option "CDF"
+      - option "CLP"
+      - option "COP"
+      - option "CRC"
+      - option "CUC"
+      - option "CUP"
+      - option "CVE"
+      - option "CZK"
+      - option "DJF"
+      - option "DKK"
+      - option "DOP"
+      - option "DZD"
+      - option "EGP"
+      - option "ERN"
+      - option "ETB"
+      - option "FJD"
+      - option "FKP"
+      - option "GEL"
+      - option "GHS"
+      - option "GIP"
+      - option "GMD"
+      - option "GNF"
+      - option "GTQ"
+      - option "GYD"
+      - option "HNL"
+      - option "HRK"
+      - option "HTG"
+      - option "HUF"
+      - option "ILS"
+      - option "IQD"
+      - option "IRR"
+      - option "ISK"
+      - option "JMD"
+      - option "JOD"
+      - option "KES"
+      - option "KGS"
+      - option "KHR"
+      - option "KMF"
+      - option "KPW"
+      - option "KWD"
+      - option "KYD"
+      - option "KZT"
+      - option "LAK"
+      - option "LBP"
+      - option "LKR"
+      - option "LRD"
+      - option "LSL"
+      - option "LYD"
+      - option "MAD"
+      - option "MDL"
+      - option "MGA"
+      - option "MKD"
+      - option "MMK"
+      - option "MNT"
+      - option "MOP"
+      - option "MRU"
+      - option "MUR"
+      - option "MVR"
+      - option "MWK"
+      - option "MXN"
+      - option "MZN"
+      - option "NAD"
+      - option "NGN"
+      - option "NIO"
+      - option "NOK"
+      - option "NPR"
+      - option "OMR"
+      - option "PAB"
+      - option "PEN"
+      - option "PGK"
+      - option "PKR"
+      - option "PLN"
+      - option "PYG"
+      - option "QAR"
+      - option "RON"
+      - option "RSD"
+      - option "RUB"
+      - option "RWF"
+      - option "SBD"
+      - option "SCR"
+      - option "SDG"
+      - option "SEK"
+      - option "SHP"
+      - option "SLL"
+      - option "SOS"
+      - option "SRD"
+      - option "SSP"
+      - option "STN"
+      - option "SVC"
+      - option "SYP"
+      - option "SZL"
+      - option "TJS"
+      - option "TMT"
+      - option "TND"
+      - option "TOP"
+      - option "TRY"
+      - option "TTD"
+      - option "TZS"
+      - option "UAH"
+      - option "UGX"
+      - option "UYU"
+      - option "UZS"
+      - option "VES"
+      - option "VUV"
+      - option "WST"
+      - option "XAF"
+      - option "XCD"
+      - option "XDR"
+      - option "XOF"
+      - option "XPF"
+      - option "XSU"
+      - option "YER"
+      - option "ZAR"
+      - option "ZMW"
+      - option "ZWL"
+    - text: Expected close date
+    - textbox "Expected close date"
+    - text: Product / solution
+    - textbox "Product / solution":
+      - /placeholder: ""
+    - text: Brand / principal
+    - combobox "Brand / principal":
+      - option "No brand yet"
+      - option "Tailin"
+      - option "Scitek" [selected]
+      - option "PMM"
+      - option "MicroView"
+      - option "Others — enter manually"
+    - paragraph:
+      - text: Choose a catalog Brand or enter a name under Others.
+      - link "Manage Brands":
+        - /url: /app/products
+    - text: Decision maker
+    - textbox "Decision maker":
+      - /placeholder: ""
+    - text: Budget owner
+    - textbox "Budget owner":
+      - /placeholder: ""
+    - text: Procurement path
+    - combobox "Procurement path":
+      - option "Not known yet" [selected]
+      - option "Direct purchase"
+      - option "Quote comparison"
+      - option "Open tender"
+      - option "Framework / existing contract"
+      - option "Through distributor or agent"
+    - text: Technical criteria
+    - textbox "Technical criteria"
+    - text: Evidence
+    - textbox "Evidence"
+    - text: Missing context
+    - textbox "Missing context"
+    - text: Objection debt
+    - textbox "Objection debt"
+    - text: Forecast evidence
+    - generic: How much of this value the customer has actually confirmed. Hope-based and Unsupported are discounted on Revenue.
+    - combobox "Forecast evidence How much of this value the customer has actually confirmed. Hope-based and Unsupported are discounted on Revenue.":
+      - option "Defensible"
+      - option "Weak but recoverable" [selected]
+      - option "Hope-based"
+      - option "Unsupported"
+    - text: Decision recommendation
+    - generic: "What you intend to do about it: Defend (protect it), Rescue (fix it), Downgrade (cut the number), Monitor (watch), Deprioritize (stop working it)."
+    - 'combobox "Decision recommendation What you intend to do about it: Defend (protect it), Rescue (fix it), Downgrade (cut the number), Monitor (watch), Deprioritize (stop working it)."':
+      - option "Defend"
+      - option "Downgrade"
+      - option "Rescue"
+      - option "Monitor" [selected]
+      - option "Deprioritize"
+    - button "Save Opportunity":
+      - text: Save Opportunity

@@ -1,0 +1,81 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 5 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "5 open": "5"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 5 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - generic: Settings · changes save as you go
+  - button "Export & Delete":
+    - text: Export & Delete
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Workspace
+  - heading "Your rules, your data" [level=1]
+  - heading "Settings" [level=2]
+  - paragraph: Five tabs, each owning one decision about your workspace.
+  - tablist "Settings":
+    - tab "Workspace Money, notifications, storage":
+      - generic: Workspace
+      - generic: Money, notifications, storage
+    - tab "Account Your name and sign-in":
+      - generic: Account
+      - generic: Your name and sign-in
+    - tab "Plan & Billing What you pay for" [active] [selected]:
+      - generic: Plan & Billing
+      - generic: What you pay for
+    - tab "Data & Privacy What Memoire is, and is not":
+      - generic: Data & Privacy
+      - generic: What Memoire is, and is not
+    - tab "Export & Delete Take it out, or remove it":
+      - generic: Export & Delete
+      - generic: Take it out, or remove it
+  - heading "Plan & billing" [level=2]
+  - paragraph: What you are on, and what it costs. Payment is handled by Lemon Squeezy.
+  - paragraph: You are working in this browser without an account, so there is nothing to bill. Everything here stays on this device until you sign in.

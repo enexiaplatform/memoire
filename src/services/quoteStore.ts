@@ -14,6 +14,7 @@ import {
 import { getReportingCurrency, sumMoneyInBase } from '../utils/money';
 import { compareSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from '../utils/safeDate.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
+import { quoteAmountError } from '../utils/quoteValidation.ts';
 
 export { buildDeliveryScheduleUpdate, getNextCommercialProgressAction, getQuoteCommercialStage, getQuoteWorkspaceHref, requiresExpectedDeliveryDate } from '../utils/commercialFulfillment';
 export type { CommercialProgressAction, CommercialStage } from '../utils/commercialFulfillment';
@@ -171,6 +172,8 @@ function persistQuotes(quotes: QuoteRecord[], syncCloud: boolean) {
 }
 
 export function createQuote(input: QuoteInput) {
+  const amountError = quoteAmountError(input.amount);
+  if (amountError) throw new Error(amountError);
   if (input.paymentStatus === 'Paid') throw new Error('Record a receipt in Collections to confirm payment.');
   const now = new Date().toISOString();
   const quote = sanitizeQuote({
@@ -189,6 +192,8 @@ export function createQuote(input: QuoteInput) {
 }
 
 export function updateQuote(quote: QuoteRecord, input: QuoteInput) {
+  const amountError = quoteAmountError(input.amount);
+  if (amountError) throw new Error(amountError);
   if (input.paymentStatus === 'Paid' && quote.paymentStatus !== 'Paid') throw new Error('Record a receipt in Collections to confirm payment.');
   const updated = sanitizeQuote({
     ...quote,

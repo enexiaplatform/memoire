@@ -1,4 +1,5 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
+import type { SalesActivityLinkTarget } from '../services/salesActivityStore';
 import type { ClassifiedSalesActivity, SalesActivityType } from './salesActivityClassifier.ts';
 import { getPlanItemWriteTarget, type PlanItem } from './weeklyPlan.ts';
 import { isOutOfOfficeChannel, normalizeActivityChannel, type ActivityChannel } from './activityChannel.ts';
@@ -59,6 +60,7 @@ export type PlanCompletionLogInput = {
 
 export type PlanCompletionLog = {
   activity: ClassifiedSalesActivity;
+  link?: SalesActivityLinkTarget;
   /** The customer it landed on, or '' when the task names none. */
   accountName: string;
 };
@@ -80,7 +82,7 @@ function hrefParam(href: string, key: string): string {
  */
 export function planItemOpportunity(item: PlanItem, opportunities: CrmLiteOpportunity[]) {
   const target = getPlanItemWriteTarget(item);
-  const id = target.kind === 'deal' ? target.opportunityId : hrefParam(item.href, 'opportunityId');
+  const id = item.linkedOpportunityId || (target.kind === 'deal' ? target.opportunityId : hrefParam(item.href, 'opportunityId'));
   return id ? opportunities.find((record) => record.id === id) : undefined;
 }
 
@@ -216,6 +218,11 @@ export function buildPlanCompletionActivity(input: PlanCompletionLogInput): Plan
 
   return {
     accountName,
+    link: opportunity && !isOutOfOfficeChannel(channel) ? {
+      linkedOpportunityId: opportunity.id,
+      linkedOpportunityName: opportunity.opportunityName,
+      linkedAccountName: opportunity.accountName,
+    } : undefined,
     activity: {
       accountName,
       opportunityName: isOutOfOfficeChannel(channel) ? '' : (opportunity?.opportunityName || ''),

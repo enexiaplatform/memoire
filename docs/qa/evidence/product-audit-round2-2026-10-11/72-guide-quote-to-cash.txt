@@ -1,0 +1,248 @@
+- navigation:
+  - link "Memoire home":
+    - /url: /
+    - generic: Memoire
+  - link "Use Cases":
+    - /url: /use-cases
+  - link "Pricing":
+    - /url: /pricing
+  - link "Log in":
+    - /url: /login
+  - link "Talk to us":
+    - /url: /request-access
+  - link "Create Account":
+    - /url: /signup
+- banner:
+  - paragraph: Order to cash
+  - heading "Most tools stop at Won. The money doesn't arrive there." [level=1]
+  - paragraph: A signature is roughly the halfway point. Between it and the payment clearing sit a contract, a deposit, a shipment, a delivery, an invoice and a due date — six handovers in a business that may not have six people. This is where a small operation quietly loses more money than it loses in the pipeline.
+  - paragraph:
+    - text: Updated
+    - time: 26 August 2026
+- main:
+  - heading "The gap between two systems is where the cash sits" [level=2]
+  - paragraph:
+    - text: Almost every business runs two tools with a hole between them. The sales tool covers everything up to the win and then stops. The accounting tool starts at the invoice and works forward. Between
+    - emphasis: Won
+    - text: and
+    - emphasis: invoiced
+    - text: there is a stretch — production, shipping, delivery, acceptance — that belongs to neither, and it is precisely the stretch where money stops moving.
+  - paragraph: "The symptom is a number almost nobody has in front of them: how much have we delivered that we have not yet billed for. It is not a forecast and not a receivable. It is work already done, cost already paid, and revenue not yet requested — and because it lives in the hole between two systems, it is discovered rather than watched."
+  - blockquote: “We delivered last month. Did anyone invoice it?”
+  - heading "The seven steps, and who drops each one" [level=2]
+  - paragraph: Written out, an order-to-cash cycle in a trading or distribution business is short enough to hold in your head — which is exactly why nobody writes it down, and why steps go missing.
+  - list:
+    - generic: "1"
+    - strong: Contract or PO
+    - generic: The customer’s commitment in writing. Until it exists, everything after it is you taking a risk on a conversation.
+    - generic: "2"
+    - strong: Deposit
+    - generic: If the terms say 50% with the order, this is the first date that can be late — and the earliest warning you will ever get about a customer’s intent.
+    - generic: "3"
+    - strong: Production or procurement
+    - generic: You commit your own money. This is where your obligation to a supplier starts running on a different clock from the customer’s obligation to you.
+    - generic: "4"
+    - strong: Delivery or handover
+    - generic: The moment your cost is fully sunk and your claim on the money becomes real.
+    - generic: "5"
+    - strong: Invoice
+    - generic: The step most often missed, because it feels administrative and follows the part that felt like the finish.
+    - generic: "6"
+    - strong: Due date
+    - generic: Not a step you do — a date derived from the term agreed at quote time. If nobody derived it, nothing is ever late.
+    - generic: "7"
+    - strong: Payment received
+    - generic: The only step that ends the cycle. Everything before it is work in progress.
+  - paragraph:
+    - text: "A useful test: for each open order, how many days has it been standing on its current step? Not how old the order is — how long it has been stuck. An order sitting six days at"
+    - emphasis: Contract/PO
+    - text: is normal. An order sitting twenty-five days there is a customer who has changed their mind and not told you.
+  - heading "The three places the money actually leaks" [level=2]
+  - generic: "1"
+  - heading "Delivered, not invoiced" [level=3]
+  - paragraph: The largest and least visible. It is invisible because it is not late — nothing can be late before an invoice exists. The only way to see it is to compare two stages of the same order book, which requires that both stages live in the same place.
+  - generic: "2"
+  - heading "Terms agreed, dates never derived" [level=3]
+  - paragraph: "“50% with PO, 50% after delivery” was agreed, written on the quote, and then never turned into two dates anybody watches. This is a data problem masquerading as a discipline problem: the information needed to build a full receivables aging already exists at quote time. It just has to be carried forward rather than retyped into a second system that does not know about the first."
+  - paragraph:
+    - text: Watch for the inverse failure too. An order with
+    - emphasis: "no"
+    - text: payment term recorded is not an order that can never be late — it is an order whose lateness nobody can compute. Those two are easy to confuse and expensive to confuse.
+  - generic: "3"
+  - heading "Margin discovered after the fact" [level=3]
+  - paragraph: In a business that buys in one currency and sells in another, the real margin on an order is the sale minus goods, freight, duty and the cost of however long the customer takes to pay. If that sum is done after delivery, it is a post-mortem. Done at quote time it is a price — and it is the same arithmetic either way.
+  - heading "What it looks like when it is working" [level=2]
+  - paragraph: "Two views answer almost every question in this cycle. The first is the order book by stage: where the money is, and how much of it stopped between two steps."
+  - figure "One quarter, quote to cash $338,000 never made it to the bank":
+    - generic: One quarter, quote to cash
+    - generic: $338,000 never made it to the bank
+    - generic: Quoted
+    - 'generic "Quoted: $412,000 (11 quotes)"'
+    - generic: $412,000
+    - generic: Ordered
+    - 'generic "Ordered: $255,000 (6 orders)"'
+    - generic: $255,000
+    - generic: Delivered
+    - 'generic "Delivered: $182,000 (4 orders)"'
+    - generic: $182,000
+    - generic: Invoiced
+    - 'generic "Invoiced: $136,000 (3 invoices)"'
+    - generic: $136,000
+    - generic: Paid
+    - 'generic "Paid: $74,000 (2 settled)"'
+    - generic: $74,000
+    - paragraph: The gap between Delivered and Invoiced is work you have already done and not yet billed for.
+    - table "Order to cash by stage":
+      - caption: Order to cash by stage
+      - rowgroup:
+        - row "Stage Value Count":
+          - columnheader "Stage"
+          - columnheader "Value"
+          - columnheader "Count"
+      - rowgroup:
+        - row "Quoted $412,000 11 quotes":
+          - rowheader "Quoted"
+          - cell "$412,000"
+          - cell "11 quotes"
+        - row "Ordered $255,000 6 orders":
+          - rowheader "Ordered"
+          - cell "$255,000"
+          - cell "6 orders"
+        - row "Delivered $182,000 4 orders":
+          - rowheader "Delivered"
+          - cell "$182,000"
+          - cell "4 orders"
+        - row "Invoiced $136,000 3 invoices":
+          - rowheader "Invoiced"
+          - cell "$136,000"
+          - cell "3 invoices"
+        - row "Paid $74,000 2 settled":
+          - rowheader "Paid"
+          - cell "$74,000"
+          - cell "2 settled"
+  - heading "And the second is how late the money already is" [level=2]
+  - paragraph: Aging is not a finance report you produce once a month. It is the collection to-do list, and every due date in it was decided when the quote went out. If the terms travel with the order, this view costs nothing to maintain; if they do not, it costs a morning every month and is out of date by the afternoon.
+  - paragraph:
+    - text: "A rule that saves a surprising amount of pain:"
+    - strong: never re-enter a number that already exists somewhere.
+    - text: Every re-entry is a chance for two systems to disagree, and when they disagree about money, the argument is with a customer.
+  - figure "How late the money is $150,000 outstanding":
+    - generic: How late the money is
+    - generic: $150,000 outstanding
+    - generic: Not yet due
+    - 'generic "Not yet due: $38,000"'
+    - generic: $38,000
+    - generic: 1-30 days
+    - 'generic "1-30 days: $74,000"'
+    - generic: $74,000
+    - generic: 31-60 days
+    - 'generic "31-60 days: $24,000"'
+    - generic: $24,000
+    - generic: 61-90 days
+    - 'generic "61-90 days: $10,000"'
+    - generic: $10,000
+    - generic: Over 90 days
+    - 'generic "Over 90 days: $4,000"'
+    - generic: $4,000
+    - paragraph: Every due date here was derived from the payment terms already written on the quote. Nothing was re-entered.
+    - table "Receivables by age":
+      - caption: Receivables by age
+      - rowgroup:
+        - row "Age Amount":
+          - columnheader "Age"
+          - columnheader "Amount"
+      - rowgroup:
+        - row "Not yet due $38,000":
+          - rowheader "Not yet due"
+          - cell "$38,000"
+        - row "1-30 days $74,000":
+          - rowheader "1-30 days"
+          - cell "$74,000"
+        - row "31-60 days $24,000":
+          - rowheader "31-60 days"
+          - cell "$24,000"
+        - row "61-90 days $10,000":
+          - rowheader "61-90 days"
+          - cell "$10,000"
+        - row "Over 90 days $4,000":
+          - rowheader "Over 90 days"
+          - cell "$4,000"
+  - heading "Doing this without an ERP" [level=2]
+  - paragraph: "The conventional answer is an ERP, and for a business of forty people it may well be right. For a business of one to ten it usually is not: the implementation is longer than the sales cycle it is meant to shorten, and the thing that fails is not the software but the data entry it demands from people who are also the ones selling."
+  - paragraph: "The self-built version needs three properties, and most spreadsheets have one or two of them:"
+  - paragraph:
+    - strong: One row per order, carried the whole way.
+    - text: Not a pipeline sheet and a separate delivery sheet and a separate receivables sheet. The moment there are three, reconciling them becomes a job.
+  - paragraph:
+    - strong: Status derived from what the records prove.
+    - text: A step should tick because a document exists, not because somebody remembered to change a cell. Tick by hand only the steps no document will ever prove.
+  - paragraph:
+    - strong: Days-on-step, visible.
+    - text: The single most useful column, and the one almost no home-made tracker has, because a spreadsheet does not know when a cell last changed.
+  - heading "How Memoire does this" [level=2]
+  - paragraph:
+    - text: Memoire follows one customer thread from the first conversation to the money landing.
+    - strong: Orders
+    - text: is the order book in seven steps, showing how many days each order has been standing still.
+    - strong: Cash Collection
+    - text: builds the receivables aging from the payment terms already written on the quote — nothing is re-entered.
+    - strong: Cost Analysis
+    - text: lands goods, freight and duty against the sale, in a different currency from the sale if that is how the business buys, and does it at quote time so the margin is a decision rather than a discovery.
+  - paragraph:
+    - text: It is not accounting software and does not try to be — no ledger, no tax, no payroll. It is the layer that keeps the thread from going quiet in the stretch where
+    - link "nothing else is watching":
+      - /url: /why-deals-go-quiet
+    - text: .
+  - heading "Keep reading" [level=2]
+  - list:
+    - link "Deals don't die. They go quiet. The four silences in a B2B cycle, why each happens, and what to do about them with or without software.":
+      - /url: /why-deals-go-quiet
+      - text: Deals don't die. They go quiet.
+      - generic: The four silences in a B2B cycle, why each happens, and what to do about them with or without software.
+    - link "What Memoire deliberately refuses to do No CRM writeback, no AI service, no accounting, no manager scoreboard — and why each line is drawn there.":
+      - /url: /legal/boundaries
+      - text: What Memoire deliberately refuses to do
+      - generic: No CRM writeback, no AI service, no accounting, no manager scoreboard — and why each line is drawn there.
+- paragraph: Free while in preview
+- heading "Memoire is one way to do all of this without remembering any of it." [level=2]
+- paragraph: You write down what happened with a customer once. It becomes that account's memory, the next commitment you owe, and the warning when that commitment is about to be forgotten — through the quote, the delivery and the invoice, all the way to the money landing.
+- link "Start free — no card":
+  - /url: /signup
+  - text: Start free — no card
+- link "Free during the preview, $10 a month after":
+  - /url: /pricing
+- contentinfo:
+  - link "Memoire home":
+    - /url: /
+    - generic: Memoire
+  - link "support@memoire-official.com":
+    - /url: mailto:support@memoire-official.com
+  - heading "Product" [level=4]
+  - list:
+    - link "Features":
+      - /url: /#features
+    - link "Use Cases":
+      - /url: /use-cases
+    - link "Pricing":
+      - /url: /pricing
+    - link "Talk to us":
+      - /url: /request-access
+    - link "Create Account":
+      - /url: /signup
+    - link "Log in":
+      - /url: /login
+  - heading "Guides" [level=4]
+  - list:
+    - link "Why deals go quiet":
+      - /url: /why-deals-go-quiet
+    - link "Quote to cash":
+      - /url: /quote-to-cash
+  - heading "Legal" [level=4]
+  - list:
+    - link "Privacy Policy":
+      - /url: /legal/privacy
+    - link "Terms of Service":
+      - /url: /legal/terms
+    - link "Product Boundaries":
+      - /url: /legal/boundaries
+  - generic: © 2026 Memoire. All rights reserved.

@@ -1,0 +1,244 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities":
+    - /url: /app/opportunities
+    - text: Opportunities
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: "[Q"
+  - generic "[SIMULATED QC R5] Orion Calibration Partners"
+  - generic: Personal workspace
+  - button "Account and settings for [SIMULATED QC R5] Orion Calibration Partners":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic "Pipeline records, review packs, assets, and action outcomes sync to your account. Lightweight setup preferences may remain in this browser. Cloud records are available across devices. Browser preferences may reset when browser data is cleared.":
+    - generic: Cloud + browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Analysis
+  - heading "Reports" [level=1]
+  - generic: Ask a repeatable question, inspect the source records, then export the same result.
+  - button "Reload library"
+  - paragraph: Report library cloud sync completed.
+  - heading "[SIM QC R5] CalPro — Performance" [level=2]
+  - generic "How to read these numbers · scope, cash and exchange rates"
+  - paragraph: 38 matching records from 75 loaded source records · USD · run 2026-10-13T06:50:57.490Z
+  - paragraph: "One opportunity per row; current classification. Current workspace view. Catalog cloud sync completed. Source loaders may use browser copies; cloud/accounting completeness is not certified. Timezone: Asia/Saigon; planning FX 2026-08-01, workspace overrides captured."
+  - paragraph: Records
+  - paragraph: "38"
+  - paragraph: Qualified pipeline
+  - paragraph: "0"
+  - paragraph: Won deal value
+  - paragraph: 173,846.15
+  - paragraph: Win rate
+  - paragraph: 52.0% (25 decided)
+  - button "Export CSV pack"
+  - button "Print / save PDF"
+  - paragraph: Preview 1–1 of 1 groups. Export uses the full filtered result.
+  - table:
+    - rowgroup:
+      - row "Brand Records Qualified pipeline Won deal value Win rate Source records":
+        - columnheader "Brand"
+        - columnheader "Records"
+        - columnheader "Qualified pipeline"
+        - columnheader "Won deal value"
+        - columnheader "Win rate"
+        - columnheader "Source records"
+    - rowgroup:
+      - row "[SIM QC R5] CalPro 38 0 173,846.15 52.0% (25 decided) View 38 records":
+        - cell "[SIM QC R5] CalPro"
+        - cell "38"
+        - cell "0"
+        - cell "173,846.15"
+        - cell "52.0% (25 decided)"
+        - cell "View 38 records":
+          - button "View 38 records"
+  - button "Previous page" [disabled]
+  - button "Next page" [disabled]
+  - complementary:
+    - heading "Choose a business question" [level=2]
+    - button "How is each Brand performing?"
+    - button "Which deals need a next action?"
+    - button "Where are my Leads coming from?"
+    - button "Which payments need attention?"
+    - heading "Other templates" [level=3]
+    - button "Portfolio Performance"
+    - button "Collections & Blockers"
+    - heading "Saved reports" [level=2]
+    - checkbox "Archived reports only"
+    - text: Archived reports only
+    - list:
+      - button "[SIM QC R5] Orion collections (copy)"
+      - paragraph: collections · version 3
+      - button "Archive report"
+      - button "[SIM QC R5] Orion collections"
+      - paragraph: collections · version 2
+      - button "Archive report"
+      - button "[SIM QC R5] Orion portfolio"
+      - paragraph: opportunities · version 1
+      - button "Archive report"
+  - generic "Customize filters, columns and saved report"
+  - option "Qualified opportunities"
+  - option "Leads only"
+  - option "All opportunities" [selected]
+  - option "Details"
+  - option "Grouped summary" [selected]
+  - option "Source ID"
+  - option "Account" [selected]
+  - option "Deal / order"
+  - option "Business unit"
+  - option "Brand"
+  - option "Product group"
+  - option "Product / solution"
+  - option "Deal stage"
+  - option "Deal status"
+  - option "Original brand"
+  - option "Original product"
+  - option "Original value"
+  - option "Original currency"
+  - option "Value in reporting currency"
+  - option "Reporting currency"
+  - option "Next action"
+  - option "Next action date"
+  - option "Closed on"
+  - option "Missing context / blocker"
+  - option "Open objections"
+  - option "Channel"
+  - option "Opportunity type"
+  - option "Expected close period"
+  - option "Decision maker"
+  - option "Budget owner"
+  - option "Procurement path"
+  - option "Technical criteria"
+  - option "Forecast evidence category"
+  - option "Decision recommendation"
+  - option "Pipeline probability (%)"
+  - option "Lead source"
+  - option "All conditions (AND)" [selected]
+  - option "Any condition (OR)"
+  - option "Source ID"
+  - option "Account"
+  - option "Deal / order"
+  - option "Business unit"
+  - option "Brand" [selected]
+  - option "Product group"
+  - option "Product / solution"
+  - option "Deal stage"
+  - option "Deal status"
+  - option "Original brand"
+  - option "Original product"
+  - option "Original value"
+  - option "Original currency"
+  - option "Value in reporting currency"
+  - option "Reporting currency"
+  - option "Next action"
+  - option "Next action date"
+  - option "Closed on"
+  - option "Missing context / blocker"
+  - option "Open objections"
+  - option "Channel"
+  - option "Opportunity type"
+  - option "Expected close period"
+  - option "Decision maker"
+  - option "Budget owner"
+  - option "Procurement path"
+  - option "Technical criteria"
+  - option "Forecast evidence category"
+  - option "Decision recommendation"
+  - option "Pipeline probability (%)"
+  - option "Lead source"
+  - option "Equals" [selected]
+  - option "Missing / unassigned"
+  - option "Present / assigned"
+  - option "Choose a catalog entry"
+  - option "[SIM QC R5] CalPro" [selected]
+  - option "[SIM QC R5] Inspectra"
+  - option "No grouping"
+  - option "Source ID"
+  - option "Account"
+  - option "Deal / order"
+  - option "Business unit"
+  - option "Brand" [selected]
+  - option "Product group"
+  - option "Product / solution"
+  - option "Deal stage"
+  - option "Deal status"
+  - option "Original brand"
+  - option "Original product"
+  - option "Original currency"
+  - option "Reporting currency"
+  - option "Next action"
+  - option "Next action date"
+  - option "Closed on"
+  - option "Missing context / blocker"
+  - option "Open objections"
+  - option "Channel"
+  - option "Opportunity type"
+  - option "Expected close period"
+  - option "Decision maker"
+  - option "Budget owner"
+  - option "Procurement path"
+  - option "Technical criteria"
+  - option "Forecast evidence category"
+  - option "Decision recommendation"
+  - option "Lead source"
+  - option "No grouping" [selected]
+  - option "Source ID"
+  - option "Account"
+  - option "Deal / order"
+  - option "Business unit"
+  - option "Brand"
+  - option "Product group"
+  - option "Product / solution"
+  - option "Deal stage"
+  - option "Deal status"
+  - option "Original brand"
+  - option "Original product"
+  - option "Original currency"
+  - option "Reporting currency"
+  - option "Next action"
+  - option "Next action date"
+  - option "Closed on"
+  - option "Missing context / blocker"
+  - option "Open objections"
+  - option "Channel"
+  - option "Opportunity type"
+  - option "Expected close period"
+  - option "Decision maker"
+  - option "Budget owner"
+  - option "Procurement path"
+  - option "Technical criteria"
+  - option "Forecast evidence category"
+  - option "Decision recommendation"
+  - option "Lead source"

@@ -1,0 +1,118 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities":
+    - /url: /app/opportunities
+    - text: Opportunities
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: "[Q"
+  - generic "[SIMULATED QC R5] Orion Calibration Partners"
+  - generic: Personal workspace
+  - button "Account and settings for [SIMULATED QC R5] Orion Calibration Partners":
+- banner:
+  - link "Back to Today":
+    - /url: /app/today
+    - text: Back to Today
+  - generic: Ask Memoire · computed from your own records, no AI service
+  - generic: 61 deals indexed
+  - button "New thread"
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Ask Memoire
+  - heading "Ask your own pipeline" [level=1]
+  - generic: Asking about
+  - tablist "Context selector":
+    - tab "All Deals" [selected]
+    - tab "Specific Account"
+    - tab "Specific Opportunity"
+  - 'generic "Current context: All Memory"'
+  - region "Answer":
+    - paragraph: Khách hàng còn nợ tôi bao nhiêu tiền?
+    - heading "Here is what your records say" [level=2]
+    - paragraph: Answered from your measured history (no AI involved).
+    - article:
+      - paragraph: insight
+      - heading "Where the money sits" [level=3]
+      - paragraph: In motion
+      - paragraph: 267.4K USD
+      - paragraph: Committed, not collected
+      - paragraph: 85.7K USD - 11 stalled
+      - paragraph: Opportunity
+      - paragraph: 12 threads - 181.7K USD (12 stuck)
+      - paragraph: Pending payment
+      - paragraph: 12 threads - 85.7K USD (12 stuck)
+      - paragraph: Stuck money first
+      - list:
+        - generic: "[SIM QC R5] US Precision Lab 11 / [SIM QC R5] 2026-09 Calibration station 2 (8,249 EUR): Payment overdue - Confirm the payment date."
+        - generic: "[SIM QC R5] US Precision Lab 08 / [SIM QC R5] 2026-08 Calibration station 2 (7,875 EUR): Payment overdue - Confirm the payment date."
+        - generic: "[SIM QC R5] US Precision Lab 05 / [SIM QC R5] 2026-07 Calibration station 2 (7,500 EUR): Payment overdue - Confirm the payment date."
+        - generic: "[SIM QC R5] US Precision Lab 02 / [SIM QC R5] 2026-06 Calibration station 2 (7,125 EUR): Payment overdue - Confirm the payment date."
+      - link "Open Money":
+        - /url: /app/revenue
+        - text: Open Money
+      - link "Open Cash collection":
+        - /url: /app/cash-collection
+        - text: Open Cash collection
+    - generic "Structured text"
+    - paragraph: Drawn from
+    - generic: Money flow (deals, quotes, POs, deliveries, payments)
+    - generic: Order book
+    - paragraph:
+      - generic: "Suggested next action: Confirm the payment date. ([SIM QC R5] US Precision Lab 11)"
+  - textbox "Find a record by name, or ask a supported question":
+    - /placeholder: Find a customer or deal by name, or ask about a deal, an account, or a week...
+  - button "Ask":
+  - complementary "Questions Memoire can answer":
+    - heading "Ask next" [level=2]
+    - button "Which customers should I check back with?"
+    - button "Which deals may go silent?"
+    - heading "Action / fix prompts" [level=3]
+    - button "Draft a follow-up"
+    - button "How should I address this objection?"
+    - button "What should I ask the customer next?"
+    - paragraph: These three need one customer - pick an account or opportunity in the context selector first.
+    - heading "What this can answer" [level=2]
+    - list:
+      - button "Who needs follow-up?"
+      - button "Where is money stuck?"
+      - button "What changed this week?"
+      - button "Summarize this account."
+      - button "Which opportunities have no next action?"
+      - button "Which commitments are overdue?"
+      - button "What am I waiting for from customers?"
+      - button "What do I owe today?"
+    - heading "Asked this visit" [level=2]
+    - button "Where is the money? Khách hàng còn nợ tôi bao nhiêu tiền?"
+    - paragraph: Kept for this visit only - nothing you ask is stored.
+    - region "Private by default":
+      - heading "Private by default" [level=2]
+      - paragraph: Answers are built on this device from your captured data. Nothing is sent to an AI service, so no customer context leaves your browser.

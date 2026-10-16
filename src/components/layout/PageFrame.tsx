@@ -56,6 +56,8 @@ export type PageHeaderProps = {
   meta?: ReactNode;
   /** One or two sentences. Omit it on list surfaces where the list is the page. */
   description?: ReactNode;
+  /** Keep guidance available without pushing the working surface down. */
+  descriptionDisclosure?: boolean;
   /** The primary action and, at most, its quieter alternatives. */
   actions?: ReactNode;
   /**
@@ -79,7 +81,7 @@ export type PageHeaderProps = {
    * `hero` is Today's greeting: a size larger, because it is the one page that
    * opens on a person rather than on a list.
    */
-  size?: 'page' | 'hero';
+  size?: 'page' | 'hero' | 'compact';
 };
 
 export function PageHeader({
@@ -88,6 +90,7 @@ export function PageHeader({
   titleAccent,
   meta,
   description,
+  descriptionDisclosure = false,
   actions,
   tabs,
   icon,
@@ -109,7 +112,7 @@ export function PageHeader({
    * header rather than drawing it picked this up without being edited.
    */
   return (
-    <header className={`flex animate-rise flex-col gap-3 lg:flex-row lg:items-end lg:justify-between lg:gap-6 ${className}`}>
+    <header className={`flex animate-rise flex-col lg:flex-row lg:justify-between ${size === 'compact' ? 'gap-2 lg:items-center lg:gap-4' : 'gap-3 lg:items-end lg:gap-6'} ${className}`}>
       <div className="min-w-0">
         {/* brand-blue-dark, not brand-blue: the eyebrow sits on the page ground,
             and #1976D2 on #F4F7FA is 4.28:1 - under AA at 11px. */}
@@ -125,7 +128,7 @@ export function PageHeader({
             <span className="relative top-0.5 shrink-0 text-brand-blue">{icon}</span>
           )}
           <h1 className={`font-display font-[750] leading-[1.1] tracking-[-0.03em] text-ink ${
-            size === 'hero' ? 'text-[28px] sm:text-[34px] lg:text-[38px]' : 'text-[26px] sm:text-[30px] lg:text-[34px]'
+            size === 'compact' ? 'text-[24px]' : size === 'hero' ? 'text-[28px] sm:text-[34px] lg:text-[38px]' : 'text-[26px] sm:text-[30px] lg:text-[34px]'
           }`}>
             {title}
             {titleAccent && <span className={accentColour}>{titleAccent.text}</span>}
@@ -134,12 +137,17 @@ export function PageHeader({
         </div>
         {/* A div, not a p: a description may be a composed block (Today's brief
             carries its own paragraphs), and a paragraph cannot contain one. */}
-        {description && (
+        {description && (descriptionDisclosure ? (
+          <details className="mt-1 text-xs text-tint-neutral-ink">
+            <summary className="w-fit cursor-pointer font-semibold text-gray-500 hover:text-ink">About this view</summary>
+            <div className="mt-1 max-w-2xl text-[13.5px] leading-6 [text-wrap:pretty]">{description}</div>
+          </details>
+        ) : (
           <div className={`max-w-2xl text-[13.5px] leading-6 text-tint-neutral-ink [text-wrap:pretty] ${size === 'hero' ? 'mt-2.5' : 'mt-2'}`}>
             {description}
           </div>
-        )}
-        {tabs && <div className="mt-3">{tabs}</div>}
+        ))}
+        {tabs && <div className={size === 'compact' ? 'mt-2' : 'mt-3'}>{tabs}</div>}
       </div>
       {actions && (
         /* `shrink-0` so a long title never squeezes the primary action into a
@@ -166,11 +174,13 @@ export function PageHeader({
 export function PageContainer({
   children,
   width = 'full',
+  density = 'standard',
   className = '',
   onClickCapture,
 }: {
   children: ReactNode;
   width?: 'full' | 'reading';
+  density?: 'standard' | 'compact';
   className?: string;
   /**
    * Today intercepts link clicks on the way down to route some of them through
@@ -186,7 +196,7 @@ export function PageContainer({
 
   return (
     <div
-      className={`flex w-full flex-col gap-[18px] px-4 py-5 sm:px-6 lg:px-8 lg:py-[26px] ${widths[width]} ${className}`}
+      className={`flex w-full flex-col px-4 sm:px-6 lg:px-8 ${density === 'compact' ? 'gap-3 py-3 lg:py-4' : 'gap-[18px] py-5 lg:py-[26px]'} ${widths[width]} ${className}`}
       onClickCapture={onClickCapture}
     >
       {children}

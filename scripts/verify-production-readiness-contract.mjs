@@ -66,7 +66,7 @@ for (const warningName of [
   'app_url_not_localhost',
   'demo_mode_disabled',
   'founder_workspace_disabled',
-  'no_ai_provider_configured',
+  'no_unsupported_ai_provider_configured',
 ]) {
   requireIncludes(readiness, warningName, `readiness runtime missing warning check ${warningName}`);
 }
@@ -96,7 +96,7 @@ for (const optionalName of ['lemonsqueezy_api_key', 'lemonsqueezy_store', 'lemon
     { ...noAiEnv, OPENAI_API_KEY: 'sk-proj-leftover' },
     { requestHost: 'memoire-blush-eta.vercel.app' },
   );
-  const aiWarning = withAiKey.checks.find((check) => check.name === 'no_ai_provider_configured');
+  const aiWarning = withAiKey.checks.find((check) => check.name === 'no_unsupported_ai_provider_configured');
   assert.equal(aiWarning?.ok, false, 'a leftover AI provider key must be reported by health');
 }
 

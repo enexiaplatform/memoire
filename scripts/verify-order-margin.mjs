@@ -116,7 +116,7 @@ const bookOf = (opportunities) => buildOrderBook({
   // the Orders page, which is what the assertion above pins.
   const costPage = readFileSync(new URL('../src/features/revenue/CostAnalysisPage.tsx', import.meta.url), 'utf8');
   assert.match(costPage, /<CostAnalysisPanel/, 'the margin page must render the module');
-  assert.match(costPage, /eyebrow="Money"/, 'it is a view of Money and must say so');
+  assert.match(costPage, /documentTitle="Money · Margin"/, 'the compact view retains its Money context in the document title');
   assert.match(costPage, /title="Margin"/, 'the view is named for the question it answers');
 
   const money = readFileSync(new URL('../src/features/revenue/MoneyPage.tsx', import.meta.url), 'utf8');

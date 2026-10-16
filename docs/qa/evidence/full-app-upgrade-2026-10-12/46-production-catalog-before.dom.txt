@@ -1,0 +1,217 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities":
+    - /url: /app/opportunities
+    - text: Opportunities
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: "[Q"
+  - generic "[SIMULATED QC R5] Orion Calibration Partners"
+  - generic: Personal workspace
+  - button "Account and settings for [SIMULATED QC R5] Orion Calibration Partners":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic "Pipeline records, review packs, assets, and action outcomes sync to your account. Lightweight setup preferences may remain in this browser. Cloud records are available across devices. Browser preferences may reset when browser data is cleared.":
+    - generic: Cloud + browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace" [active]:
+  - paragraph: Portfolio
+  - heading "Products & Brands" [level=1]
+  - generic: Organize the lines you carry and link each deal once. Business units classify your own records.
+  - button "Reload catalog"
+  - status: Catalog cloud sync completed.
+  - paragraph: Qualified pipeline
+  - paragraph: $181,731
+  - paragraph: 12 active deals · 0 missing amount/rate
+  - paragraph: Won deal value
+  - paragraph: $435,885
+  - paragraph: 37 won deals · 0 missing amount/rate
+  - paragraph: Win rate
+  - paragraph: 76%
+  - paragraph: 49 decided deals
+  - paragraph: Current pipeline and all-time won/lost outcomes. Partial totals exclude missing amounts/rates. Planning FX dated 2026-08-01, with workspace overrides. Won value is not cash or accounting revenue. 0 qualified deals have no portfolio classification.
+  - generic "Check original brand text before classification"
+  - heading "Add catalog entry" [level=2]
+  - text: Type
+  - combobox "Type":
+    - option "Business unit"
+    - option "Brand" [selected]
+    - option "Product group"
+    - option "Product / solution"
+  - text: Name
+  - textbox "Name"
+  - text: Code (optional)
+  - textbox "Code (optional)"
+  - text: Description
+  - textbox "Description"
+  - text: Confirmed aliases (one per line)
+  - textbox "Confirmed aliases (one per line)"
+  - button "Save entry"
+  - heading "Catalog (3)" [level=2]
+  - text: Search catalog
+  - textbox "Search catalog":
+    - /placeholder: Name, alias or code
+  - text: Entry kind
+  - combobox "Entry kind":
+    - option "All kinds" [selected]
+    - option "Business unit"
+    - option "Brand"
+    - option "Product group"
+    - option "Product / solution"
+  - text: Catalog status
+  - combobox "Catalog status":
+    - option "All statuses" [selected]
+    - option "Active"
+    - option "Retired"
+  - text: Parent entry
+  - combobox "Parent entry":
+    - option "All parents" [selected]
+    - option "No parent"
+    - option "[SIM QC R5] Traceability renewal service"
+    - option "[SIM QC R5] CalPro"
+    - option "[SIM QC R5] Inspectra"
+  - status: 3 matching entries · page 1 of 1
+  - list:
+    - paragraph: "[SIM QC R5] Traceability renewal service"
+    - paragraph: Product / solution · active · 1 total links · 0 Leads · 0 qualified active · 1 closed · version 3
+    - paragraph: "Pipeline: $0"
+    - button "Edit"
+    - button "Retire"
+    - link "Performance report (Qualified)":
+      - /url: /app/reports?catalogKind=product&catalogId=portfolio-550dad47-e733-400a-a831-d20eabeaee8d
+    - link "All linked records":
+      - /url: /app/reports?catalogKind=product&catalogId=portfolio-550dad47-e733-400a-a831-d20eabeaee8d&population=all
+    - paragraph: "[SIM QC R5] CalPro"
+    - paragraph: Brand · active · 37 total links · 12 Leads · 0 qualified active · 25 closed · version 1
+    - paragraph: "Pipeline: $0"
+    - button "Edit"
+    - button "Retire"
+    - link "Performance report (Qualified)":
+      - /url: /app/reports?catalogKind=brand&catalogId=443ef5ae-7fc2-404e-87a6-2d1fa4a4be20
+    - link "All linked records":
+      - /url: /app/reports?catalogKind=brand&catalogId=443ef5ae-7fc2-404e-87a6-2d1fa4a4be20&population=all
+    - paragraph: "[SIM QC R5] Inspectra"
+    - paragraph: Brand · active · 36 total links · 0 Leads · 12 qualified active · 24 closed · version 1
+    - paragraph: "Pipeline: $181,731"
+    - button "Edit"
+    - button "Retire"
+    - link "Performance report (Qualified)":
+      - /url: /app/reports?catalogKind=brand&catalogId=8c2b62cd-b0ca-4ee3-850b-4d195da40a4a
+    - link "All linked records":
+      - /url: /app/reports?catalogKind=brand&catalogId=8c2b62cd-b0ca-4ee3-850b-4d195da40a4a&population=all
+  - button "Previous entries" [disabled]
+  - button "Next entries" [disabled]
+  - heading "Classify existing deals" [level=2]
+  - paragraph: Original brand/product text is preserved. Suggested matches need your choice. Bundle amounts are not split between products.
+  - paragraph: Catalog counts and totals use direct deal classifications. Parent links organize entries; child totals are not rolled up.
+  - text: Find a deal
+  - textbox "Find a deal":
+    - /placeholder: Account, deal, original brand or product
+  - text: Deal
+  - combobox "Deal":
+    - option "Choose a deal" [selected]
+    - option "[SIM QC R5 FIX] Northstar Calibration — [SIM QC R5 FIX] Fictional contact reuse probe"
+    - option "[SIM QC R5] UK Metrology Buyer — [SIM QC R5] UK annual service renewal"
+    - option "[SIM QC R5] EU Precision Lab 01 — [SIM QC R5] 2026-09 Calibration station 4"
+    - option "[SIM QC R5] US Precision Lab 02 — [SIM QC R5] 2026-09 Calibration station 5"
+    - option "[SIM QC R5] APAC Precision Lab 12 — [SIM QC R5] 2026-09 Calibration station 3"
+    - option "[SIM QC R5] US Precision Lab 11 — [SIM QC R5] 2026-09 Calibration station 2"
+    - option "[SIM QC R5] APAC Precision Lab 03 — [SIM QC R5] 2026-09 Calibration station 6"
+    - option "[SIM QC R5] EU Precision Lab 10 — [SIM QC R5] 2026-09 Calibration station 1"
+    - option "[SIM QC R5] EU Precision Lab 07 — [SIM QC R5] 2026-08 Calibration station 1"
+    - option "[SIM QC R5] APAC Precision Lab 12 — [SIM QC R5] 2026-08 Calibration station 6"
+    - option "[SIM QC R5] EU Precision Lab 10 — [SIM QC R5] 2026-08 Calibration station 4"
+    - option "[SIM QC R5] APAC Precision Lab 09 — [SIM QC R5] 2026-08 Calibration station 3"
+    - option "[SIM QC R5] US Precision Lab 11 — [SIM QC R5] 2026-08 Calibration station 5"
+    - option "[SIM QC R5] US Precision Lab 08 — [SIM QC R5] 2026-08 Calibration station 2"
+    - option "[SIM QC R5] APAC Precision Lab 06 — [SIM QC R5] 2026-07 Calibration station 3"
+    - option "[SIM QC R5] APAC Precision Lab 09 — [SIM QC R5] 2026-07 Calibration station 6"
+    - option "[SIM QC R5] EU Precision Lab 04 — [SIM QC R5] 2026-07 Calibration station 1"
+    - option "[SIM QC R5] US Precision Lab 08 — [SIM QC R5] 2026-07 Calibration station 5"
+    - option "[SIM QC R5] US Precision Lab 05 — [SIM QC R5] 2026-07 Calibration station 2"
+    - option "[SIM QC R5] EU Precision Lab 07 — [SIM QC R5] 2026-07 Calibration station 4"
+    - option "[SIM QC R5] APAC Precision Lab 03 — [SIM QC R5] 2026-06 Calibration station 3"
+    - option "[SIM QC R5] APAC Precision Lab 06 — [SIM QC R5] 2026-06 Calibration station 6"
+    - option "[SIM QC R5] EU Precision Lab 01 — [SIM QC R5] 2026-06 Calibration station 1"
+    - option "[SIM QC R5] US Precision Lab 02 — [SIM QC R5] 2026-06 Calibration station 2"
+    - option "[SIM QC R5] US Precision Lab 05 — [SIM QC R5] 2026-06 Calibration station 5"
+    - option "[SIM QC R5] EU Precision Lab 04 — [SIM QC R5] 2026-06 Calibration station 4"
+    - option "[SIM QC R5] EU Precision Lab 10 — [SIM QC R5] 2026-05 Calibration station 1"
+    - option "[SIM QC R5] US Precision Lab 02 — [SIM QC R5] 2026-05 Calibration station 5"
+    - option "[SIM QC R5] APAC Precision Lab 03 — [SIM QC R5] 2026-05 Calibration station 6"
+    - option "[SIM QC R5] APAC Precision Lab 12 — [SIM QC R5] 2026-05 Calibration station 3"
+    - option "[SIM QC R5] EU Precision Lab 01 — [SIM QC R5] 2026-05 Calibration station 4"
+    - option "[SIM QC R5] US Precision Lab 11 — [SIM QC R5] 2026-05 Calibration station 2"
+    - option "[SIM QC R5] APAC Precision Lab 09 — [SIM QC R5] 2026-04 Calibration station 3"
+    - option "[SIM QC R5] US Precision Lab 08 — [SIM QC R5] 2026-04 Calibration station 2"
+    - option "[SIM QC R5] US Precision Lab 11 — [SIM QC R5] 2026-04 Calibration station 5"
+    - option "[SIM QC R5] EU Precision Lab 07 — [SIM QC R5] 2026-04 Calibration station 1"
+    - option "[SIM QC R5] EU Precision Lab 10 — [SIM QC R5] 2026-04 Calibration station 4"
+    - option "[SIM QC R5] APAC Precision Lab 12 — [SIM QC R5] 2026-04 Calibration station 6"
+    - option "[SIM QC R5] EU Precision Lab 07 — [SIM QC R5] 2026-03 Calibration station 4"
+    - option "[SIM QC R5] APAC Precision Lab 09 — [SIM QC R5] 2026-03 Calibration station 6"
+    - option "[SIM QC R5] US Precision Lab 05 — [SIM QC R5] 2026-03 Calibration station 2"
+    - option "[SIM QC R5] EU Precision Lab 04 — [SIM QC R5] 2026-03 Calibration station 1"
+    - option "[SIM QC R5] US Precision Lab 08 — [SIM QC R5] 2026-03 Calibration station 5"
+    - option "[SIM QC R5] APAC Precision Lab 06 — [SIM QC R5] 2026-03 Calibration station 3"
+    - option "[SIM QC R5] APAC Precision Lab 06 — [SIM QC R5] 2026-02 Calibration station 6"
+    - option "[SIM QC R5] EU Precision Lab 01 — [SIM QC R5] 2026-02 Calibration station 1"
+    - option "[SIM QC R5] APAC Precision Lab 03 — [SIM QC R5] 2026-02 Calibration station 3"
+    - option "[SIM QC R5] US Precision Lab 05 — [SIM QC R5] 2026-02 Calibration station 5"
+    - option "[SIM QC R5] US Precision Lab 02 — [SIM QC R5] 2026-02 Calibration station 2"
+    - option "[SIM QC R5] EU Precision Lab 04 — [SIM QC R5] 2026-02 Calibration station 4"
+    - option "[SIM QC R5] US Precision Lab 02 — [SIM QC R5] 2026-01 Calibration station 5"
+    - option "[SIM QC R5] US Precision Lab 11 — [SIM QC R5] 2026-01 Calibration station 2"
+    - option "[SIM QC R5] EU Precision Lab 10 — [SIM QC R5] 2026-01 Calibration station 1"
+    - option "[SIM QC R5] APAC Precision Lab 12 — [SIM QC R5] 2026-01 Calibration station 3"
+    - option "[SIM QC R5] APAC Precision Lab 03 — [SIM QC R5] 2026-01 Calibration station 6"
+    - option "[SIM QC R5] EU Precision Lab 01 — [SIM QC R5] 2026-01 Calibration station 4"
+    - option "[SIM QC R5] APAC Precision Lab 12 — [SIM QC R5] 2025-12 Calibration station 6"
+    - option "[SIM QC R5] EU Precision Lab 10 — [SIM QC R5] 2025-12 Calibration station 4"
+    - option "[SIM QC R5] US Precision Lab 08 — [SIM QC R5] 2025-12 Calibration station 2"
+    - option "[SIM QC R5] APAC Precision Lab 09 — [SIM QC R5] 2025-12 Calibration station 3"
+    - option "[SIM QC R5] US Precision Lab 11 — [SIM QC R5] 2025-12 Calibration station 5"
+    - option "[SIM QC R5] EU Precision Lab 07 — [SIM QC R5] 2025-12 Calibration station 1"
+    - option "[SIM QC R5] EU Precision Lab 07 — [SIM QC R5] 2025-11 Calibration station 4"
+    - option "[SIM QC R5] US Precision Lab 08 — [SIM QC R5] 2025-11 Calibration station 5"
+    - option "[SIM QC R5] US Precision Lab 05 — [SIM QC R5] 2025-11 Calibration station 2"
+    - option "[SIM QC R5] APAC Precision Lab 06 — [SIM QC R5] 2025-11 Calibration station 3"
+    - option "[SIM QC R5] EU Precision Lab 04 — [SIM QC R5] 2025-11 Calibration station 1"
+    - option "[SIM QC R5] APAC Precision Lab 09 — [SIM QC R5] 2025-11 Calibration station 6"
+    - option "[SIM QC R5] EU Precision Lab 04 — [SIM QC R5] 2025-10 Calibration station 4"
+    - option "[SIM QC R5] APAC Precision Lab 03 — [SIM QC R5] 2025-10 Calibration station 3"
+    - option "[SIM QC R5] US Precision Lab 02 — [SIM QC R5] 2025-10 Calibration station 2"
+    - option "[SIM QC R5] EU Precision Lab 01 — [SIM QC R5] 2025-10 Calibration station 1"
+    - option "[SIM QC R5] APAC Precision Lab 06 — [SIM QC R5] 2025-10 Calibration station 6"
+    - option "[SIM QC R5] US Precision Lab 05 — [SIM QC R5] 2025-10 Calibration station 5"

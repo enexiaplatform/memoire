@@ -1,0 +1,196 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 4 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "4 open": "4"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 4 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: ⌘K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Money
+  - heading "Margin" [level=1]
+  - generic: What your committed orders cost you, against what you sold them for. Orders follows the money to the bank; this says whether the work paid. Yours only — nothing here changes an order or reaches a customer.
+  - tablist "Money view":
+    - tab "Orders"
+    - tab "Collections"
+    - tab "Margin" [selected]
+  - button "Reload orders from cloud":
+  - heading "Cost analysis" [level=2]
+  - paragraph: What each committed order landed at — goods, freight, duty and everything else — against what you sold it for. Record the costs on the orders you know; leave the rest blank and they stay out of every figure here.
+  - generic: "Gross margin: 9.2K USD"
+  - generic: 37% kept
+  - text: Margin you aim to keep
+  - textbox "Target gross margin percent": "20"
+  - generic: "%"
+  - paragraph: Every costed order met it.
+  - paragraph: Sold for
+  - paragraph: 25K USD
+  - paragraph: Landed cost
+  - paragraph: 15.8K USD
+  - paragraph: Gross margin
+  - paragraph: 9.2K USD
+  - paragraph: Kept
+  - paragraph: 37%
+  - paragraph: Against 20% target
+  - paragraph: Met
+  - paragraph: Across the 1 of 4 committed orders that carry a cost. The other 3 are counted on neither side. Freight, duty and other came to 384.6 USD — 1 point off what the goods price alone would have shown.
+  - paragraph:
+    - generic: 3 committed orders worth 60K USD
+    - text: carry no cost Memoire can read — none recorded, or recorded in a currency with no exchange rate — so nothing above says anything about them.
+  - button "Show them"
+  - heading "Which way it is going" [level=3]
+  - generic: —
+  - 'generic "May 26: nothing costed"'
+  - generic: May 26
+  - generic: —
+  - 'generic "Jun 26: nothing costed"'
+  - generic: Jun 26
+  - generic: —
+  - 'generic "Jul 26: nothing costed"'
+  - generic: Jul 26
+  - generic: —
+  - 'generic "Aug 26: nothing costed"'
+  - generic: Aug 26
+  - generic: —
+  - 'generic "Sep 26: nothing costed"'
+  - generic: Sep 26
+  - generic: 37%
+  - 'generic "Oct 26: 25K USD sold, 9.2K USD kept, 1 of 4 costed"'
+  - generic: Oct 26
+  - paragraph: Column height is what you sold that month; the number above it is what you kept. A month with nothing costed shows a dash rather than a zero — by the date the order was committed.
+  - heading "Where the margin comes from" [level=3]
+  - button "By customer" [pressed]
+  - button "By line"
+  - button "By supplier"
+  - list:
+    - button "Summit Diagnostics 9.2K USD 37% 1/1 costed":
+      - generic "Summit Diagnostics"
+      - generic: 9.2K USD
+      - generic: 37%
+      - generic: 1/1 costed
+  - paragraph: Pick a row to see only its orders in the table below. The amber figure is what that customer is short of your 20% target. 2 customers have no costed order at all, so their margin is unknown rather than zero — they are left out of the bars above.
+  - textbox:
+    - /placeholder: Search order, customer, reference...
+  - button "Missing a cost (3)"
+  - paragraph: 4 of 4
+  - table:
+    - rowgroup:
+      - row "Order Sold for Goods + Landed Supplier Gross margin Kept vs target":
+        - columnheader "Order"
+        - columnheader "Sold for"
+        - columnheader "Goods"
+        - columnheader "+ Landed"
+        - columnheader "Supplier"
+        - columnheader "Gross margin"
+        - columnheader "Kept"
+        - columnheader "vs target"
+        - columnheader
+    - rowgroup:
+      - row "Orion Pharma Q-DEMO-ORION-01 · Procurement review 900,000,000 VND Not recorded — — — — — Add cost":
+        - cell "Orion Pharma Q-DEMO-ORION-01 · Procurement review":
+          - paragraph: Orion Pharma
+          - paragraph: Q-DEMO-ORION-01 · Procurement review
+        - cell "900,000,000 VND"
+        - cell "Not recorded"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "Add cost":
+          - button "Add cost":
+            - text: Add cost
+      - row "Northstar Foods Q-DEMO-NORTHSTAR-AUDIT · Line audit service 480,000,000 VND Not recorded — — — — — Add cost":
+        - cell "Northstar Foods Q-DEMO-NORTHSTAR-AUDIT · Line audit service":
+          - paragraph: Northstar Foods
+          - paragraph: Q-DEMO-NORTHSTAR-AUDIT · Line audit service
+        - cell "480,000,000 VND"
+        - cell "Not recorded"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "Add cost":
+          - button "Add cost":
+            - text: Add cost
+      - row "Northstar Foods Q-DEMO-NORTHSTAR-02 · Reagent resupply 180,000,000 VND Not recorded — — — — — Add cost":
+        - cell "Northstar Foods Q-DEMO-NORTHSTAR-02 · Reagent resupply":
+          - paragraph: Northstar Foods
+          - paragraph: Q-DEMO-NORTHSTAR-02 · Reagent resupply
+        - cell "180,000,000 VND"
+        - cell "Not recorded"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "—"
+        - cell "Add cost":
+          - button "Add cost":
+            - text: Add cost
+      - row "Summit Diagnostics Q-DEMO-SUMMIT-01 · QC workflow 650,000,000 VND 400,000,000 VND 384.6 USD [SIMULATED R2] Test supplier 9.2K USD 37%(38% on goods) Met Edit":
+        - cell "Summit Diagnostics Q-DEMO-SUMMIT-01 · QC workflow":
+          - paragraph: Summit Diagnostics
+          - paragraph: Q-DEMO-SUMMIT-01 · QC workflow
+        - cell "650,000,000 VND"
+        - cell "400,000,000 VND"
+        - cell "384.6 USD"
+        - cell "[SIMULATED R2] Test supplier"
+        - cell "9.2K USD"
+        - cell "37%(38% on goods)":
+          - text: 37%
+          - generic "On the goods price alone": (38% on goods)
+        - cell "Met"
+        - cell "Edit":
+          - button "Edit":
+            - text: Edit
+  - paragraph: Red is an order sold below what it cost — a fact, not a judgement. Amber is under the 20% you set as your target. Neither line is learned from your data. Leave the cost blank on orders you do not know or do not care about — those are left out of every figure here, on both sides, rather than counted as free.

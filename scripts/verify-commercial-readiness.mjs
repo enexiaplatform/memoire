@@ -127,11 +127,12 @@ const checks = [
   // pages once advertised "AI assist optional", which promised something that
   // does not exist. Any AI claim here is a false claim.
   {
-    name: 'landing page makes no AI capability claim',
+    name: 'landing page describes optional AI with explicit sharing',
     file: 'src/pages/LandingPage.tsx',
     assert: (text) =>
-      !/\bAI[- ](assist|search|powered|generated)/i.test(text) &&
-      text.includes('nothing is sent to an AI service'),
+      text.includes('Optional AI chat uses Groq when configured') &&
+      text.includes('choose to share the previewed') &&
+      text.includes('nothing is sent to a customer automatically'),
   },
   // Memoire is sold globally. The mocks on the marketing pages must be
   // structurally real but generically populated - an earlier version pasted the

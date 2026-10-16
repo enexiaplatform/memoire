@@ -1,0 +1,452 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 5 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "5 open": "5"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 5 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: ⌘K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace" [active]:
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - heading "Review" [level=1]
+  - generic: "Close the week: what moved, what slipped, what went quiet, where money is stuck - and what you commit to next."
+  - tablist "Review section":
+    - tab "Weekly review" [selected]
+    - tab "Learning & Analytics"
+  - heading "What happened?" [level=2]
+  - paragraph: What closed, what moved, and what you promised
+  - region "Changes since last review":
+    - heading "Changes since last review" [level=2]
+    - generic: since your review on Oct 5, 2026
+    - paragraph: Only what the records prove moved. A change nobody recorded is left out, not estimated.
+    - list:
+      - paragraph:
+        - generic: "Up:"
+        - text: 2 new leads
+      - paragraph: "[SIMULATED R2] Atlas Lab · Delta Nutrition"
+      - generic "From when the records were created"
+      - link "Open":
+        - /url: /app/leads
+      - paragraph:
+        - generic: "Up:"
+        - text: 1 lead qualified into the pipeline
+      - paragraph: "[SIMULATED R2] Atlas Lab"
+      - generic "Observed when the record was edited"
+      - link "Open":
+        - /url: /app/opportunities
+      - paragraph:
+        - generic: "Up:"
+        - text: 5 new opportunities opened directly
+      - paragraph: Apex Labs · Northstar Foods · Orion Pharma · 2 more
+      - generic "From when the records were created"
+      - link "Open":
+        - /url: /app/opportunities
+      - paragraph:
+        - generic: "Up:"
+        - text: 1 deal won (18.5K USD)
+      - paragraph: Northstar Foods
+      - generic "From close-outs and payments you recorded"
+      - link "Open":
+        - /url: /app/reviews?view=analytics
+      - paragraph:
+        - generic: "Up:"
+        - text: 29.2K USD cash collected across 3 payments
+      - paragraph: Summit Diagnostics · Northstar Foods · 1 more
+      - generic "From close-outs and payments you recorded"
+      - link "Open":
+        - /url: /app/revenue?view=collections
+      - paragraph:
+        - generic: "Up:"
+        - text: 1 new champion recorded
+      - paragraph: Dr. Avery, Apex Labs
+      - generic "From when the records were created"
+      - link "Open":
+        - /url: /app/stakeholders
+    - paragraph: Stage and close-date moves are only known from when Memoire started recording them, which is after this window opened - some earlier moves may be missing.
+  - heading "Scoreboard" [level=2]
+  - paragraph: Oct 5 - Oct 11
+  - button "Weekly" [pressed]
+  - button "Monthly"
+  - button "Previous period":
+  - button "Now":
+    - text: Now
+  - button "Next period":
+  - paragraph: Closed this week
+  - paragraph: 43.5K USD
+  - paragraph: 2 won · 100% win rate
+  - paragraph: +36.5K USD vs the week before
+  - paragraph: 43,461.54 USD
+  - term: Quotes sent
+  - definition: "4"
+  - term: Quotes accepted
+  - definition: "3"
+  - term: Touches recorded
+  - definition: "9"
+  - term: Customers touched
+  - definition: "5"
+  - term:
+    - text: Open deals
+    - generic: 0 qualified
+  - definition: "5"
+  - term:
+    - text: Staged too high
+    - generic: 4 with no champion or buyer
+  - definition: "4"
+  - term:
+    - text: In person
+    - generic: of 9 touches
+  - definition: "0"
+  - term: Days out of office
+  - definition: "0"
+  - term:
+    - text: Thin notes
+    - generic: median 24 words
+  - definition: "0"
+  - paragraph: Q4 FY2026
+  - paragraph:
+    - text: 50.4K USD
+    - generic: of 2.5B USD
+  - 'generic "Where the calendar says you should be: 12%"'
+  - paragraph: 0% · short 2.5B USD · 82 days left · needs 213.4M USD/week
+  - paragraph: FY2026
+  - paragraph:
+    - text: 72.7K USD
+    - generic: of 10B USD
+  - 'generic "Where the calendar says you should be: 78%"'
+  - paragraph: 0% · short 10B USD · 81 days left · needs 864.2M USD/week
+  - paragraph: Q4 FY2026 is at 0% with 82 days left. At this quarter's rate you land at 0%.
+  - region "Commitment performance":
+    - heading "Commitment performance" [level=2]
+    - generic: 8 open
+    - paragraph: Due today (1)
+    - list:
+      - generic: I owe
+      - paragraph:
+        - text: "QA demo: send the validation documents"
+        - generic: · Apex Labs
+      - button "Mark as kept":
+      - button "Move the date":
+      - button "Cancel this commitment":
+      - paragraph:
+        - generic: due Oct 11, 2026
+    - paragraph: Coming up (7)
+    - list:
+      - generic: I owe
+      - paragraph:
+        - text: Follow up with procurement
+        - generic: · Apex Labs
+      - link "On your Plan":
+        - /url: /app/timeline?view=upcoming
+      - paragraph:
+        - generic: due Oct 13, 2026
+      - generic: I owe
+      - paragraph:
+        - text: Send revised quote
+        - generic: · Apex Labs
+      - link "On your Plan":
+        - /url: /app/timeline?view=upcoming
+      - paragraph:
+        - generic: due Oct 16, 2026
+      - generic: I owe
+      - paragraph:
+        - text: Send differentiator evidence
+        - generic: · Orion Pharma
+      - link "On your Plan":
+        - /url: /app/timeline?view=upcoming
+      - paragraph:
+        - generic: due Oct 16, 2026
+      - generic: I owe
+      - paragraph:
+        - text: Clarify procurement path
+        - generic: · Orion Pharma
+      - link "On your Plan":
+        - /url: /app/timeline?view=upcoming
+      - paragraph:
+        - generic: due Oct 16, 2026
+      - generic: I owe
+      - paragraph:
+        - text: Confirm the audit kickoff report is delivered
+        - generic: · Northstar Foods
+      - link "On your Plan":
+        - /url: /app/timeline?view=upcoming
+      - paragraph:
+        - generic: due Oct 16, 2026
+      - generic: I owe
+      - paragraph:
+        - text: Send the overview
+        - generic: · Delta Nutrition
+      - link "On your Plan":
+        - /url: /app/timeline?view=upcoming
+      - paragraph:
+        - generic: due Oct 16, 2026
+      - generic: I owe
+      - paragraph:
+        - text: Send local support proof
+        - generic: · Northstar Foods
+      - link "On your Plan":
+        - /url: /app/timeline?view=upcoming
+      - paragraph:
+        - generic: due Oct 17, 2026
+  - heading "Why?" [level=2]
+  - paragraph: What the week was made of, and what Memoire has learned from it
+  - paragraph: Summarize the week for review and sharing. Today remains the daily command center.
+  - button "Copy weekly brief":
+    - text: Copy weekly brief
+  - heading "What the period was made of" [level=2]
+  - paragraph: Oct 5 - Oct 11
+  - button "Generate activity recap"
+  - button "Refresh activities"
+  - link "Open activity calendar":
+    - /url: /app/timeline?view=history
+  - generic: 9 activities in this period
+  - heading "Business review - Oct 5 - Oct 11" [level=2]
+  - paragraph: Where the money sits, what closed, which initiative stalled, and what next week must move.
+  - button "Copy Learning Brief":
+    - text: Copy Learning Brief
+  - button "Copy Revenue Risk Brief":
+    - text: Copy Revenue Risk Brief
+  - button "Copy Follow-up Brief":
+    - text: Copy Follow-up Brief
+  - article:
+    - heading "Wins / losses this period" [level=3]
+    - paragraph: "Won: Northstar Foods / Line audit service - 480,000,000 VND"
+    - paragraph: "Won value: 18.5K USD"
+  - article:
+    - heading "Next week's priorities" [level=3]
+    - heading "Plan vs actual - week of Oct 5, 2026" [level=4]
+    - paragraph: 3 committed - 1 completed, 0 carried over, 0 dropped, 2 never resolved. You took 2 of 3 suggestions.
+    - list:
+      - generic: Send Apex Labs the revised quote and procurement checklist
+      - generic: Completed
+      - paragraph: 3 captured touches, last on Oct 11, 2026.
+      - generic: Get Northstar Foods to name the PO issue date
+      - generic: Open
+      - paragraph: 2 captured touches, last on Oct 10, 2026.
+      - button "Completed"
+      - button "Carried over"
+      - button "Dropped"
+      - generic: Re-open the Orion Pharma validation thread
+      - generic: Open
+      - paragraph: 2 captured touches, last on Oct 11, 2026.
+      - button "Completed"
+      - button "Carried over"
+      - button "Dropped"
+    - paragraph: Unplanned, and still worth something
+    - list:
+      - listitem: Delta Nutrition - 1 touch captured, not on this week's plan.
+    - paragraph: Pick up to 5. What you confirm is frozen - editing the deal later will not rewrite it.
+    - list:
+      - 'checkbox "Unstick the money: Summit Diagnostics / QC workflow Payment overdue. Confirm the payment date. Why: Money-flow: this thread is stuck (Payment overdue)."'
+      - text: "Unstick the money: Summit Diagnostics / QC workflow"
+      - generic: Payment overdue. Confirm the payment date.
+      - generic: "Why: Money-flow: this thread is stuck (Payment overdue)."
+      - 'checkbox "Scheduled: Apex Labs / Validation Expansion Send revised quote and procurement checklist - Oct 16, 2026 Why: You already booked this for Oct 16, 2026."'
+      - text: "Scheduled: Apex Labs / Validation Expansion"
+      - generic: Send revised quote and procurement checklist - Oct 16, 2026
+      - generic: "Why: You already booked this for Oct 16, 2026."
+      - 'checkbox "Scheduled: Apex Labs / Validated decontamination service renewal Confirm renewal PO timing with engineering manager - Oct 13, 2026 Why: You already booked this for Oct 13, 2026."'
+      - text: "Scheduled: Apex Labs / Validated decontamination service renewal"
+      - generic: Confirm renewal PO timing with engineering manager - Oct 13, 2026
+      - generic: "Why: You already booked this for Oct 13, 2026."
+      - 'checkbox "Scheduled: Northstar Foods / Lab workflow Send local support proof and lead time response - Oct 18, 2026 Why: You already booked this for Oct 18, 2026."'
+      - text: "Scheduled: Northstar Foods / Lab workflow"
+      - generic: Send local support proof and lead time response - Oct 18, 2026
+      - generic: "Why: You already booked this for Oct 18, 2026."
+      - 'checkbox "Restart the initiative: Distributor onboarding program Send the onboarding checklist to the northern distributor. Why: No captured activity since it was created."'
+      - text: "Restart the initiative: Distributor onboarding program"
+      - generic: Send the onboarding checklist to the northern distributor.
+      - generic: "Why: No captured activity since it was created."
+    - textbox "Add your own commitment"
+    - button "Add" [disabled]:
+      - text: Add
+    - button "Confirm the week (0/5)" [disabled]:
+      - text: Confirm the week (0/5)
+  - generic "The rest of the picture Money position, stalled initiatives, customer signals and commitments":
+    - generic: The rest of the picture
+    - generic: Money position, stalled initiatives, customer signals and commitments
+  - generic "How the period was worked Rhythm, the day-by-day timeline, follow-up impact and the commercial brief":
+    - generic: How the period was worked
+    - generic: Rhythm, the day-by-day timeline, follow-up impact and the commercial brief
+  - generic "Full commercial brief The supporting reading behind this period’s priorities":
+    - generic: Full commercial brief
+    - generic: The supporting reading behind this period’s priorities
+  - paragraph: Objection movement in this period
+  - paragraph: 3 open, 2 resolved, 1 high-impact.
+  - link "Open Objection Ledger":
+    - /url: /app/objections
+  - paragraph: Northstar Foods / Lab workflow
+  - paragraph: Customer is concerned implementation lead time may not meet project timing.
+  - paragraph: Lead time | Medium | Open
+  - paragraph: Orion Pharma / Procurement review
+  - paragraph: Tender timeline and decision committee are still unclear.
+  - paragraph: Procurement | High | Open
+  - paragraph: Summit Diagnostics / QC workflow
+  - paragraph: Local support confidence is not established for the QC workflow.
+  - paragraph: Local support | Medium | Open
+  - paragraph: Apex Labs / Validation Expansion
+  - paragraph: Validation and IQ/OQ/PQ proof needed before procurement sign-off.
+  - paragraph: Compliance / validation | Medium | Resolved
+  - paragraph: Recommended Deal Actions
+  - paragraph: Next-best-actions from opportunities touched in this period, related objections, and captured follow-ups.
+  - link "Open opportunities":
+    - /url: /app/opportunities
+  - generic: High
+  - generic: Stakeholder
+  - generic: Due Oct 15, 2026
+  - paragraph: "[SIMULATED R2] Atlas Lab / Round 2 qualification test"
+  - paragraph: Identify champion for Round 2 qualification test
+  - paragraph: MEDDIC-lite cannot defend the deal strongly without an internal supporter.
+  - generic: High
+  - generic: MEDDIC Gap
+  - generic: Due Oct 14, 2026
+  - paragraph: "[SIMULATED R2] Atlas Lab / Round 2 qualification test"
+  - paragraph: Confirm economic buyer for Round 2 qualification test
+  - paragraph: MEDDIC-lite shows no mapped economic buyer or final budget owner.
+  - generic: High
+  - generic: Timeline
+  - generic: Due Oct 14, 2026
+  - paragraph: "[SIMULATED R2] Atlas Lab / Round 2 qualification test"
+  - paragraph: Clarify procurement decision process for Round 2 qualification test
+  - paragraph: Decision process, timing, or next customer action is not fully defensible.
+  - generic: High
+  - generic: Stakeholder
+  - generic: Due Oct 15, 2026
+  - paragraph: Apex Labs / Validated decontamination service renewal
+  - paragraph: Identify champion for Validated decontamination service renewal
+  - paragraph: MEDDIC-lite cannot defend the deal strongly without an internal supporter.
+  - generic: High
+  - generic: Stakeholder
+  - generic: Due Oct 15, 2026
+  - paragraph: Northstar Foods / Lab workflow
+  - paragraph: Identify champion for Lab workflow
+  - paragraph: MEDDIC-lite cannot defend the deal strongly without an internal supporter.
+  - generic: High
+  - generic: Objection
+  - generic: Due Oct 18, 2026
+  - paragraph: Orion Pharma / Procurement review
+  - paragraph: Prepare proof for procurement objection
+  - paragraph: Clarify tender calendar, committee owner, and evaluation criteria.
+  - generic "What Memoire learned from it Outcomes of the actions you took, execution quality, playbook patterns and the assets you were missing":
+    - generic: What Memoire learned from it
+    - generic: Outcomes of the actions you took, execution quality, playbook patterns and the assets you were missing
+  - paragraph: Activities are ready for review.
+  - paragraph: Generate a recap to see insights, next actions, objections, and follow-ups.
+  - region "From lead to pipeline":
+    - heading "From lead to pipeline" [level=2]
+    - link "Open Leads":
+      - /url: /app/leads
+    - paragraph: Every record the book can show started as a lead.
+    - list:
+      - text: Leads
+      - paragraph: "4"
+      - text: Engaged
+      - paragraph: "1"
+      - text: Qualified
+      - paragraph: "1"
+      - text: Won
+      - paragraph: "0"
+    - term: Median days to first touch
+    - definition: "3"
+    - term: Median days to qualify
+    - definition: "0"
+    - term: Lead to qualified
+    - definition: Needs 5 leads to call it a rate
+    - table "Leads by source, and how many qualified":
+      - caption: Leads by source, and how many qualified
+      - rowgroup:
+        - row "Source Leads Qualified Rate":
+          - columnheader "Source"
+          - columnheader "Leads"
+          - columnheader "Qualified"
+          - columnheader "Rate"
+      - rowgroup:
+        - row "Existing account 1 0 Too few":
+          - rowheader "Existing account"
+          - cell "1"
+          - cell "0"
+          - cell "Too few"
+        - row "Not recorded 1 1 Too few":
+          - rowheader "Not recorded"
+          - cell "1"
+          - cell "1"
+          - cell "Too few"
+        - row "Referral 1 0 Too few":
+          - rowheader "Referral"
+          - cell "1"
+          - cell "0"
+          - cell "Too few"
+        - row "Trade show 1 0 Too few":
+          - rowheader "Trade show"
+          - cell "1"
+          - cell "0"
+          - cell "Too few"
+  - link "Review product and brand performance":
+    - /url: /app/products
+  - heading "What changes next week?" [level=2]
+  - paragraph: What this period leaves standing
+  - generic "What this leaves for next week 6 threads at risk":
+    - generic: What this leaves for next week
+    - generic: 6 threads at risk
+  - option "0 items"
+  - option "1 items"
+  - option "2 items"
+  - option "3 items" [selected]
+  - option "5 items"
+  - option "10 items"
+  - option "20 items"
+  - option "New shared workspace" [selected]
+  - option "Can view" [selected]
+  - option "Can review"
+  - option "Choose your promise" [selected]
+  - 'option "QA demo: send the validation documents"'
+  - option "Choose a saved canonical thread" [selected]
+  - option "Choose an issued or received exchange" [selected]
+  - option "Choose existing requirements" [selected]

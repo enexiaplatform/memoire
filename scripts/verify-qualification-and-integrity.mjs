@@ -213,9 +213,12 @@ const deal = (overrides = {}) => ({
 
   const panel = codeOf('src/features/revenue/CoveragePanel.tsx');
   assert.match(
-    panel, /Targets for FY\{fiscalYear\} · in \{getReportingCurrency\(\)\}/,
+    panel, /Targets for FY\{fiscalYear\} · in \{currency\}/,
     'and the editor names the currency it is asking for, because a number has no unit on it',
   );
+  assert.match(panel, /const currency = getReportingCurrency\(\)/);
+  assert.match(panel, /initial=\{targetEditorValues\(editorTargets, currency\)\}/,
+    'the editor converts stored targets into its labelled currency');
 }
 
 // 4. Integrity names fields; it never reports a percentage.

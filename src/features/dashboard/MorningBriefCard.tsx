@@ -17,13 +17,16 @@ import type { MorningBrief } from '../../utils/morningBrief';
  */
 export function MorningBriefCard({ brief }: { brief: MorningBrief }) {
   return (
-    <div aria-label="Morning brief" className="max-w-[680px]">
+    <div aria-label="Morning brief">
       <p className="text-[15px] leading-[1.55] text-tint-neutral-ink [text-wrap:pretty] sm:text-[15.5px]">
         <strong className="font-semibold text-ink">{brief.headline}</strong>
-        {brief.focus.length > 0 && <> {brief.focus.join(' ')}</>}
       </p>
+      {(brief.focus.length > 0 || brief.questions.length > 0) && (
+        <details className="mt-1 text-xs text-tint-neutral-ink">
+          <summary className="w-fit cursor-pointer font-semibold text-muted hover:text-ink">Context and suggested questions</summary>
+          {brief.focus.length > 0 && <p className="mt-1 text-sm leading-6">{brief.focus.join(' ')}</p>}
       {brief.questions.length > 0 && (
-        <p className="mt-2.5 flex flex-wrap items-center gap-2 text-xs leading-5">
+        <p className="mt-2 flex flex-wrap items-center gap-2 text-xs leading-5">
           <span className="font-semibold text-muted">Ask:</span>
           {/* Two, not three. The third was always the generic "what should I do
               first today?", which is the question Today is already answering
@@ -38,6 +41,8 @@ export function MorningBriefCard({ brief }: { brief: MorningBrief }) {
             </Link>
           ))}
         </p>
+      )}
+        </details>
       )}
     </div>
   );

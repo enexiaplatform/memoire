@@ -1,9 +1,19 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
+import { aiChatDevPlugin } from './scripts/lib/ai-chat-dev.mjs'
 
 // https://vite.dev/config/
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => {
+  const serverEnv = { ...loadEnv(mode, process.cwd(), ''), ...process.env };
+  // The existing server auth helpers read these at request time.
+  for (const name of ['SUPABASE_URL', 'VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY']) {
+    if (!process.env[name] && serverEnv[name]) process.env[name] = serverEnv[name];
+  }
+  return {
+  plugins: [react(), aiChatDevPlugin(serverEnv)],
+  // Only the application entry is prebundled. Local verification fixtures have
+  // their own server; scanning them during every SSR test wastes work.
+  optimizeDeps: { entries: ['index.html'] },
   /**
    * An allowlist of what may reach a browser, not a prefix.
    *
@@ -54,4 +64,5 @@ export default defineConfig({
       },
     },
   },
+  };
 })

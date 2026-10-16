@@ -1,0 +1,13 @@
+- link "Memoire home":
+  - /url: /
+  - generic: Memoire
+- heading "Verify your email" [level=1]
+- paragraph: Enter the email used for signup to request a verification link. If you have not signed up yet, create an account first.
+- text: Signup email
+- textbox "Signup email"
+- button "Request verification email"
+- link "Create an account":
+  - /url: /signup
+- link "Back to login":
+  - /url: /login
+  - button "Back to login"

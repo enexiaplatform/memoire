@@ -71,20 +71,20 @@ export function CostAnalysisPage({ tabs }: { tabs?: ReactNode } = {}) {
   };
 
   return (
-    <PageContainer>
+    <PageContainer density="compact">
       {/* The second sentence is the boundary between this page and Orders, and
           it is load bearing: Orders answers "where is my money", this answers
           "was it worth it". Two pages that both claim to be about orders is how
           an operator stops knowing which one to open. */}
       <PageHeader
-        tabs={tabs}
-        eyebrow="Money"
+        size="compact"
+        descriptionDisclosure
         title="Margin"
         documentTitle="Money · Margin"
         description="What your committed orders cost you, against what you sold them for. Orders follows the money to the bank; this says whether the work paid. Yours only — nothing here changes an order or reaches a customer."
         actions={
-          /* The link to Orders is gone: it is the tab immediately to the left
-             of this view's own tab, on the same page. */
+          <>
+          {tabs}
           <button
             type="button"
             onClick={() => { void reload(); }}
@@ -94,6 +94,7 @@ export function CostAnalysisPage({ tabs }: { tabs?: ReactNode } = {}) {
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
           </button>
+          </>
         }
           /*
            * No per-page sync chrome.

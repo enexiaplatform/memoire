@@ -1,0 +1,692 @@
+[
+  {
+    "step": 1,
+    "slug": "production-brands",
+    "url": "https://www.memoire-official.com/app/products",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/01-production-brands.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/01-production-brands.txt",
+    "notes": "Production authenticated simulated QC R5 account. Catalog linked counts include Lead-stage records, while performance excludes Leads; inspect whether difference is explained. No cloud writes.",
+    "capturedAt": "2026-10-11T10:28:29.425Z"
+  },
+  {
+    "step": 2,
+    "slug": "today",
+    "url": "http://127.0.0.1:5184/app/today",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/02-today.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/02-today.txt",
+    "notes": "Local sample scope. Compare priority moves and overdue figure with Collections; assess action link specificity.",
+    "capturedAt": "2026-10-11T10:29:00.365Z"
+  },
+  {
+    "step": 3,
+    "slug": "today-to-quote",
+    "url": "http://127.0.0.1:5184/app/quotes",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/03-today-to-quote.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/03-today-to-quote.txt",
+    "notes": "Start the day from Today opened Quotes with selected overdue quote editor. Context says Opened from Orders although origin was Today. Compare action named Check collection with destination/edit form.",
+    "capturedAt": "2026-10-11T10:29:23.072Z"
+  },
+  {
+    "step": 4,
+    "slug": "quote-paid",
+    "url": "http://127.0.0.1:5184/app/quotes",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/04-quote-paid.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/04-quote-paid.txt",
+    "notes": "Changed sample Summit quote Payment to Paid and saved successfully; no payment receipt entered. Compare Collections for same opportunity ID.",
+    "capturedAt": "2026-10-11T10:30:26.246Z"
+  },
+  {
+    "step": 5,
+    "slug": "quote-paid-status",
+    "url": "http://127.0.0.1:5184/app/quotes",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/05-quote-paid-status.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/05-quote-paid-status.txt",
+    "notes": "Sample quote Q-DEMO-SUMMIT-01 persisted Payment Paid without recording receipt. Screenshot displays status, DOM shows Quote updated.",
+    "capturedAt": "2026-10-11T10:30:50.934Z"
+  },
+  {
+    "step": 6,
+    "slug": "collections-after-quote-paid",
+    "url": "http://127.0.0.1:5184/app/revenue?view=collections",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/06-collections-after-quote-paid.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/06-collections-after-quote-paid.txt",
+    "notes": "Same Summit order still has confirmed overdue 25000 USD, although its Quote is manually Paid. No receipt recorded. Contradictory paid-vs-overdue statuses, while receipt amount remains correct.",
+    "capturedAt": "2026-10-11T10:31:02.888Z",
+    "accepted": false,
+    "rejection": "Screenshot captured transition/previous Orders view, while DOM had changed to Collections; replaced with next capture."
+  },
+  {
+    "step": 7,
+    "slug": "collections-paid-conflict",
+    "url": "http://127.0.0.1:5184/app/revenue?view=collections",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/07-collections-paid-conflict.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/07-collections-paid-conflict.txt",
+    "notes": "Accepted Collections view. Same Summit quote manually Paid remains 25000 USD confirmed overdue in receipts ledger; cash calculation does not invent a receipt.",
+    "capturedAt": "2026-10-11T10:31:27.329Z"
+  },
+  {
+    "step": 8,
+    "slug": "collection-expanded",
+    "url": "http://127.0.0.1:5184/app/revenue?view=collections",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/08-collection-expanded.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/08-collection-expanded.txt",
+    "notes": "Expanded Summit: 25000 USD amount, Received 0 USD, outstanding 25000 USD. Amount input explicitly VND, received-on/how recorded. Delivery date input blank while trigger comes from recorded milestones; explain inherited date near field.",
+    "capturedAt": "2026-10-11T10:32:24.813Z"
+  },
+  {
+    "step": 9,
+    "slug": "partial-receipt",
+    "url": "http://127.0.0.1:5184/app/revenue?view=collections",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/09-partial-receipt.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/09-partial-receipt.txt",
+    "notes": "Recorded fictional receipt 100000000 VND on current date. Remaining Summit balance became 21153.85 USD, from 25000. Receipt listed exactly once; remove control present, no accounting export or bank sync implied.",
+    "capturedAt": "2026-10-11T10:33:24.850Z"
+  },
+  {
+    "step": 10,
+    "slug": "margin",
+    "url": "http://127.0.0.1:5184/app/revenue?view=margin",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/10-margin.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/10-margin.txt",
+    "notes": "Local sample currently has no recorded order costs; inspect missing-cost disclosure and guided input. New partial receipt only changes cash, not sale value or landed cost.",
+    "capturedAt": "2026-10-11T10:33:54.814Z"
+  },
+  {
+    "step": 11,
+    "slug": "margin-cost-form",
+    "url": "http://127.0.0.1:5184/app/revenue?view=margin",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/11-margin-cost-form.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/11-margin-cost-form.txt",
+    "notes": "Cost recording on a local sample order; assess blank cost, FX and margin basis.",
+    "capturedAt": "2026-10-11T10:37:39.497Z"
+  },
+  {
+    "step": 12,
+    "slug": "margin-calculated",
+    "url": "http://127.0.0.1:5184/app/revenue?view=margin",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/12-margin-calculated.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/12-margin-calculated.txt",
+    "notes": "650m sold, 400m goods plus 10m freight VND => 240m gross/650m =36.923%; UI 9.2K USD/37%. Missing costs excluded.",
+    "capturedAt": "2026-10-11T10:37:54.534Z"
+  },
+  {
+    "step": 13,
+    "slug": "plan-week",
+    "url": "http://127.0.0.1:5184/app/timeline",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/13-plan-week.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/13-plan-week.txt",
+    "notes": "Frozen weekly priorities distinguished from dated execution; Sunday hidden by default despite selected current day; backlog label zero carried vs visible overdue current-week bill.",
+    "capturedAt": "2026-10-11T10:38:03.865Z"
+  },
+  {
+    "step": 14,
+    "slug": "commitment-customer",
+    "url": "http://127.0.0.1:5184/app/timeline",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/14-commitment-customer.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/14-commitment-customer.txt",
+    "notes": "Customer search Northstar has no suggestion in seeded local demo; no opportunity selector. Typed customer allowed, assess lineage in source.",
+    "capturedAt": "2026-10-11T10:38:22.233Z"
+  },
+  {
+    "step": 15,
+    "slug": "history",
+    "url": "http://127.0.0.1:5184/app/timeline?view=history",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/15-history.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/15-history.txt",
+    "notes": "Captured original text vs accepted linked deal is explicit, but source/hash/internal tags dominate visible cards.",
+    "capturedAt": "2026-10-11T10:38:38.266Z"
+  },
+  {
+    "step": 16,
+    "slug": "leads-queue",
+    "url": "http://127.0.0.1:5184/app/leads",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/16-leads-queue.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/16-leads-queue.txt",
+    "notes": "Three local leads separated from qualified pipeline; evidence and scheduled nurture visible.",
+    "capturedAt": "2026-10-11T10:38:49.500Z"
+  },
+  {
+    "step": 17,
+    "slug": "lead-others-validation",
+    "url": "http://127.0.0.1:5184/app/leads",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/17-lead-others-validation.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/17-lead-others-validation.txt",
+    "notes": "Others selected with blank manual name: native required validation prevents creation.",
+    "capturedAt": "2026-10-11T10:39:09.804Z"
+  },
+  {
+    "step": 18,
+    "slug": "qualified-opportunity",
+    "url": "http://127.0.0.1:5184/app/opportunities?opportunityId=a2cb6052-49e0-4819-9c0c-b6faa99e952d",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/18-qualified-opportunity.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/18-qualified-opportunity.txt",
+    "notes": "Same newly created lead becomes Discovery, Others manual brand retained, contact retained in stakeholder option. Account warning says no account record, while details hint claims already-linked existing customer.",
+    "capturedAt": "2026-10-11T10:39:48.178Z"
+  },
+  {
+    "step": 19,
+    "slug": "account-link-hint",
+    "url": "http://127.0.0.1:5184/app/opportunities?opportunityId=a2cb6052-49e0-4819-9c0c-b6faa99e952d",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/19-account-link-hint.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/19-account-link-hint.txt",
+    "notes": "Details claims linked to an existing customer although overview reports no matching Account record. Recommendation base hint on verified account ID.",
+    "capturedAt": "2026-10-11T10:39:55.667Z"
+  },
+  {
+    "step": 20,
+    "slug": "legacy-deal-link",
+    "url": "http://127.0.0.1:5184/app/opportunities",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/20-legacy-deal-link.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/20-legacy-deal-link.txt",
+    "notes": "Known legacy App.tsx deal-ID route redirects to generic opportunity list, loses specific deal query/drawer.",
+    "capturedAt": "2026-10-11T10:40:07.002Z"
+  },
+  {
+    "step": 21,
+    "slug": "accounts-book",
+    "url": "http://127.0.0.1:5184/app/accounts",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/21-accounts-book.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/21-accounts-book.txt",
+    "notes": "Account exposure displays qualified active pipeline, not receivables; sample Summit has 0 active deals despite overdue cash. Orphan account repair visible.",
+    "capturedAt": "2026-10-11T10:40:18.886Z"
+  },
+  {
+    "step": 22,
+    "slug": "account-overview",
+    "url": "http://127.0.0.1:5184/app/accounts?accountId=demo-account-apex",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/22-account-overview.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/22-account-overview.txt",
+    "notes": "Account detail connects quotes, qualified deals, contact count and dated history. Some Open revenue/opportunities actions lose current account scope.",
+    "capturedAt": "2026-10-11T10:40:36.131Z"
+  },
+  {
+    "step": 23,
+    "slug": "account-people",
+    "url": "http://127.0.0.1:5184/app/accounts?accountId=demo-account-apex",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/23-account-people.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/23-account-people.txt",
+    "notes": "Imported contact names are context, no authority assumed; recorded account-wide role badge lacks per-opportunity confirmation context.",
+    "capturedAt": "2026-10-11T10:40:44.433Z"
+  },
+  {
+    "step": 24,
+    "slug": "coverage",
+    "url": "http://127.0.0.1:5184/app/portfolio-coverage?accountName=Apex%20Labs",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/24-coverage.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/24-coverage.txt",
+    "notes": "Account filter retained from detail; statuses explicit first-touch/proposed/won vs opportunity stage. Inspect hierarchy and no invented gaps.",
+    "capturedAt": "2026-10-11T10:40:55.358Z"
+  },
+  {
+    "step": 25,
+    "slug": "coverage-new-opportunity",
+    "url": "http://127.0.0.1:5184/app/opportunities",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/25-coverage-new-opportunity.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/25-coverage-new-opportunity.txt",
+    "notes": "Empty matrix cell prefilled customer and Scitek catalog Brand in new Opportunity drawer. No save performed.",
+    "capturedAt": "2026-10-11T10:41:16.450Z"
+  },
+  {
+    "step": 26,
+    "slug": "catalog-duplicate",
+    "url": "http://127.0.0.1:5184/app/products",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/26-catalog-duplicate.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/26-catalog-duplicate.txt",
+    "notes": "Duplicate normalized Brand name is rejected. Catalog is a long flat list, no search/kind filter visible at 17 entries.",
+    "capturedAt": "2026-10-11T10:42:06.385Z"
+  },
+  {
+    "step": 27,
+    "slug": "reports-performance",
+    "url": "http://127.0.0.1:5184/app/reports",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/27-reports-performance.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/27-reports-performance.txt",
+    "notes": "Results first, qualified scope, missing money preserved; catalog PMM 4 linked versus report 2 explained by Leads exclusion, but no easy lead segmentation on catalog.",
+    "capturedAt": "2026-10-11T10:42:18.811Z"
+  },
+  {
+    "step": 28,
+    "slug": "reports-collections",
+    "url": "http://127.0.0.1:5184/app/reports?report=new",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/28-reports-collections.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/28-reports-collections.txt",
+    "notes": "Collections preset auto-runs; inspect actual received amount, confirmed overdue and due basis after local partial receipt.",
+    "capturedAt": "2026-10-11T10:42:25.668Z"
+  },
+  {
+    "step": 29,
+    "slug": "report-cash-result",
+    "url": "http://127.0.0.1:5184/app/reports?report=new",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/29-report-cash-result.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/29-report-cash-result.txt",
+    "notes": "Actual ledger aligns with Collections 55,769.23 outstanding,21,153.85 confirmed overdue,29,230.77 receipts. Payments attention preset includes 2 fully collected rows.",
+    "capturedAt": "2026-10-11T10:42:35.086Z"
+  },
+  {
+    "step": 30,
+    "slug": "report-exported",
+    "url": "http://127.0.0.1:5184/app/reports?report=report-ac486440-6b1d-49a9-b9a9-484a3b059dea",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/30-report-exported.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/30-report-exported.txt",
+    "notes": "Local saved report re-run then CSV pack downloaded; includes full filtered rows, summary, run metadata; first pre-run attempt was audit automation timeout, not product export defect.",
+    "capturedAt": "2026-10-11T10:43:48.707Z"
+  },
+  {
+    "step": 31,
+    "slug": "dashboard-from-report",
+    "url": "http://127.0.0.1:5184/app/dashboards?dashboard=new&report=report-ac486440-6b1d-49a9-b9a9-484a3b059dea",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/31-dashboard-from-report.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/31-dashboard-from-report.txt",
+    "notes": "Saved report generates auto-run unsaved dashboard. Filters expose raw ID suffixes even unique labels. Snapshot time/source coverage explicit.",
+    "capturedAt": "2026-10-11T10:44:13.036Z"
+  },
+  {
+    "step": 32,
+    "slug": "dashboard-source",
+    "url": "http://127.0.0.1:5184/app/dashboards?dashboard=new&report=report-ac486440-6b1d-49a9-b9a9-484a3b059dea&widget=widget-db59a03b-7d8a-45e7-8009-f45201efe74a&group=%5B%22demo-unit-laboratory%22%5D",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/32-dashboard-source.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/32-dashboard-source.txt",
+    "notes": "Source inspect preserves captured run; checkbox includes zero outstanding rows as contributing. Define contributing versus in-scope wording.",
+    "capturedAt": "2026-10-11T10:44:25.453Z"
+  },
+  {
+    "step": 33,
+    "slug": "review-weekly",
+    "url": "http://127.0.0.1:5184/app/reviews",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/33-review-weekly.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/33-review-weekly.txt",
+    "notes": "Weekly scoreboard: 2 won/43.5K USD; Business review same Oct5–11 says 1 won/18.5K USD. Changes uses close-out ledger while scoreboard infers stage Won. Targets seed 10B USD with demo base USD: unrealistic.",
+    "capturedAt": "2026-10-11T10:44:54.468Z"
+  },
+  {
+    "step": 34,
+    "slug": "review-analytics",
+    "url": "http://127.0.0.1:5184/app/reviews?view=analytics",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/34-review-analytics.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/34-review-analytics.txt",
+    "notes": "Analytic scopes include outcome history versus present book; low sample warning exists but advice says big deals are failing from only 6 outcomes. Need more cautious language and source links.",
+    "capturedAt": "2026-10-11T10:45:15.688Z"
+  },
+  {
+    "step": 35,
+    "slug": "review-scoreboard",
+    "url": "http://127.0.0.1:5184/app/reviews",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/35-review-scoreboard.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/35-review-scoreboard.txt",
+    "notes": "Same-week scoreboard shows 2 won 43,461.54 USD; target values 2.5B/10B USD visually dominate progress.",
+    "capturedAt": "2026-10-11T10:45:18.823Z",
+    "accepted": false,
+    "rejection": "Focused scoreboard control but screenshot still showed previous top position; recapture required."
+  },
+  {
+    "step": 36,
+    "slug": "review-business-outcomes",
+    "url": "http://127.0.0.1:5184/app/reviews",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/36-review-business-outcomes.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/36-review-business-outcomes.txt",
+    "notes": "Same-week business review includes only Northstar480m VND,18.5K USD (closeout-based), requiring explicit source basis/union dedupe for consistency.",
+    "capturedAt": "2026-10-11T10:45:18.918Z"
+  },
+  {
+    "step": 37,
+    "slug": "capture-vietnamese-negation",
+    "url": "http://127.0.0.1:5184/app/capture",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/37-capture-vietnamese-negation.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/37-capture-vietnamese-negation.txt",
+    "notes": "Vietnamese note: chưa xác nhận PO becomes Purchase order signal; gửi báo giá thứ ba tuần sau incorrectly gets Oct20 belonging to second callback clause. Nothing saved.",
+    "capturedAt": "2026-10-11T10:45:56.552Z"
+  },
+  {
+    "step": 38,
+    "slug": "ask-money-vietnamese",
+    "url": "http://127.0.0.1:5184/app/ask",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/38-ask-money-vietnamese.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/38-ask-money-vietnamese.txt",
+    "notes": "Asked common Vietnamese cash phrase Khách nào còn nợ tiền?; DOM response unsupported, screenshot still initial ask state. Use follow-up capture for answer evidence.",
+    "capturedAt": "2026-10-11T10:46:35.454Z"
+  },
+  {
+    "step": 39,
+    "slug": "ask-account-answer",
+    "url": "http://127.0.0.1:5184/app/ask",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/39-ask-account-answer.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/39-ask-account-answer.txt",
+    "notes": "Account lookup lists two qualified opportunities; Open Accounts action generic loses account scope.",
+    "capturedAt": "2026-10-11T10:46:50.021Z"
+  },
+  {
+    "step": 40,
+    "slug": "ask-unsupported-money",
+    "url": "http://127.0.0.1:5184/app/ask",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/40-ask-unsupported-money.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/40-ask-unsupported-money.txt",
+    "notes": "Common Vietnamese cash phrasing is unsupported; generic suggested next action Send revised quote appears unrelated to question. Support phrase or show close supported cash preset without unrelated advice.",
+    "capturedAt": "2026-10-11T10:46:56.591Z"
+  },
+  {
+    "step": 41,
+    "slug": "ask-supported-cash",
+    "url": "http://127.0.0.1:5184/app/ask",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/41-ask-supported-cash.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/41-ask-supported-cash.txt",
+    "notes": "Supported preset shows money from same ledger with recorded due basis; compare unsupported Vietnamese phrase.",
+    "capturedAt": "2026-10-11T10:47:03.318Z"
+  },
+  {
+    "step": 42,
+    "slug": "ask-followup-context",
+    "url": "http://127.0.0.1:5184/app/ask",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/42-ask-followup-context.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/42-ask-followup-context.txt",
+    "notes": "Global draft refuses multiple accounts and requests explicit account; good guard.",
+    "capturedAt": "2026-10-11T10:47:13.328Z"
+  },
+  {
+    "step": 43,
+    "slug": "stakeholder-confirmation",
+    "url": "http://127.0.0.1:5184/app/stakeholders?accountName=Apex%20Labs",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/43-stakeholder-confirmation.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/43-stakeholder-confirmation.txt",
+    "notes": "Dr Avery labeled Champion in account map, but Role confirmed by evidence unchecked; MEDDIC correctly refuses strong champion. Surface tentative/confirmed on same map.",
+    "capturedAt": "2026-10-11T10:47:36.749Z"
+  },
+  {
+    "step": 44,
+    "slug": "objections",
+    "url": "http://127.0.0.1:5184/app/objections",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/44-objections.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/44-objections.txt",
+    "notes": "Status filters, proof needed and dates clear. At-stake amount includes won Summit25K, so state/scope label needed to distinguish sales blocker from delivery dispute.",
+    "capturedAt": "2026-10-11T10:47:52.637Z"
+  },
+  {
+    "step": 45,
+    "slug": "objection-form",
+    "url": "http://127.0.0.1:5184/app/objections",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/45-objection-form.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/45-objection-form.txt",
+    "notes": "Required objection text, IDs via scope resolution, separate response/proof/resolution fields. No save performed.",
+    "capturedAt": "2026-10-11T10:48:03.627Z"
+  },
+  {
+    "step": 46,
+    "slug": "vault-library",
+    "url": "http://127.0.0.1:5184/app/vault",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/46-vault-library.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/46-vault-library.txt",
+    "notes": "Vault provides map plus text list and explicit missing facts; relationship amount does not label inclusion of lost deal values. Gap actions send exact question to Ask.",
+    "capturedAt": "2026-10-11T10:48:20.777Z"
+  },
+  {
+    "step": 47,
+    "slug": "vault-to-ask-gap",
+    "url": "http://127.0.0.1:5184/app/ask?question=Who%20signs%20at%20Northstar%20Foods%3F",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/47-vault-to-ask-gap.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/47-vault-to-ask-gap.txt",
+    "notes": "System-generated Who signs at Northstar Foods question: verify meaningful fact answer versus name lookup shortcut.",
+    "capturedAt": "2026-10-11T10:48:28.044Z"
+  },
+  {
+    "step": 48,
+    "slug": "initiative-editor",
+    "url": "http://127.0.0.1:5184/app/operating-system",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/48-initiative-editor.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/48-initiative-editor.txt",
+    "notes": "Initiative has objective/owner/next action/explicit activity links and hypothesis. Value field fixed SGD while app reports USD; status free text. No save.",
+    "capturedAt": "2026-10-11T10:48:53.511Z"
+  },
+  {
+    "step": 49,
+    "slug": "playbook",
+    "url": "http://127.0.0.1:5184/app/playbook",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/49-playbook.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/49-playbook.txt",
+    "notes": "Metrics gap counts all 8 active records, including 3 unqualified Leads. Low/medium sample badges exist, but single completed action labeled often unclear.",
+    "capturedAt": "2026-10-11T10:49:10.987Z"
+  },
+  {
+    "step": 50,
+    "slug": "assets",
+    "url": "http://127.0.0.1:5184/app/assets",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/50-assets.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/50-assets.txt",
+    "notes": "Sales asset library supports draft/reuse status; no real sharing performed.",
+    "capturedAt": "2026-10-11T10:49:42.104Z"
+  },
+  {
+    "step": 51,
+    "slug": "settings-workspace",
+    "url": "http://127.0.0.1:5184/app/settings",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/51-settings-workspace.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/51-settings-workspace.txt",
+    "notes": "Reporting currency USD; explicit planning FX date, separate financing assumptions; honest demo-local sync, disabled retry and backup recovery explanation. Read-only.",
+    "capturedAt": "2026-10-11T10:55:18.353Z"
+  },
+  {
+    "step": 52,
+    "slug": "settings-account",
+    "url": "http://127.0.0.1:5184/app/settings?tab=profile",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/52-settings-account.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/52-settings-account.txt",
+    "notes": "Demo account has no real profile and explains sign-in requirement. Password, OAuth and profile cloud save not executed.",
+    "capturedAt": "2026-10-11T10:55:35.536Z"
+  },
+  {
+    "step": 53,
+    "slug": "settings-billing",
+    "url": "http://127.0.0.1:5184/app/settings?tab=billing",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/53-settings-billing.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/53-settings-billing.txt",
+    "notes": "Demo plan clearly sample and cloud billing not configured. No checkout or financial action.",
+    "capturedAt": "2026-10-11T10:55:49.987Z"
+  },
+  {
+    "step": 54,
+    "slug": "settings-privacy",
+    "url": "http://127.0.0.1:5184/app/settings?tab=boundaries",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/54-settings-privacy.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/54-settings-privacy.txt",
+    "notes": "Data & Privacy gives explicit source boundaries and links terms/privacy; inspected copy, no disclosure or sharing action.",
+    "capturedAt": "2026-10-11T10:56:13.571Z"
+  },
+  {
+    "step": 55,
+    "slug": "settings-export",
+    "url": "http://127.0.0.1:5184/app/settings?tab=export",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/55-settings-export.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/55-settings-export.txt",
+    "notes": "Demo ZIP downloaded successfully; restore disabled in demo, deletion control observed but not activated. Actual ZIP contents will be inspected offline.",
+    "capturedAt": "2026-10-11T10:56:36.697Z"
+  },
+  {
+    "step": 56,
+    "slug": "review-scoreboard-confirmed",
+    "url": "http://127.0.0.1:5184/app/reviews",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/56-review-scoreboard-confirmed.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/56-review-scoreboard-confirmed.txt",
+    "notes": "Oct5–11 Scoreboard 2 wins / 43,461.54 USD, whereas Business review 1 win /18,461.54. Also displays Q4 2.5B USD and annual10B USD targets; verify stored target currency before treating as calculation defect.",
+    "capturedAt": "2026-10-11T10:57:02.980Z"
+  },
+  {
+    "step": 57,
+    "slug": "global-search",
+    "url": "http://127.0.0.1:5184/app/reviews",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/57-global-search.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/57-global-search.txt",
+    "notes": "Search Apex returns canonical account and two opportunities. Focus enters dialog; Escape dismissal checked separately. Header shortcut uses Command glyph in Windows environment: copy polish opportunity.",
+    "capturedAt": "2026-10-11T10:57:15.929Z"
+  },
+  {
+    "step": 58,
+    "slug": "mobile-leads",
+    "url": "http://127.0.0.1:5184/app/reviews",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/58-mobile-leads.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/58-mobile-leads.txt",
+    "notes": "390x844 mobile: dedicated lead cards; inspect navigation and visible action accessibility.",
+    "capturedAt": "2026-10-11T10:57:30.776Z",
+    "accepted": false,
+    "rejection": "Viewport switch retained Review. This image is mobile Review, not Leads; replaced by verified route capture."
+  },
+  {
+    "step": 59,
+    "slug": "mobile-leads-confirmed",
+    "url": "http://127.0.0.1:5184/app/leads",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/59-mobile-leads-confirmed.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/59-mobile-leads-confirmed.txt",
+    "notes": "Verified /app/leads at390x844. Mobile lead cards and bottom navigation; no document-wide overflow observed via DOM check.",
+    "capturedAt": "2026-10-11T10:57:52.878Z"
+  },
+  {
+    "step": 60,
+    "slug": "mobile-lead-form",
+    "url": "http://127.0.0.1:5184/app/leads",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/60-mobile-lead-form.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/60-mobile-lead-form.txt",
+    "notes": "390x844 Lead drawer. BrandSelect catalog/options retained; form scrolls internally and footer actions visible; empty required Customer keeps save disabled. Cancel without save.",
+    "capturedAt": "2026-10-11T10:58:18.415Z"
+  },
+  {
+    "step": 61,
+    "slug": "mobile-reports",
+    "url": "http://127.0.0.1:5184/app/reports",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/61-mobile-reports.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/61-mobile-reports.txt",
+    "notes": "390x844 Reports builder. All options reachable; denser multi-step configuration and results require substantial scroll. No root horizontal overflow.",
+    "capturedAt": "2026-10-11T10:58:32.928Z"
+  },
+  {
+    "step": 62,
+    "slug": "operating-priorities",
+    "url": "http://127.0.0.1:5184/app/operating-system",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/62-operating-priorities.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/62-operating-priorities.txt",
+    "notes": "Supporting Must-win work keeps initiative separate from Today ranked queue, shows one explicit local sample priority and unrecorded value as Not set.",
+    "capturedAt": "2026-10-11T10:59:43.454Z"
+  },
+  {
+    "step": 63,
+    "slug": "founder-import",
+    "url": "http://127.0.0.1:5184/app/today",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/63-founder-import.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/63-founder-import.txt",
+    "notes": "Founder import route is gated and redirected to Today in demo; no import file or cloud commit tested. Today nudge renders unknown-value Atlas deal as 0 USD, whereas main priority correctly says missing evidence. Source follow-up required.",
+    "capturedAt": "2026-10-11T11:00:00.719Z"
+  },
+  {
+    "step": 64,
+    "slug": "demo-reset",
+    "url": "http://127.0.0.1:5184/app/today",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/64-demo-reset.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/64-demo-reset.txt",
+    "notes": "Reset restores complete sample dataset. Verify original4 open qualified deals,100M receipt and Atlas test removed; report/dashboard sample definitions cleared by reset.",
+    "capturedAt": "2026-10-11T11:00:54.271Z"
+  },
+  {
+    "step": 65,
+    "slug": "public-landing",
+    "url": "http://127.0.0.1:5184/",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/65-public-landing.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/65-public-landing.txt",
+    "notes": "Exited demo successfully to landing; no console errors. Value proposition, sample demo CTA, signup and pricing publicly discoverable. No form submission.",
+    "capturedAt": "2026-10-11T14:51:23.687Z"
+  },
+  {
+    "step": 66,
+    "slug": "login",
+    "url": "http://127.0.0.1:5184/login",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/66-login.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/66-login.txt",
+    "notes": "Login has labelled email/password with appropriate input types and forgot-password link. Local cloud is intentionally unconfigured; no auth submission, OAuth or email delivery tested. Screenshot has no show-password control.",
+    "capturedAt": "2026-10-11T14:51:52.068Z"
+  },
+  {
+    "step": 67,
+    "slug": "forgot-password",
+    "url": "http://127.0.0.1:5184/forgot-password",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/67-forgot-password.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/67-forgot-password.txt",
+    "notes": "Recovery page labelled email and explicit return-to-login; no email submitted. Delivery, expiry and recovery link not exercised.",
+    "capturedAt": "2026-10-11T14:52:23.536Z"
+  },
+  {
+    "step": 68,
+    "slug": "signup",
+    "url": "http://127.0.0.1:5184/signup",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/68-signup.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/68-signup.txt",
+    "notes": "Signup labels, name/email/autocomplete/password policy visible. No account created. Privacy/terms links absent from the signup surface; consider providing context before submission.",
+    "capturedAt": "2026-10-11T14:52:45.011Z"
+  },
+  {
+    "step": 69,
+    "slug": "verify-email-without-state",
+    "url": "http://127.0.0.1:5184/verify-email",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/69-verify-email-without-state.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/69-verify-email-without-state.txt",
+    "notes": "Direct /verify-email without signup/email state still says We have sent a verification link, but offers no resend action. No email was sent in this audit; refresh/deep link loses recipient context.",
+    "capturedAt": "2026-10-11T14:53:05.316Z"
+  },
+  {
+    "step": 70,
+    "slug": "pricing",
+    "url": "http://127.0.0.1:5184/pricing",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/70-pricing.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/70-pricing.txt",
+    "notes": "Preview free without card or trial countdown; Personal10USD monthly after preview; Team marked Later and not sold. No purchase or checkout tested.",
+    "capturedAt": "2026-10-11T14:53:27.239Z"
+  },
+  {
+    "step": 71,
+    "slug": "public-use-cases",
+    "url": "http://127.0.0.1:5184/use-cases",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/71-public-use-cases.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/71-public-use-cases.txt",
+    "notes": "Use Cases public information read; customer scenarios and sample illustrations, no external form submission.",
+    "capturedAt": "2026-10-11T14:53:37.196Z"
+  },
+  {
+    "step": 72,
+    "slug": "guide-quote-to-cash",
+    "url": "http://127.0.0.1:5184/quote-to-cash",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/72-guide-quote-to-cash.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/72-guide-quote-to-cash.txt",
+    "notes": "Quote-to-cash guide publicly readable and ties milestones to commercial follow-up. No claim of invoice issuance or bank integration verified.",
+    "capturedAt": "2026-10-11T14:54:19.704Z"
+  },
+  {
+    "step": 73,
+    "slug": "public-privacy",
+    "url": "http://127.0.0.1:5184/legal/privacy",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/73-public-privacy.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/73-public-privacy.txt",
+    "notes": "Privacy document accessible from footer; audit checks discoverability and product description only, not legal compliance.",
+    "capturedAt": "2026-10-11T14:54:39.384Z"
+  },
+  {
+    "step": 74,
+    "slug": "public-contact",
+    "url": "http://127.0.0.1:5184/request-access",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/74-public-contact.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/74-public-contact.txt",
+    "notes": "Contact request labels and purpose reviewed; no details entered and no request sent.",
+    "capturedAt": "2026-10-11T14:55:27.388Z"
+  },
+  {
+    "step": 75,
+    "slug": "not-found",
+    "url": "http://127.0.0.1:5184/__round2_missing_route__",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/75-not-found.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/75-not-found.txt",
+    "notes": "Unknown public route gives clear Page not found and recovery destinations instead of blank screen.",
+    "capturedAt": "2026-10-11T14:56:02.216Z"
+  },
+  {
+    "step": 76,
+    "slug": "production-sync-recovery",
+    "url": "https://www.memoire-official.com/app/settings",
+    "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/76-production-sync-recovery.png",
+    "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/76-production-sync-recovery.txt",
+    "notes": "Read-only production Settings follow-up: inspect live sync banner and collection-level recovery diagnostics. No cloud retry/write executed.",
+    "capturedAt": "2026-10-11T14:56:29.322Z"
+  }
+]

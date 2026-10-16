@@ -63,7 +63,7 @@ export function LeadQueueList({
   const showValue = rows.some((row) => Boolean(row.opportunity.estimatedValue));
   return (
     <Panel className="min-w-0 overflow-hidden" aria-label="Leads">
-      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-5 py-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2 border-b border-line px-4 py-2.5">
         <div className="min-w-0">
           <h2 className="font-display text-[17px] font-bold text-ink">Leads to work</h2>
           <p className="mt-0.5 text-xs text-muted">{caption}</p>

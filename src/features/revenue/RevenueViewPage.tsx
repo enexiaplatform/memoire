@@ -155,18 +155,20 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
   }, [revenue.actionItems, search]);
 
   return (
-    <PageContainer>
+    <PageContainer density="compact">
       {/* The second sentence is load bearing, not decoration: this page ranks
           orders by where money is stuck, and Today owns the priority order for
           the day. Two surfaces claiming to say what to do first is how an
           operator stops trusting either. */}
       <PageHeader
-        tabs={tabs}
-        eyebrow="Money"
+        size="compact"
+        descriptionDisclosure
         title="Orders"
         documentTitle="Money · Orders"
         description="Committed orders, followed from contract to money in the bank. Today owns the priority order."
         actions={
+          <>
+          {tabs}
           <button
             type="button"
             onClick={() => loadRevenue(true)}
@@ -176,6 +178,7 @@ export function RevenueViewPage({ tabs }: { tabs?: ReactNode } = {}) {
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
           </button>
+          </>
         }
           /*
            * No per-page sync chrome.

@@ -371,7 +371,7 @@ function stakeholderFacts(raw: string, target: CaptureTarget, context: CapturePa
   // every accented first letter, so "Sat down with Émile" proposed nobody.
   const NAMED = new RegExp(
     `\\b${personContactCuePattern()}\\s+`
-    + `(\\p{Lu}[\\p{L}'-]+(?:\\s+\\p{Lu}[\\p{L}'-]+){0,2})\\b`
+    + `((?:(?:Dr|Mr|Mrs|Ms|Prof)\\.?\\s+)?\\p{Lu}[\\p{L}'’-]+(?:\\s+\\p{Lu}[\\p{L}'’-]+){0,2})(?![\\p{L}])`
     + `(?:\\s*,?\\s*(?:the\\s+|from\\s+|in\\s+|at\\s+)?([a-z][\\p{L}\\s/-]{2,30}?))?`
     + `(?=[.,;]|\\s+(?:and|but|today|yesterday)\\b|$)`,
     'gu',
@@ -382,7 +382,7 @@ function stakeholderFacts(raw: string, target: CaptureTarget, context: CapturePa
 
   for (const match of raw.matchAll(NAMED)) {
     const name = (match[1] || '').trim();
-    if (!name || seen.has(normalizeEntityName(name))) continue;
+    if (!name || /^(?:Dr|Mr|Mrs|Ms|Prof)\.?$/u.test(name) || seen.has(normalizeEntityName(name))) continue;
     // A department is not a person. "Met Rohto QC" names a team, and creating
     // a stakeholder called QC would put a job function in the people list.
     if (isDepartmentWord(name)) continue;

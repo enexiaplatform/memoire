@@ -263,6 +263,7 @@ export function OpportunitiesPage() {
   // asking the same question of it, which is why neither is a field.
   const [closeFilter, setCloseFilter] = useState(allFilter);
   const [quickFilter, setQuickFilter] = useState<OpportunityQuickFilter>('all');
+  const [filtersExpanded, setFiltersExpanded] = useState(false);
   /**
    * Where a drawer opened from another destination hands the operator back to.
    *
@@ -930,6 +931,9 @@ export function OpportunitiesPage() {
     || closeFilter !== allFilter
     || quickFilter !== 'all';
 
+  const activeDetailFilterCount = [stageFilter, statusFilter, forecastFilter, recommendationFilter, brandFilter, closeFilter]
+    .filter((value) => value !== allFilter).length;
+
   const clearAllFilters = () => {
     setSearch('');
     setStageFilter(allFilter);
@@ -1123,7 +1127,7 @@ export function OpportunitiesPage() {
   };
 
   return (
-    <PageContainer>
+    <PageContainer density="compact">
       {/* The list is the page.
           This used to open on a title, a paragraph, a toolbar, a quality
           scorecard and two charts - roughly a screen and a half before the
@@ -1134,23 +1138,20 @@ export function OpportunitiesPage() {
       <PageHeader
         title="Opportunities"
         documentTitle="Opportunities"
+        size="compact"
         meta={
           <>
             {loading
               ? 'Loading pipeline...'
               : `${formatCount(visibleOpportunityRows.length)} shown of ${formatCount(pipelineOpportunities.length)}`}
             {lastWorkspaceRefreshAt ? ` · loaded ${formatOpportunityDate(lastWorkspaceRefreshAt)}` : ''}
+            {leadCount > 0 && (
+              <Link to="/app/leads" className="ml-3 font-semibold text-brand-blue-dark hover:underline">
+                {formatCount(leadCount)} {leadCount === 1 ? 'lead' : 'leads'} awaiting qualification
+              </Link>
+            )}
           </>
         }
-        description={leadCount > 0 ? (
-          <>
-            Qualified pipeline.{' '}
-            <Link to="/app/leads" className="font-semibold text-brand-blue-dark hover:underline">
-              {formatCount(leadCount)} {leadCount === 1 ? 'lead is' : 'leads are'} on Leads
-            </Link>
-            {' '}until qualified.
-          </>
-        ) : undefined}
         actions={
           /*
            * One primary, one secondary, the rest behind "More".
@@ -1202,13 +1203,11 @@ export function OpportunitiesPage() {
         }
       />
 
-      {/* Filters sit directly above the rows they filter, on two lines: what
-          you type and pick, then the saved cuts. Sticky, because filtering a
-          long list is useless if choosing the next filter means scrolling
-          back to the top. */}
-      <section className="sticky top-14 z-20 -mx-4 border-y border-line bg-page/95 px-4 py-2.5 backdrop-blur sm:-mx-5 sm:px-5 lg:-mx-6 lg:top-16 lg:px-6">
-        <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
-          <label className="relative xl:w-[300px]">
+      {/* Keep frequent cuts visible; detailed filters expand only when needed. */}
+      <section aria-label="Opportunity filters" className="sticky top-14 z-20 border-y border-line bg-page/95 py-2 backdrop-blur lg:top-16">
+        <div className="flex flex-wrap items-center gap-2">
+          <label className="relative min-w-0 flex-1 sm:w-64 sm:flex-none">
+            <span className="sr-only">Search opportunities</span>
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               value={search}
@@ -1217,7 +1216,47 @@ export function OpportunitiesPage() {
               className="w-full rounded-lg border border-gray-300 bg-white py-1.5 pl-9 pr-3 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10"
             />
           </label>
-          <div className="grid flex-1 grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-5">
+          <button
+            type="button"
+            aria-expanded={filtersExpanded}
+            aria-controls="opportunity-detail-filters"
+            onClick={() => setFiltersExpanded((expanded) => !expanded)}
+            className={`inline-flex shrink-0 items-center gap-1.5 rounded-lg border px-3 py-1.5 text-sm font-semibold ${activeDetailFilterCount > 0 ? 'border-brand-blue bg-blue-50 text-brand-blue-dark' : 'border-gray-300 bg-white text-gray-700'}`}
+          >
+            <Filter className="h-4 w-4" />
+            Filters{activeDetailFilterCount > 0 ? ` (${activeDetailFilterCount})` : ''}
+            <ChevronDown className={`h-4 w-4 transition-transform ${filtersExpanded ? 'rotate-180' : ''}`} />
+          </button>
+          <div className="flex min-w-0 basis-full gap-1.5 overflow-x-auto pb-0.5 xl:flex-1 xl:basis-0" aria-label="Quick filters">
+            {[
+              ['all', 'All pipeline'],
+              ['imported', 'Imported core'],
+              ['stageInferred', 'Stage inferred'],
+              ['fy26', 'FY26 value'],
+              ['fy27', 'FY27 value'],
+              ['needsAction', 'Needs action'],
+              ['goingSilent', goingSilentCount > 0 ? `Going silent (${goingSilentCount})` : 'Going silent'],
+              ['noChampion', 'No champion'],
+            ].map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={quickFilter === value}
+                onClick={() => setQuickFilter(value as OpportunityQuickFilter)}
+                className={`shrink-0 whitespace-nowrap rounded-full px-2.5 py-1 text-xs font-bold ${quickFilter === value ? 'bg-navy text-white' : 'border border-line bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          {hasActiveFilters && (
+            <button type="button" onClick={clearAllFilters} className="shrink-0 text-xs font-bold text-brand-blue-dark hover:underline">
+              Clear filters
+            </button>
+          )}
+        </div>
+        <div id="opportunity-detail-filters" hidden={!filtersExpanded}>
+          <div className="mt-2 grid grid-cols-2 gap-2 md:grid-cols-3 xl:grid-cols-6">
             {/* Lead is not offered: leads are on their own destination, and a stage
                 cut that could select a stage this list never holds would always
                 answer with nothing. */}
@@ -1232,40 +1271,6 @@ export function OpportunitiesPage() {
               ? <FilterSelect label="Close" value={closeFilter} onChange={setCloseFilter} options={[allFilter, ...closeFilterOptions]} />
               : null}
           </div>
-          {hasActiveFilters && (
-            <button
-              type="button"
-              onClick={clearAllFilters}
-              className="shrink-0 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-bold text-gray-600 hover:border-brand-blue hover:text-brand-blue"
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {[
-            ['all', 'All pipeline'],
-            ['imported', 'Imported core'],
-            ['stageInferred', 'Stage inferred'],
-            ['fy26', 'FY26 value'],
-            ['fy27', 'FY27 value'],
-            ['needsAction', 'Needs action'],
-            ['goingSilent', goingSilentCount > 0 ? `Going silent (${goingSilentCount})` : 'Going silent'],
-            ['noChampion', 'No champion'],
-          ].map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setQuickFilter(value as OpportunityQuickFilter)}
-              className={`rounded-full px-2.5 py-1 text-xs font-bold ${
-                quickFilter === value
-                  ? 'bg-navy text-white'
-                  : 'border border-line bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
         </div>
       </section>
 
@@ -2661,10 +2666,10 @@ function OpportunityMasterTable({
 
   return (
     <section className="min-w-0 overflow-hidden rounded-lg border border-line bg-white shadow-sm">
-      <div className="flex flex-col gap-3 border-b border-line px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-base font-bold text-ink">Opportunity Master List</h2>
-          <p className="mt-1 text-xs text-gray-500">
+      <div className="flex flex-col gap-2 border-b border-line px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
+          <h2 className="text-sm font-bold text-ink">Opportunity Master List</h2>
+          <p className="text-xs text-gray-500">
             {formatCount(totalRows)} after filters / {formatCount(totalOpportunities)} total
             {' · '}
             {/* Said out loud, because an ordering rule the operator cannot see is
@@ -3263,6 +3268,7 @@ function OpportunityPanel({
               >
                 Capture Update
               </Link>
+              <Link to={`/app/ask?mode=ai&scope=opportunity&opportunityId=${encodeURIComponent(editingOpportunity.id)}`} className="inline-flex rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-bold text-brand-blue">Ask AI about this deal</Link>
             </div>
           )}
         </div>
@@ -4881,7 +4887,7 @@ function FilterSelect({ label, value, options, onChange }: { label: string; valu
     <label className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2">
       <Filter className="h-4 w-4 text-gray-400" />
       <span className="sr-only">{label}</span>
-      <select value={value} onChange={(event) => onChange(event.target.value)} className="w-full bg-transparent text-sm font-semibold text-gray-700 outline-none">
+      <select aria-label={label} value={value} onChange={(event) => onChange(event.target.value)} className="min-w-0 w-full bg-transparent text-sm font-semibold text-gray-700 outline-none">
         {options.map((option) => (
           <option key={option} value={option}>{option === allFilter ? label : option}</option>
         ))}

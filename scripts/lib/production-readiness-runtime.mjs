@@ -1,12 +1,10 @@
 export const AUTH_REDIRECT_PATHS = ['/login?verified=1', '/reset-password', '/app/today'];
 
-// Keys that would signal an AI provider had been wired back into the product.
-// Memoire's parsing, prioritisation, search and recommendations are all
-// deterministic and local; none of these should ever be set in production.
+// Unsupported provider configuration is surfaced. Groq is the sole supported,
+// optional provider; neither its key nor the chat switch is a readiness gate.
 export const AI_PROVIDER_ENV_KEYS = [
   'OPENAI_API_KEY',
   'ANTHROPIC_API_KEY',
-  'GROQ_API_KEY',
   'GOOGLE_GENERATIVE_AI_API_KEY',
   'COHERE_API_KEY',
   'CAPTURE_AI_PROVIDER',
@@ -25,13 +23,10 @@ export function evaluateProductionReadiness(env = process.env, options = {}) {
     required('supabase_service_role', hasEnv(env, 'SUPABASE_SERVICE_ROLE_KEY')),
     required('app_url', hasEnv(env, 'VITE_APP_URL')),
     required('app_url_valid', Boolean(appUrl)),
-    // Memoire has no AI dependency. The readiness contract used to require an
-    // AI generation provider and an OpenAI embeddings key; both outlived the
-    // features that needed them and were failing production health for
-    // configuration the product no longer uses. `no_ai_provider_configured`
-    // replaces them: it fails loudly if an AI key is set, so a paid external
-    // dependency cannot be reintroduced by environment configuration alone.
-    warning('no_ai_provider_configured', !hasAnyEnv(env, AI_PROVIDER_ENV_KEYS)),
+    warning('no_unsupported_ai_provider_configured', !hasAnyEnv(env, AI_PROVIDER_ENV_KEYS)),
+    optional('ai_chat_enabled', env.AI_CHAT_ENABLED === 'true'),
+    optional('ai_chat_available', env.AI_CHAT_ENABLED === 'true' && hasEnv(env, 'GROQ_API_KEY')),
+    warning('ai_chat_configured_when_enabled', env.AI_CHAT_ENABLED !== 'true' || hasEnv(env, 'GROQ_API_KEY')),
     warning('app_url_https', appUrl?.protocol === 'https:'),
     warning('app_url_not_localhost', Boolean(appUrl && !['localhost', '127.0.0.1'].includes(appUrl.hostname))),
     // Catches VITE_APP_URL pointing at a domain this deployment does not

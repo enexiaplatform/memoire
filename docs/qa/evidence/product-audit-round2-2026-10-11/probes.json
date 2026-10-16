@@ -1,0 +1,115 @@
+{
+  "sha": "545b27b779260d7425729820334ef486cca33a4f",
+  "purpose": "Assertions confirm observed current defects, not successful intended behavior.",
+  "results": [
+    {
+      "id": "R2-02",
+      "grossAwaitingBase": 59615.38461538462,
+      "outstandingBase": 55769.230769230766,
+      "difference": 3846.153846153851
+    },
+    {
+      "id": "R2-01",
+      "manualPaidQuoteStage": "Paid",
+      "collectionSettled": false,
+      "outstandingBase": 21153.846153846152
+    },
+    {
+      "id": "R2-03",
+      "buyingSignals": [
+        "Purchase order signal"
+      ],
+      "nextActions": [
+        {
+          "title": "gửi báo giá",
+          "dueDate": "2026-10-20",
+          "sourceText": "gửi báo giá vào thứ ba tuần sau, gọi lại ngày 20/10/2026."
+        }
+      ]
+    },
+    {
+      "id": "R2-04",
+      "storedTargetCurrencies": [
+        "VND"
+      ],
+      "rawQuarter": 2500000000,
+      "convertedQuarter": 96153.84615384616,
+      "rawYear": 10000000000,
+      "scoreboardWon": {
+        "count": 2,
+        "valueBase": 43461.53846153846
+      }
+    },
+    {
+      "id": "R2-05",
+      "coverageBrands": [
+        "Tailin",
+        "Scitek",
+        "PMM",
+        "MicroView",
+        "Others"
+      ],
+      "activeLeadBrands": [
+        "PMM",
+        "",
+        "PMM"
+      ],
+      "coverageRows": [
+        "Apex Labs",
+        "Northstar Foods",
+        "Orion Pharma",
+        "Summit Diagnostics",
+        "[SIMULATED R2] Atlas Lab",
+        "Delta Nutrition",
+        "Riverside Foods",
+        "Harbor Diagnostics"
+      ]
+    },
+    {
+      "id": "R2-10",
+      "metricsPattern": {
+        "id": "meddic-missing-metrics",
+        "title": "Business impact is not measurable enough",
+        "category": "MEDDIC Gap",
+        "severity": "High",
+        "frequency": 8,
+        "evidence": [
+          "[SIMULATED R2] Atlas Lab / Round 2 qualification test: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source.",
+          "Apex Labs / Validation Expansion: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source.",
+          "Apex Labs / Validated decontamination service renewal: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source.",
+          "Northstar Foods / Lab workflow: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source."
+        ],
+        "whyItMatters": "Without measurable impact, urgency is easy to lose and internal budget defense becomes weak.",
+        "suggestedPlaybookResponse": "Connect the project to cost, compliance risk, throughput, downtime, or decision deadline.",
+        "reusableAction": "Ask: what happens if the customer does not solve this issue this quarter?",
+        "relatedAccounts": [
+          "[SIMULATED R2] Atlas Lab",
+          "Apex Labs",
+          "Northstar Foods",
+          "Orion Pharma",
+          "Delta Nutrition",
+          "Harbor Diagnostics",
+          "Riverside Foods"
+        ],
+        "relatedOpportunities": [
+          "Round 2 qualification test",
+          "Validation Expansion",
+          "Validated decontamination service renewal",
+          "Lab workflow",
+          "Procurement review",
+          "Second QC line",
+          "New microbiology lab",
+          "Allergen testing"
+        ],
+        "relatedObjectionTypes": [
+          "Compliance / validation",
+          "Competitor",
+          "Lead time",
+          "Procurement"
+        ],
+        "detectedAt": "2026-10-11T10:59:37.630Z"
+      },
+      "activeLeadCount": 3
+    }
+  ]
+}

@@ -48,7 +48,7 @@ assert.equal(hostWithPort.checks.find((check) => check.name === 'app_url_matches
 const checkNames = new Set(healthy.checks.map((check) => check.name));
 for (const name of [
   'supabase_url', 'supabase_anon_key', 'supabase_service_role', 'app_url', 'app_url_valid',
-  'app_url_https', 'app_url_not_localhost', 'no_ai_provider_configured',
+  'app_url_https', 'app_url_not_localhost', 'no_unsupported_ai_provider_configured',
   'demo_mode_disabled', 'founder_workspace_disabled', 'lemonsqueezy_api_key',
   'lemonsqueezy_store', 'lemonsqueezy_webhook_secret', 'billing_checkout_disabled',
 ]) assert.ok(checkNames.has(name), `readiness result missing check ${name}`);
@@ -63,7 +63,7 @@ assert.equal(healthy.summary.warnings, 0, 'an AI-free production env must raise 
 const withLeftoverAiKey = evaluateProductionReadiness({ ...completeEnv, OPENAI_API_KEY: 'openai-secret-value' });
 assert.equal(withLeftoverAiKey.ok, true, 'a leftover AI key is a warning, not a production outage');
 assert.equal(
-  withLeftoverAiKey.checks.find((check) => check.name === 'no_ai_provider_configured').ok,
+  withLeftoverAiKey.checks.find((check) => check.name === 'no_unsupported_ai_provider_configured').ok,
   false,
   'a leftover AI provider key must be reported',
 );

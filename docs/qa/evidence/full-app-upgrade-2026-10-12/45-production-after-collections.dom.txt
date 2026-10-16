@@ -1,0 +1,157 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities":
+    - /url: /app/opportunities
+    - text: Opportunities
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: "[Q"
+  - generic "[SIMULATED QC R5] Orion Calibration Partners"
+  - generic: Personal workspace
+  - button "Account and settings for [SIMULATED QC R5] Orion Calibration Partners":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic "Pipeline records, review packs, assets, and action outcomes sync to your account. Lightweight setup preferences may remain in this browser. Cloud records are available across devices. Browser preferences may reset when browser data is cleared.":
+    - generic: Cloud + browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Money
+  - heading "Collections" [level=1]
+  - generic: What customers still owe you, when each part fell due, and what has arrived. Orders follows the goods; this follows the money. Yours only — recording a payment here never reaches the customer.
+  - tablist "Money view":
+    - tab "Orders"
+    - tab "Collections" [selected]
+    - tab "Margin"
+  - button "Reload collections from cloud":
+  - paragraph: Still owed
+  - paragraph: 85.7K USD
+  - paragraph: 12 orders open
+  - paragraph: Confirmed overdue
+  - paragraph: 85.7K USD
+  - paragraph: Agreed schedule and recorded trigger date
+  - paragraph: Planning dates to confirm
+  - paragraph: 0 USD
+  - paragraph: Estimated past due; confirm terms and trigger before chasing
+  - paragraph: Scheduled in 30 days
+  - paragraph: 85.7K USD
+  - paragraph: Confirmed and estimated schedules, including past dates
+  - paragraph: Planning average wait
+  - paragraph: 171 days
+  - paragraph: Estimated and confirmed schedules, weighted by outstanding money
+  - paragraph: Chase this one first
+  - paragraph: "[SIM QC R5] US Precision Lab 11 — 9,518.08 USD past due by 25 days on ACC-2026-09-2-R2."
+  - heading "Planning age of outstanding payments" [level=2]
+  - paragraph: Due within 7 days
+  - paragraph: 0 USD
+  - paragraph: 0 orders
+  - paragraph: Not yet due
+  - paragraph: 0 USD
+  - paragraph: 0 orders
+  - paragraph: 1-30 days late
+  - paragraph: 9.5K USD
+  - paragraph: 1 order
+  - paragraph: 31-60 days late
+  - paragraph: 9.1K USD
+  - paragraph: 1 order
+  - paragraph: 61-90 days late
+  - paragraph: 8.7K USD
+  - paragraph: 1 order
+  - paragraph: Over 90 days late
+  - paragraph: 58.4K USD
+  - paragraph: 9 orders
+  - heading "Orders and what they owe" [level=2]
+  - button "open"
+  - button "Confirmed overdue"
+  - button "all"
+  - list:
+    - button "[SIM QC R5] US Precision Lab 11 ACC-2026-09-2-R2 · [SIM QC R5] 2026-09 Calibration station 2 · 100% on order 9.5K USD 25 days confirmed overdue":
+      - paragraph: "[SIM QC R5] US Precision Lab 11"
+      - paragraph: ACC-2026-09-2-R2 · [SIM QC R5] 2026-09 Calibration station 2 · 100% on order
+      - paragraph: 9.5K USD
+      - paragraph: 25 days confirmed overdue
+    - button "[SIM QC R5] US Precision Lab 08 ACC-2026-08-2-R2 · [SIM QC R5] 2026-08 Calibration station 2 · 100% on order 9.1K USD 56 days confirmed overdue":
+      - paragraph: "[SIM QC R5] US Precision Lab 08"
+      - paragraph: ACC-2026-08-2-R2 · [SIM QC R5] 2026-08 Calibration station 2 · 100% on order
+      - paragraph: 9.1K USD
+      - paragraph: 56 days confirmed overdue
+    - button "[SIM QC R5] US Precision Lab 05 ACC-2026-07-2-R2 · [SIM QC R5] 2026-07 Calibration station 2 · 100% on order 8.7K USD 87 days confirmed overdue":
+      - paragraph: "[SIM QC R5] US Precision Lab 05"
+      - paragraph: ACC-2026-07-2-R2 · [SIM QC R5] 2026-07 Calibration station 2 · 100% on order
+      - paragraph: 8.7K USD
+      - paragraph: 87 days confirmed overdue
+    - button "[SIM QC R5] US Precision Lab 02 ACC-2026-06-2-R2 · [SIM QC R5] 2026-06 Calibration station 2 · 100% on order 8.2K USD 117 days confirmed overdue":
+      - paragraph: "[SIM QC R5] US Precision Lab 02"
+      - paragraph: ACC-2026-06-2-R2 · [SIM QC R5] 2026-06 Calibration station 2 · 100% on order
+      - paragraph: 8.2K USD
+      - paragraph: 117 days confirmed overdue
+    - button "[SIM QC R5] US Precision Lab 11 ACC-2026-05-2-R2 · [SIM QC R5] 2026-05 Calibration station 2 · 100% on order 7.8K USD 148 days confirmed overdue":
+      - paragraph: "[SIM QC R5] US Precision Lab 11"
+      - paragraph: ACC-2026-05-2-R2 · [SIM QC R5] 2026-05 Calibration station 2 · 100% on order
+      - paragraph: 7.8K USD
+      - paragraph: 148 days confirmed overdue
+    - button "[SIM QC R5] US Precision Lab 08 ACC-2026-04-2-R2 · [SIM QC R5] 2026-04 Calibration station 2 · 100% on order 7.4K USD 178 days confirmed overdue":
+      - paragraph: "[SIM QC R5] US Precision Lab 08"
+      - paragraph: ACC-2026-04-2-R2 · [SIM QC R5] 2026-04 Calibration station 2 · 100% on order
+      - paragraph: 7.4K USD
+      - paragraph: 178 days confirmed overdue
+    - button "[SIM QC R5] US Precision Lab 05 ACC-2026-03-2-R2 · [SIM QC R5] 2026-03 Calibration station 2 · 100% on order 6.9K USD 209 days confirmed overdue":
+      - paragraph: "[SIM QC R5] US Precision Lab 05"
+      - paragraph: ACC-2026-03-2-R2 · [SIM QC R5] 2026-03 Calibration station 2 · 100% on order
+      - paragraph: 6.9K USD
+      - paragraph: 209 days confirmed overdue
+    - button "[SIM QC R5] US Precision Lab 02 ACC-2026-02-2-R2 · [SIM QC R5] 2026-02 Calibration station 2 · 100% on order 6.5K USD 237 days confirmed overdue":
+      - paragraph: "[SIM QC R5] US Precision Lab 02"
+      - paragraph: ACC-2026-02-2-R2 · [SIM QC R5] 2026-02 Calibration station 2 · 100% on order
+      - paragraph: 6.5K USD
+      - paragraph: 237 days confirmed overdue
+    - button "[SIM QC R5] US Precision Lab 11 ACC-2026-01-2-R2 · [SIM QC R5] 2026-01 Calibration station 2 · 100% on order 6.1K USD 268 days confirmed overdue":
+      - paragraph: "[SIM QC R5] US Precision Lab 11"
+      - paragraph: ACC-2026-01-2-R2 · [SIM QC R5] 2026-01 Calibration station 2 · 100% on order
+      - paragraph: 6.1K USD
+      - paragraph: 268 days confirmed overdue
+    - button "[SIM QC R5] US Precision Lab 08 ACC-2025-12-2-R2 · [SIM QC R5] 2025-12 Calibration station 2 · 100% on order 5.6K USD 299 days confirmed overdue":
+      - paragraph: "[SIM QC R5] US Precision Lab 08"
+      - paragraph: ACC-2025-12-2-R2 · [SIM QC R5] 2025-12 Calibration station 2 · 100% on order
+      - paragraph: 5.6K USD
+      - paragraph: 299 days confirmed overdue
+    - button "[SIM QC R5] US Precision Lab 05 ACC-2025-11-2-R2 · [SIM QC R5] 2025-11 Calibration station 2 · 100% on order 5.2K USD 329 days confirmed overdue":
+      - paragraph: "[SIM QC R5] US Precision Lab 05"
+      - paragraph: ACC-2025-11-2-R2 · [SIM QC R5] 2025-11 Calibration station 2 · 100% on order
+      - paragraph: 5.2K USD
+      - paragraph: 329 days confirmed overdue
+    - button "[SIM QC R5] US Precision Lab 02 ACC-2025-10-2-R2 · [SIM QC R5] 2025-10 Calibration station 2 · 100% on order 4.8K USD 360 days confirmed overdue":
+      - paragraph: "[SIM QC R5] US Precision Lab 02"
+      - paragraph: ACC-2025-10-2-R2 · [SIM QC R5] 2025-10 Calibration station 2 · 100% on order
+      - paragraph: 4.8K USD
+      - paragraph: 360 days confirmed overdue

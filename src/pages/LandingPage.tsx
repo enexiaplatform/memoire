@@ -75,7 +75,7 @@ import { PERSONAL_MONTHLY_PRICE_USD, TRIAL_DAYS } from '../utils/entitlement';
  */
 
 const trustChips = [
-  { icon: ShieldCheck, text: 'No AI service — computed on your device' },
+  { icon: ShieldCheck, text: 'Local insights · AI chat only when you choose' },
   { icon: Network, text: 'No CRM writeback — ever' },
   { icon: Download, text: 'Export everything, delete anytime' },
   { icon: Smartphone, text: 'Installs like an app, works offline' },
@@ -240,7 +240,7 @@ const faqs = [
   {
     question: 'Does Memoire use AI?',
     answer:
-      'No. There is no AI service behind Memoire, no key, and no endpoint. Capture parses your text on your own device with rules you can see and correct, and Search & Insights answers from your measured history. Your customer names, prices and notes are never sent to a model.',
+      'Capture and Local insights run on your device without AI. Optional AI chat uses Groq when configured, after you choose to share the previewed record summaries and recent conversation. Answers include sources, drafts require review, and nothing is sent to a customer automatically.',
   },
   {
     question: 'Is Memoire a CRM, and does it change my CRM?',
@@ -255,7 +255,7 @@ const faqs = [
   {
     question: 'Where is my data stored?',
     answer:
-      'Your workspace syncs to cloud storage under your account, and the app tells you inside when it is running on local fallback instead. Nothing is shared with other users, nothing is sent to an AI service, and no CRM is written to. You can export everything at any time, and deleting your account deletes it.',
+      'Your workspace syncs to cloud storage under your account, and the app tells you inside when it is running on local fallback instead. Other users cannot read your workspace. Optional AI chat sends the context you choose to share to Groq; Capture and Local insights stay on your device. No CRM is written to. You can export your workspace, and deleting your account deletes it.',
   },
 ];
 
@@ -610,7 +610,7 @@ export function LandingPage() {
                   icon={Search}
                   title="Search from anywhere"
                   badge="Personal"
-                  text="One keystroke, from any screen: find a customer, a deal, or ask what is at risk, where the money sits, or whether your follow-ups worked. Every answer is computed from your own history on your own device — nothing is sent to an AI service."
+                  text="One keystroke, from any screen: find a customer, a deal, or ask what is at risk and where the money sits. Local insights compute on your device. Choose optional AI chat for a conversation or a follow-up draft, with a preview of the context shared with Groq."
                 />
                 <div className="rounded-card border border-slate-200 bg-page p-5">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Ask, in your own words</p>

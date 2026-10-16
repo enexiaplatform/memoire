@@ -27,9 +27,9 @@ type LegalDocument = {
 const documents: Record<string, LegalDocument> = {
   privacy: {
     title: 'Privacy Policy',
-    updated: 'August 11, 2026',
+    updated: 'October 16, 2026',
     metaDescription:
-      'What Memoire stores, what leaves your browser, and where it goes. No AI service, no CRM writeback, and every real data flow named.',
+      'What Memoire stores, what leaves your browser, and where it goes. Optional Groq chat, local insights, and every real data flow named.',
     intro:
       'This policy explains what Memoire stores, what leaves your browser and where it goes. Every claim here describes what the product actually does today, not what it may do later.',
     sections: [
@@ -48,10 +48,11 @@ const documents: Record<string, LegalDocument> = {
         ],
       },
       {
-        title: 'No AI service',
+        title: 'Optional AI chat',
         paragraphs: [
-          'Memoire has no AI provider, no AI API key and no AI endpoint. Capture parses what you paste on your own device, using rules. Search & Insights answers from records already in your workspace, computed in your browser.',
-          'Nothing you write is sent to a language model, by us or on our behalf, and none of it is used to train one. This is enforced by an automated check that fails our build if an AI dependency, endpoint or key is added back.',
+          'Capture and Local insights run on your device without AI. Optional AI chat uses Groq only when it is configured by the operator and you choose to share the previewed context before sending a message.',
+          'AI chat sends your question, up to four recent exchanges, selected record summaries and calculated facts through the Memoire server to Groq. Summaries may contain names, prices and other customer information; inspect the preview before sharing. Raw capture notes and attachments are excluded. Source ownership is checked against your signed-in account; displayed values are browser snapshots, not an independent server audit.',
+          'Memoire keeps the conversation in page memory for this visit only and does not save chat content to browser storage, its database or application logs. The floating chat keeps its conversation when minimized or when you navigate within the app. Closing and clearing it, changing context, signing out, reloading or starting a new conversation clears it. Groq controls processing and retention on its service; its current policy is published at console.groq.com/docs/your-data. The operator should configure appropriate data controls before enabling chat for confidential records.',
         ],
       },
       {
@@ -86,7 +87,7 @@ const documents: Record<string, LegalDocument> = {
       {
         title: 'Service providers and security',
         paragraphs: [
-          'Memoire relies on Supabase for its database and authentication, Vercel for hosting, Lemon Squeezy for subscriptions, a transactional email provider for digests you have enabled, and Google for sign-in if you choose to sign in with Google. There is no AI provider in this list because there is none in the product.',
+          'Memoire relies on Supabase for its database and authentication, Vercel for hosting, Lemon Squeezy for subscriptions, a transactional email provider for digests you have enabled, Google for sign-in if you choose to sign in with Google, and Groq for optional AI chat when you explicitly use it.',
           // A B2B buyer asks where their customer list physically sits before
           // they put it anywhere, and "our provider is Supabase" is not an
           // answer to that question.
@@ -163,7 +164,7 @@ const documents: Record<string, LegalDocument> = {
       {
         title: 'Outputs and decisions',
         paragraphs: [
-          'Risk signals, MEDDIC-lite reviews, recommended actions and summaries are computed by rule from the records you entered. They are not produced by a language model, and they require human review all the same: a rule applied to an incomplete record returns a confident answer about the wrong thing.',
+          'Core risk signals, MEDDIC-lite reviews and Local insights are computed by rule from the records you entered. Optional AI chat generates answers and drafts from the context you share. Both require human review; AI output can be inaccurate or unsupported. A proposed plan item is saved only after you review and confirm it, and customer drafts are never automatically sent.',
           'You remain responsible for sales decisions, customer communications, forecasts, and information shared with managers or third parties.',
         ],
       },
@@ -200,7 +201,7 @@ const documents: Record<string, LegalDocument> = {
     title: 'Product and Data Boundaries',
     updated: 'August 11, 2026',
     metaDescription:
-      'What Memoire deliberately is not: no CRM, no invoicing, no inventory, no AI, no manager scoring, and no writeback to your company systems.',
+      'Memoire boundaries: no CRM writeback, invoicing or inventory. Optional AI chat shares previewed context only when you choose.',
     intro: 'Memoire is a personal preparation layer for B2B and solo sales work. It is not an employer scoring, CRM, invoicing, inventory, ecommerce, marketplace, or project-delivery system.',
     sections: [
       {
@@ -216,13 +217,13 @@ const documents: Record<string, LegalDocument> = {
           'Memoire is not a professional certification, hiring score, credit signal, legal record, or replacement for your company CRM.',
           'Memoire does not currently provide enterprise SSO, team administration, or native CRM writeback.',
           'Memoire does not manage invoices, inventory, ecommerce listings, marketplace fulfillment, or client project delivery.',
-          'Memoire is not an AI product. It has no AI provider, no AI key and no AI endpoint, and nothing you write is sent to a language model. Capture parses on your device and Search & Insights computes from your own records.',
+          'Capture and Local insights run on your device without AI. Optional AI chat uses Groq after you choose to share the previewed context. It cannot autonomously change records, send customer communication, or replace the canonical money calculations.',
         ],
       },
       {
         title: 'Human review',
         paragraphs: [
-          'Every classification, risk signal, summary and recommendation is derived by rule from records you entered. Review them before use: a rule reading an incomplete record still returns an answer.',
+          'Core classifications and risk signals are derived by rule from records you entered. AI chat responses and drafts are generated suggestions and require human review before use. Missing evidence, incomplete records and model mistakes can all produce incorrect answers.',
           'Memoire does not silently update external systems or send customer communication on your behalf. The only messages it sends are the digests you have switched on, and they go to you.',
         ],
       },

@@ -1,0 +1,88 @@
+- navigation:
+  - link "Memoire home":
+    - /url: /
+    - generic: Memoire
+  - link "Use Cases":
+    - /url: /use-cases
+  - link "Pricing":
+    - /url: /pricing
+  - link "Log in":
+    - /url: /login
+  - link "Talk to us":
+    - /url: /request-access
+  - link "Create Account":
+    - /url: /signup
+- main:
+  - article:
+    - paragraph: Memoire legal
+    - heading "Privacy Policy" [level=1]
+    - paragraph: "Last updated: August 11, 2026"
+    - paragraph: This policy explains what Memoire stores, what leaves your browser and where it goes. Every claim here describes what the product actually does today, not what it may do later.
+    - heading "Data you provide" [level=2]
+    - paragraph: Memoire may store account information, pipeline records, activities, stakeholders, objections, quotes, orders, receivables, review briefs, and other content you enter.
+    - paragraph: Signed in, supported records sync to a database held under your account. Not signed in, Memoire runs on browser storage only, and the app says so inside when it is doing that.
+    - heading "Local and sample data" [level=2]
+    - paragraph: Local-only and sample records stay in the browser profile where they were created unless you explicitly export or migrate them.
+    - paragraph: Clearing browser storage, changing browser profiles, or using another device can remove or hide local-only records.
+    - heading "No AI service" [level=2]
+    - paragraph: Memoire has no AI provider, no AI API key and no AI endpoint. Capture parses what you paste on your own device, using rules. Search & Insights answers from records already in your workspace, computed in your browser.
+    - paragraph: Nothing you write is sent to a language model, by us or on our behalf, and none of it is used to train one. This is enforced by an automated check that fails our build if an AI dependency, endpoint or key is added back.
+    - heading "Product analytics" [level=2]
+    - paragraph: Memoire records a short list of product events - for example capture saved, commitment completed, review completed, CSV import completed, sync failed, signup completed.
+    - paragraph: Each event carries only the event name, a random identifier generated in your browser, the app path you were on with any query string removed, and which storage mode the workspace was in. It carries no notes, no customer or contact names, no deal content, no amounts and no email address.
+    - paragraph: There is currently no setting to turn these off. Rather than offer a switch that does nothing, we keep the payload small enough that turning it off would protect nothing.
+    - heading "Email digests" [level=2]
+    - paragraph: The daily digest and the Monday review are off unless you turn them on in Settings, and each can be turned off again there or from the unsubscribe link in any digest.
+    - paragraph: When they are on, the email is built from your own records and does contain account names and quote titles - that is what makes it useful. It is delivered by a transactional email provider, which necessarily receives the message in order to send it.
+    - heading "Payment" [level=2]
+    - paragraph: Subscriptions are handled by Lemon Squeezy, which acts as merchant of record. Your card details go to Lemon Squeezy and never reach Memoire; we do not see them, receive them or store them.
+    - paragraph: Memoire sends Lemon Squeezy your email address and an internal account identifier, and stores back only the customer and subscription identifiers and the resulting entitlement.
+    - heading "Links you share" [level=2]
+    - paragraph: "A shared review brief carries its content in the fragment of the link - the part after the # - which browsers do not send to any server. The brief is never uploaded; it is decoded in whichever browser opens it."
+    - paragraph: The consequence is that anyone holding the link can read it, and there is no password and no expiry. Share it the way you would share the document itself.
+    - heading "Service providers and security" [level=2]
+    - paragraph: Memoire relies on Supabase for its database and authentication, Vercel for hosting, Lemon Squeezy for subscriptions, a transactional email provider for digests you have enabled, and Google for sign-in if you choose to sign in with Google. There is no AI provider in this list because there is none in the product.
+    - paragraph: "The database holding synced workspaces runs in Supabase's Mumbai region (ap-south-1). Serving is global: the application itself is delivered from the hosting network's nearest edge, so a request made in Europe or Japan is answered near you while the records themselves stay in that one database region. If you are subject to rules about where your customer data may be stored, read that sentence before you sign in rather than after."
+    - paragraph: "How long it is kept: for as long as the workspace exists. Deleting your account from Settings removes the account and every record keyed to it in the same operation - it is one cascading delete, not a flag that hides your rows. Copies can persist for a short window afterwards in the database provider's own routine backups, which we do not read and cannot selectively edit. Records you never synced live only in the browser you wrote them in, and clearing that browser removes them."
+    - paragraph: No online service can promise absolute security. Use appropriate judgment before entering sensitive tender, pricing, personal, or regulated information.
+    - heading "Your choices" [level=2]
+    - paragraph: You can use Memoire without signing in, accepting the limits of browser-only storage; sign out; export your workspace at any time; clear local browser data; turn digests off; or delete your account from Settings, which deletes the account and its records.
+    - paragraph: Export is never withheld. A lapsed subscription stops you adding to a workspace; it must never stop you taking your own work out of it.
+    - paragraph: Questions about privacy can be sent to support@memoire-official.com.
+    - link "Talk to us":
+      - /url: /request-access
+- contentinfo:
+  - link "Memoire home":
+    - /url: /
+    - generic: Memoire
+  - link "support@memoire-official.com":
+    - /url: mailto:support@memoire-official.com
+  - heading "Product" [level=4]
+  - list:
+    - link "Features":
+      - /url: /#features
+    - link "Use Cases":
+      - /url: /use-cases
+    - link "Pricing":
+      - /url: /pricing
+    - link "Talk to us":
+      - /url: /request-access
+    - link "Create Account":
+      - /url: /signup
+    - link "Log in":
+      - /url: /login
+  - heading "Guides" [level=4]
+  - list:
+    - link "Why deals go quiet":
+      - /url: /why-deals-go-quiet
+    - link "Quote to cash":
+      - /url: /quote-to-cash
+  - heading "Legal" [level=4]
+  - list:
+    - link "Privacy Policy":
+      - /url: /legal/privacy
+    - link "Terms of Service":
+      - /url: /legal/terms
+    - link "Product Boundaries":
+      - /url: /legal/boundaries
+  - generic: © 2026 Memoire. All rights reserved.

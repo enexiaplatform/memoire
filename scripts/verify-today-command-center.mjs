@@ -114,7 +114,7 @@ for (const section of ['Forecast-defense readiness', 'What Memoire would start w
 // Nothing was deleted: every panel named below still renders, and the
 // membership assertions are what stop either list drifting into the other.
 const referenceStart = todayPage.indexOf("if (variant === 'reference')");
-const todayStart = todayPage.indexOf('<PageContainer onClickCapture');
+const todayStart = todayPage.search(/<PageContainer\b[^>]*\bonClickCapture=/);
 const todayEnd = todayPage.indexOf('export const DashboardPage');
 assert.ok(referenceStart > 0 && todayStart > referenceStart && todayEnd > todayStart, 'Today must keep its two tiers separable');
 const referenceTier = todayPage.slice(referenceStart, todayStart);

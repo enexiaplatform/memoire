@@ -33,6 +33,8 @@ export type PlanItemKind = 'deal' | 'obligation' | 'capture' | 'personal';
 
 export type PlanItem = {
   id: string;
+  /** Explicit deal identity from the source, independent of its navigation link. */
+  linkedOpportunityId?: string;
   /** Stable identity for a derived item, so a completion mark survives re-derivation. */
   derivedKey?: string;
   kind: PlanItemKind;
@@ -508,6 +510,7 @@ function buildCaptureItems(
         id: `capture-${activity.id}-${candidate.slot}`,
         derivedKey,
         kind: 'capture',
+        linkedOpportunityId: activity.linkStatus === 'Linked' ? activity.linkedOpportunityId : undefined,
         date: candidate.dueDate,
         tag: account,
         label: condensePlanLabel(candidate.title),
