@@ -14,6 +14,13 @@ test('Vietnamese meeting question uses the full Plan engine and never invents a 
   assert.match(result.facts.join(' '), /channel not recorded/);
   assert.match(result.limitations.join(' '), /not a confirmed face-to-face visit/);
 });
+
+test('weekly detail retrieval follows actual Plan items rather than older overdue deal dates', () => {
+  const result = businessAnswer(workspace({ opportunities: [deal('this-week'), deal('old-backlog', {nextActionDate:'2026-08-18'})] }), 'Tuần này gặp KH nào?', [{id:'completed-old',date:'2026-08-18',derivedKey:'deal:old-backlog:2026-08-18',label:'Completed',tag:'',done:true,createdAt:'2026-08-18',updatedAt:'2026-08-18'}], now);
+  assert.ok(result.preferredIds.includes('this-week'));
+  assert.equal(result.preferredIds.includes('old-backlog'), false);
+  assert.match(result.facts.join(' '), /in-person visit channels in this week: 0/);
+});
 test('Q4 includes every qualified active contributor, excludes leads, and honors imported quarter splits', () => {
   const data = workspace({ opportunities: [deal('a'), deal('b', { quarterValues: { Q3: 50, Q4: 200 }, fy26Value: 250 }), deal('lead', { stage: 'Lead', estimatedValue: 9999 }), deal('next-year', { expectedClosePeriod: 'Q4 2027', estimatedValue: 700 })] });
   const result = businessAnswer(data, 'Deal nào forcast Q4 2026?', [], now);

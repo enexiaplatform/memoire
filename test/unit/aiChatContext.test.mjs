@@ -52,3 +52,10 @@ test('Q4 forecast uses the full scoped book, beyond the five detailed source rec
   assert.match(context.facts.join(' '), /open pipeline 1200 VND/);
   assert.match(context.limitations.join(' '), /All 12 open contributors/);
 });
+
+test('weekly context does not reintroduce unrelated old deal snippets', () => {
+  const input = workspace({ opportunities: [deal('old-backlog', {nextActionDate:'2020-08-18', evidence:'OLD-UNRELATED-EVIDENCE'})] });
+  const context = buildChatContext(input, 'owner-1', {kind:'all'}, 'Tuần này gặp KH nào?');
+  assert.equal(context.sources.some(row => row.id === 'old-backlog'), false);
+  assert.equal(JSON.stringify(context).includes('OLD-UNRELATED-EVIDENCE'), false);
+});

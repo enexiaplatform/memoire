@@ -120,6 +120,8 @@ export function buildChatContext(
     );
   };
   const chosenDeals = deals
+    // Period analyses must not pull unrelated historical deals back into the answer.
+    .filter((row) => !business || business.source.id === "workspace-overview" || preferred.has(row.id))
     .map((row) => ({
       row,
       relevance: score(

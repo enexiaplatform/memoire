@@ -241,24 +241,26 @@ export function businessAnswer(
     facts.push(
       `Full current-week scope ${board.rangeStart} through ${board.rangeEnd}: ${items.length} open plan/follow-up items, including carried overdue work. Built using Memoire's existing Plan engine from the full scoped opportunity, activity and personal-plan records.`,
     );
-    for (const item of [...items]
+    const listed = [...items]
       .sort(
         (a, b) =>
           Number(b.overdue) - Number(a.overdue) || a.date.localeCompare(b.date),
       )
-      .slice(0, 10))
+      .slice(0, 10);
+    const visits = items.filter((item) =>
+      item.channel === "On-site visit" || item.channel === "Hosted visit",
+    );
+    facts.push(
+      `Explicitly recorded in-person visit channels in this week: ${visits.length}. ${items.filter((item) => !item.channel).length} items have no recorded channel. When channel is absent, describe a task or proposed visit, never a confirmed meeting. Dates before ${board.rangeStart} are old backlog, not appointments scheduled this week.`,
+    );
+    for (const item of listed) {
       facts.push(
         `${item.date}${item.carriedFrom ? ` (originally ${item.carriedFrom}, overdue)` : ""}: ${item.tag || "No account tag"} · ${item.label}; channel ${item.channel || "not recorded"}; ${item.overdue ? "overdue" : "scheduled"}.`,
       );
-    const candidates = opportunities
-      .filter(
-        (row) =>
-          row.status === "Active" &&
-          row.nextActionDate &&
-          row.nextActionDate <= board.rangeEnd,
-      )
-      .sort((a, b) => a.nextActionDate.localeCompare(b.nextActionDate));
-    preferredIds.push(...candidates.slice(0, 10).map((row) => row.id));
+      const linkedId = item.linkedOpportunityId ||
+        (item.kind === "deal" ? item.id.slice("deal-".length) : "");
+      if (linkedId) preferredIds.push(linkedId);
+    }
     limitations.push(
       `Up to 10 open items shown, from ${items.length} calculated. A follow-up is not a confirmed face-to-face visit: preserve the recorded channel; label any proposed meeting as a suggestion. Own-obligation money tasks were not loaded into this weekly tool.`,
     );
