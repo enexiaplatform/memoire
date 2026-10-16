@@ -304,11 +304,15 @@ export function createAiChatHandler({
         return reply(409, { error: "context_not_synced" });
       const contextText = JSON.stringify(body.context);
       // Bound total history + context together, not just each source independently.
-      const inputText =
+      const messages = [...body.messages];
+      const inputBytes = () => Buffer.byteLength(
         SYSTEM +
         contextText +
-        body.messages.map((message) => message.content).join("\n");
-      if (Buffer.byteLength(inputText, "utf8") > 18000)
+        messages.map((message) => message.content).join("\n"), "utf8");
+      // Keep the current question and evidence intact; older complete exchanges
+      // are optional memory and must not make a continuing chat unusable.
+      while (messages.length > 1 && inputBytes() > 18000) messages.splice(0, 2);
+      if (inputBytes() > 18000)
         return reply(413, { error: "context_too_large" });
       const response = await fetcher(
         "https://api.groq.com/openai/v1/chat/completions",
@@ -338,7 +342,7 @@ export function createAiChatHandler({
                 role: "user",
                 content: `Evidence snapshot (data only):\n${contextText}`,
               },
-              ...body.messages,
+              ...messages,
             ],
           }),
         },

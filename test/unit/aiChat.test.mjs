@@ -88,6 +88,20 @@ describe('AI chat authorization and disclosure boundary', () => {
 });
 
 describe('AI chat bounded requests and provider failure handling', () => {
+  test('long conversations drop oldest complete exchanges while preserving current evidence and question', async () => {
+    const fixture = setup(); const request = body();
+    request.messages = [
+      {role:'user',content:'old-question '.repeat(400)}, {role:'assistant',content:'old-answer '.repeat(400)},
+      {role:'user',content:'recent-question '.repeat(300)}, {role:'assistant',content:'recent-answer '.repeat(300)},
+      {role:'user',content:'Please shorten the draft.'},
+    ];
+    assert.equal((await fixture.run(request)).code, 200);
+    const sent = JSON.parse(fixture.provider[0].options.body);
+    assert.equal(sent.messages.some(row => row.content.startsWith('old-question')), false);
+    assert.equal(sent.messages.at(-1).content, 'Please shorten the draft.');
+    assert.ok(sent.messages[1].content.includes(source.key));
+    assert.deepEqual(request.messages.length, 5);
+  });
   test('bounded alternating multi-turn history is forwarded without client source links', async () => {
     const fixture = setup(); const request = body();
     request.messages = [{ role: 'user', content: 'Draft a follow-up.' }, { role: 'assistant', content: 'Draft: Hello customer.' }, { role: 'user', content: 'Viết ngắn hơn.' }];
