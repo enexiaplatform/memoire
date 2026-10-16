@@ -156,7 +156,7 @@ const read = (path) => readFileSync(path, 'utf8');
   // The three claims the codebase enforces. An answer engine repeats what it
   // reads, so the file that exists to be read must not soften any of them.
   assert.ok(llms.includes('There is no free tier'), 'llms.txt must state there is no free tier');
-  assert.ok(llms.includes('No AI service'), 'llms.txt must state there is no AI service');
+  assert.ok(llms.includes('Local core with optional AI chat') && llms.includes('Groq') && llms.includes('chooses to share'), 'llms.txt must describe optional Groq chat and explicit sharing');
   assert.ok(llms.includes('No CRM writeback'), 'llms.txt must state there is no CRM writeback');
 }
 

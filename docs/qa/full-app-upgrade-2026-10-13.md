@@ -2,7 +2,7 @@
 
 Cập nhật: 13/10/2026 (Asia/Saigon). Baseline: 545b27b779260d7425729820334ef486cca33a4f.
 
-**24/24 sửa đổi đã triển khai.** Đây là kết luận về thay đổi mã và bằng chứng được ghi dưới đây; không tuyên bố mọi luồng provider và mọi dữ liệu production đã nghiệm thu đầy đủ. Phát hành: đang chờ CI và Vercel trên commit cuối. Receipt phát hành được lưu riêng sau khi kiểm tra live.
+**24/24 sửa đổi đã triển khai và phát hành.** Đây là kết luận về thay đổi mã và bằng chứng được ghi dưới đây; không tuyên bố mọi luồng provider và mọi dữ liệu production đã nghiệm thu đầy đủ. Production READY tại commit `33bf06b56c7fe9356523e205c61f29d148304abd`; CI nhánh master đạt và nghiệm thu cloud có bằng chứng trong [receipt phát hành](full-app-upgrade-release-2026-10-13.md).
 
 Email Digest / D1 tạm hoãn theo yêu cầu người dùng. Không đổi API digest, không cấu hình khóa, không gửi email. Không có migration Supabase và không sửa schema dùng chung với Helm.
 

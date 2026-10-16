@@ -1,0 +1,5 @@
+"Account","Order reference","Order stage","Outstanding","Confirmed overdue balance","Planning dates to confirm","Recorded receipts","Reporting currency","Next payment due","Missing context / blocker","Next action"
+"Orion Pharma","Q-DEMO-ORION-01","To confirm","34615.38461538462","0","34615.38461538462","0","USD","2026-10-05","Decision committee; budget owner; procurement path; tender timeline","Clarify tender timeline and committee owner"
+"Summit Diagnostics","Q-DEMO-SUMMIT-01","Awaiting payment","21153.846153846152","21153.846153846152","0","3846.153846153846","USD","2026-10-09","","Confirm payment release date with finance"
+"Northstar Foods","Q-DEMO-NORTHSTAR-AUDIT","Collected","0","0","0","18461.53846153846","USD","","",""
+"Northstar Foods","Q-DEMO-NORTHSTAR-02","Collected","0","0","0","6923.076923076923","USD","","",""

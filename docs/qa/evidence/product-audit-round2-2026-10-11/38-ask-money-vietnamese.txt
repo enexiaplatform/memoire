@@ -1,0 +1,108 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 5 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "5 open": "5"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 5 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - link "Back to Today":
+    - /url: /app/today
+    - text: Back to Today
+  - generic: Ask Memoire · computed from your own records, no AI service
+  - generic: 9 deals indexed
+  - button "New thread"
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Ask Memoire
+  - heading "Ask your own pipeline" [level=1]
+  - generic: Asking about
+  - tablist "Context selector":
+    - tab "All Deals" [selected]
+    - tab "Specific Account"
+    - tab "Specific Opportunity"
+  - 'generic "Current context: All Memory"'
+  - region "Answer":
+    - paragraph: Khách nào còn nợ tiền?
+    - heading "Here is what your records say" [level=2]
+    - paragraph: Answered from your workspace using rules - nothing was sent to an AI service.
+    - paragraph: Memoire cannot answer this question from the recorded workspace. Ask about a customer, deal, next action, commitments or recorded money. General advice and external facts require another source.
+    - paragraph: Drawn from
+    - generic: All Memory
+    - generic: 11 interactions
+    - generic: 17 actions
+    - generic: 5 objections
+    - paragraph: Missing context
+    - generic: Decision maker
+    - paragraph:
+      - generic: "Suggested next action: Send revised quote"
+  - textbox "Find a record by name, or ask a supported question":
+    - /placeholder: Find a customer or deal by name, or ask about a deal, an account, or a week...
+  - button "Ask" [active]:
+  - complementary "Questions Memoire can answer":
+    - heading "Ask next" [level=2]
+    - button "Which deals may go silent?"
+    - button "Which accounts need follow-up?"
+    - button "Which objections are unresolved?"
+    - button "What should I fix today?"
+    - heading "Action / fix prompts" [level=3]
+    - button "Draft a follow-up"
+    - button "How should I address this objection?"
+    - button "What should I ask the customer next?"
+    - paragraph: These three need one customer - pick an account or opportunity in the context selector first.
+    - heading "What this can answer" [level=2]
+    - list:
+      - button "Who needs follow-up?"
+      - button "Where is money stuck?"
+      - button "What changed this week?"
+      - button "Summarize this account."
+      - button "Which opportunities have no next action?"
+      - button "Which commitments are overdue?"
+      - button "What am I waiting for from customers?"
+      - button "What do I owe today?"
+    - region "Private by default":
+      - heading "Private by default" [level=2]
+      - paragraph: Answers are built on this device from your captured data. Nothing is sent to an AI service, so no customer context leaves your browser.

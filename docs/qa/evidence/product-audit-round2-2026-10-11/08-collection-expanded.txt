@@ -1,0 +1,149 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 4 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "4 open": "4"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 4 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: ⌘K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Money
+  - heading "Collections" [level=1]
+  - generic: What customers still owe you, when each part fell due, and what has arrived. Orders follows the goods; this follows the money. Yours only — recording a payment here never reaches the customer.
+  - tablist "Money view":
+    - tab "Orders"
+    - tab "Collections" [selected]
+    - tab "Margin"
+  - button "Reload collections from cloud":
+  - paragraph: Still owed
+  - paragraph: 59.6K USD
+  - paragraph: 2 orders open
+  - paragraph: Confirmed overdue
+  - paragraph: 25K USD
+  - paragraph: Agreed schedule and recorded trigger date
+  - paragraph: Planning dates to confirm
+  - paragraph: 34.6K USD
+  - paragraph: Estimated past due; confirm terms and trigger before chasing
+  - paragraph: Scheduled in 30 days
+  - paragraph: 59.6K USD
+  - paragraph: Confirmed and estimated schedules, including past dates
+  - paragraph: Planning average wait
+  - paragraph: 4 days
+  - paragraph: Estimated and confirmed schedules, weighted by outstanding money
+  - paragraph: Chase this one first
+  - paragraph: Summit Diagnostics — 25,000 USD past due by 2 days on Q-DEMO-SUMMIT-01.
+  - heading "Planning age of outstanding payments" [level=2]
+  - paragraph: Due within 7 days
+  - paragraph: 0 USD
+  - paragraph: 0 orders
+  - paragraph: Not yet due
+  - paragraph: 0 USD
+  - paragraph: 0 orders
+  - paragraph: 1-30 days late
+  - paragraph: 59.6K USD
+  - paragraph: 2 orders
+  - paragraph: 31-60 days late
+  - paragraph: 0 USD
+  - paragraph: 0 orders
+  - paragraph: 61-90 days late
+  - paragraph: 0 USD
+  - paragraph: 0 orders
+  - paragraph: Over 90 days late
+  - paragraph: 0 USD
+  - paragraph: 0 orders
+  - heading "Orders and what they owe" [level=2]
+  - button "open"
+  - button "Confirmed overdue"
+  - button "all"
+  - list:
+    - button "Summit Diagnostics Q-DEMO-SUMMIT-01 · QC workflow · Due on delivery 25K USD 2 days confirmed overdue" [active]:
+      - paragraph: Summit Diagnostics
+      - paragraph: Q-DEMO-SUMMIT-01 · QC workflow · Due on delivery
+      - paragraph: 25K USD
+      - paragraph: 2 days confirmed overdue
+    - paragraph: "Read from the quote: 100% on delivery."
+    - table:
+      - rowgroup:
+        - row "Instalment Due Amount Received Outstanding":
+          - columnheader "Instalment"
+          - columnheader "Due"
+          - columnheader "Amount"
+          - columnheader "Received"
+          - columnheader "Outstanding"
+      - rowgroup:
+        - row "On delivery Oct 9, 2026Confirmed2d late 25K USD 0 USD 25K USD":
+          - cell "On delivery"
+          - cell "Oct 9, 2026Confirmed2d late":
+            - text: Oct 9, 2026Confirmed
+            - generic: 2d late
+          - cell "25K USD"
+          - cell "0 USD"
+          - cell "25K USD"
+    - paragraph: Record money that arrived
+    - text: Amount (VND)
+    - spinbutton "Amount (VND)"
+    - text: Received on
+    - textbox "Received on": 2026-10-11
+    - text: How
+    - textbox "How":
+      - /placeholder: Bank transfer
+    - button "Record" [disabled]:
+      - text: Record
+    - text: Delivered on
+    - textbox "Delivered on"
+    - button "Save delivery date"
+    - paragraph: Instalments due after delivery are counted from this date once you set it.
+    - button "Orion Pharma Q-DEMO-ORION-01 · Procurement review · 50% with PO, 50% after delivery 34.6K USD Planning date passed · confirm terms":
+      - paragraph: Orion Pharma
+      - paragraph: Q-DEMO-ORION-01 · Procurement review · 50% with PO, 50% after delivery
+      - paragraph: 34.6K USD
+      - paragraph: Planning date passed · confirm terms

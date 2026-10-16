@@ -1,0 +1,541 @@
+- navigation:
+  - link "Memoire home":
+    - /url: /
+    - generic: Memoire
+  - link "Use Cases":
+    - /url: /use-cases
+  - link "Pricing":
+    - /url: /pricing
+  - link "Log in":
+    - /url: /login
+  - link "Talk to us":
+    - /url: /request-access
+  - link "Create Account":
+    - /url: /signup
+- main:
+  - paragraph: Personal Commercial Control Tower
+  - paragraph:
+    - text: Free while in preview
+  - heading "Nothing in your business goes silent." [level=1]:
+    - text: Nothing in your business
+    - generic: goes silent.
+  - paragraph: For B2B sellers running complex commercial work, from conversation to cash.
+  - paragraph: The quote nobody chased. The delivery nobody invoiced. The payment nobody noticed was late. Memoire works beside your CRM and your spreadsheets, and keeps watching every thread from the first conversation to the money in the bank.
+  - link "Start free":
+    - /url: /signup
+    - text: Start free
+  - link "See it for your business":
+    - /url: /use-cases
+  - paragraph: Free for everyone while Memoire is in preview · No card at signup · Your data is never shared
+  - generic: Today · Memoire
+  - paragraph: What Memoire would start with
+  - paragraph: Ranked across defense, revenue and follow-up
+  - generic: 5 need you
+  - generic: "#1"
+  - generic: Critical
+  - generic: Revenue
+  - paragraph: Confirm payment release date with finance.
+  - paragraph: Meridian Group / Q3 supply contract
+  - paragraph: "Payment overdue: pending payment."
+  - text: Why am I seeing this?
+  - generic: $74,000
+  - paragraph: Due Aug 9
+  - generic: "#2"
+  - generic: Critical
+  - generic: Forecast evidence
+  - paragraph: De-risk the platform rollout.
+  - paragraph: Caldera Systems / Platform rollout
+  - paragraph: "Downgrade: decision maker is still unresolved."
+  - text: Why am I seeing this?
+  - generic: $186,000
+  - paragraph: Missing evidence
+  - generic: "#3"
+  - generic: High
+  - generic: Opportunity
+  - paragraph: Schedule the procurement clarification call.
+  - paragraph: Halden Industrial / Procurement review
+  - paragraph: High impact objection remains open.
+  - text: Why am I seeing this?
+  - generic: $96,000
+  - paragraph: Due Aug 17
+  - paragraph: Since last review
+  - generic: This week
+  - paragraph: "3"
+  - paragraph: Leads in
+  - paragraph: "2"
+  - paragraph: Qualified
+  - paragraph: "1"
+  - paragraph: Slipped
+  - text: No AI service — computed on your device
+  - text: No CRM writeback — ever
+  - text: Export everything, delete anytime
+  - text: Installs like an app, works offline
+  - paragraph: The quiet failures
+  - heading "Nothing in your pipeline fails loudly." [level=2]
+  - paragraph: Deals go quiet, and by the time you notice, the answer is a re-quote, a late payment, or a review you cannot defend. Each one below is a flag Memoire raises by name.
+  - paragraph: "\"I sent the quote three weeks ago. Then nothing.\""
+  - paragraph: The deal did not die. It stopped being anybody's job.
+  - generic: Deal going silent
+  - paragraph: "\"We delivered last month. Did anyone invoice it?\""
+  - paragraph: Winning felt like the finish line, so nobody watched the rest.
+  - generic: To invoice
+  - paragraph: "\"That money was due weeks ago and I only just noticed.\""
+  - paragraph: Cash you already earned, sitting in someone else's account.
+  - generic: Payment overdue
+  - paragraph: "\"My manager asked why this slipped. I had nothing.\""
+  - paragraph: You knew the answer in June. You just could not find it.
+  - generic: Missing forecast evidence
+  - paragraph:
+    - text: Capture — what happened?
+  - heading "Type it once. Messy is fine." [level=2]
+  - paragraph: Paste a note, an email thread or a meeting recap. Memoire reads out the account, the amount, the objection and the next action — on your device, with rules you can see, and shows you the result to correct before anything is saved.
+  - list:
+    - text: Structured records out of unstructured notes — nothing invented
+    - text: Live typeahead over your own customers and deals as you type
+    - text: It suggests the deal to link and the quote to advance — you decide
+  - link "See this for your business":
+    - /url: /use-cases
+    - text: See this for your business
+  - generic: Capture · on-device parsing
+  - generic: "\"Called Halden Industrial — Dana Reyes likes the proposal but procurement wants a 3-week lead time guarantee. Sending the support proof Friday. ~96k, 50% with PO.\""
+  - generic: Parsed on this device
+  - paragraph: Account
+  - paragraph: Halden Industrial
+  - paragraph: Amount
+  - paragraph: $96,000
+  - paragraph: Objection
+  - paragraph: Lead time
+  - paragraph: Payment term
+  - paragraph: 50% with PO
+  - paragraph: Next action
+  - paragraph: Proof by Friday
+  - paragraph: Stakeholder
+  - paragraph: Dana Reyes
+  - text: Check it before it counts — every field is editable
+  - paragraph:
+    - text: Understand, then decide — what matters next?
+  - heading "Start where the risk is." [level=2]
+  - paragraph: Today starts with the picture, your three moves, and the watch-list, with additional readings for leads and money. The watch-list is capped at five, because a list that grows without limit is a list nobody reads.
+  - list:
+    - text: Three ranked moves, each with the reason it is first
+    - text: Silence detection on every deal, customer and initiative
+    - text: Snooze, dismiss or act — and it never changes CRM data
+  - link "See this for your business":
+    - /url: /use-cases
+    - text: See this for your business
+  - generic: Today · proactive nudges
+  - paragraph: The few things that could embarrass you
+  - generic: Capped at 5
+  - paragraph: Caldera Systems
+  - generic: 3 things to answer
+  - generic: Critical
+  - generic: revenue
+  - generic: $186,000
+  - paragraph: Payment overdue
+  - paragraph: Confirm the payment release date with finance.
+  - generic: Critical
+  - generic: opportunity
+  - generic: $186,000
+  - paragraph: Deal going silent
+  - paragraph: No customer touch since Jul 25, and no next action scheduled.
+  - generic: High
+  - generic: forecast evidence
+  - generic: $186,000
+  - paragraph: Missing forecast evidence
+  - paragraph: Evidence is not strong enough to defend in review.
+  - paragraph: Halden Industrial
+  - generic: 1 thing to answer
+  - generic: High
+  - generic: revenue
+  - generic: $96,000
+  - paragraph: Quote expiring soon
+  - paragraph: Confirm the revised quote before it expires.
+  - paragraph: Everything else is quiet — on purpose.
+  - paragraph:
+    - text: Orders & cash
+  - heading "Most tools stop at Won. Memoire follows the money to the bank." [level=2]:
+    - text: Most tools stop at Won.
+    - generic: Memoire follows the money to the bank.
+  - paragraph: A contract becomes a deposit, a deposit becomes a delivery, a delivery becomes an invoice, an invoice becomes cash — or sits there for weeks while everyone assumes somebody else is chasing it.
+  - generic: Orders · order book
+  - paragraph: Contract to cash
+  - paragraph: "Awaiting: $112,000"
+  - paragraph: "2"
+  - paragraph: To confirm
+  - paragraph: $112k
+  - paragraph: "0"
+  - paragraph: Deposit due
+  - paragraph: —
+  - paragraph: "0"
+  - paragraph: To deliver
+  - paragraph: —
+  - paragraph: "0"
+  - paragraph: To invoice
+  - paragraph: —
+  - paragraph: "0"
+  - paragraph: Awaiting payment
+  - paragraph: —
+  - paragraph: "0"
+  - paragraph: Collected
+  - paragraph: —
+  - paragraph: Meridian Group
+  - paragraph: PO-4471 · Q3 supply contract
+  - paragraph: $74,000
+  - paragraph: 50% with PO, 50% after delivery
+  - generic: "Next: Contract / PO"
+  - text: 6d since it moved
+  - generic: 0 of 5 steps done
+  - paragraph: Northwind Trading
+  - paragraph: ORD-2208 · Line audit service
+  - paragraph: $38,000
+  - paragraph: No payment term
+  - generic: "Next: Contract / PO"
+  - text: 25d since it moved
+  - generic: 0 of 5 steps done
+  - figure "One quarter, quote to cash $338,000 never made it to the bank":
+    - generic: One quarter, quote to cash
+    - generic: $338,000 never made it to the bank
+    - generic: Quoted
+    - 'generic "Quoted: $412,000 (11 quotes)"'
+    - generic: $412,000
+    - generic: Ordered
+    - 'generic "Ordered: $255,000 (6 orders)"'
+    - generic: $255,000
+    - generic: Delivered
+    - 'generic "Delivered: $182,000 (4 orders)"'
+    - generic: $182,000
+    - generic: Invoiced
+    - 'generic "Invoiced: $136,000 (3 invoices)"'
+    - generic: $136,000
+    - generic: Paid
+    - 'generic "Paid: $74,000 (2 settled)"'
+    - generic: $74,000
+    - paragraph: The gap between Delivered and Invoiced is work you have already done and not yet billed for.
+    - table "Order to cash by stage":
+      - caption: Order to cash by stage
+      - rowgroup:
+        - row "Stage Value Count":
+          - columnheader "Stage"
+          - columnheader "Value"
+          - columnheader "Count"
+      - rowgroup:
+        - row "Quoted $412,000 11 quotes":
+          - rowheader "Quoted"
+          - cell "$412,000"
+          - cell "11 quotes"
+        - row "Ordered $255,000 6 orders":
+          - rowheader "Ordered"
+          - cell "$255,000"
+          - cell "6 orders"
+        - row "Delivered $182,000 4 orders":
+          - rowheader "Delivered"
+          - cell "$182,000"
+          - cell "4 orders"
+        - row "Invoiced $136,000 3 invoices":
+          - rowheader "Invoiced"
+          - cell "$136,000"
+          - cell "3 invoices"
+        - row "Paid $74,000 2 settled":
+          - rowheader "Paid"
+          - cell "$74,000"
+          - cell "2 settled"
+  - figure "How late the money is $150,000 outstanding":
+    - generic: How late the money is
+    - generic: $150,000 outstanding
+    - generic: Not yet due
+    - 'generic "Not yet due: $38,000"'
+    - generic: $38,000
+    - generic: 1-30 days
+    - 'generic "1-30 days: $74,000"'
+    - generic: $74,000
+    - generic: 31-60 days
+    - 'generic "31-60 days: $24,000"'
+    - generic: $24,000
+    - generic: 61-90 days
+    - 'generic "61-90 days: $10,000"'
+    - generic: $10,000
+    - generic: Over 90 days
+    - 'generic "Over 90 days: $4,000"'
+    - generic: $4,000
+    - paragraph: Every due date here was derived from the payment terms already written on the quote. Nothing was re-entered.
+    - table "Receivables by age":
+      - caption: Receivables by age
+      - rowgroup:
+        - row "Age Amount":
+          - columnheader "Age"
+          - columnheader "Amount"
+      - rowgroup:
+        - row "Not yet due $38,000":
+          - rowheader "Not yet due"
+          - cell "$38,000"
+        - row "1-30 days $74,000":
+          - rowheader "1-30 days"
+          - cell "$74,000"
+        - row "31-60 days $24,000":
+          - rowheader "31-60 days"
+          - cell "$24,000"
+        - row "61-90 days $10,000":
+          - rowheader "61-90 days"
+          - cell "$10,000"
+        - row "Over 90 days $4,000":
+          - rowheader "Over 90 days"
+          - cell "$4,000"
+  - heading "Seven steps, one order" [level=3]
+  - paragraph: Status comes from what the records already prove. You tick only the steps no document will ever prove.
+  - heading "Aging you did not build" [level=3]
+  - paragraph: Due dates derive from the payment terms already on the quote, so collection has an answer on day one.
+  - heading "Margin before you send it" [level=3]
+  - paragraph: Cost Analysis lands goods, freight and duty against the sale — in its own currency if you buy and sell in different ones.
+  - paragraph:
+    - text: Learn — what is making you win?
+  - heading "Walk in with answers." [level=2]
+  - paragraph: Every deal is sorted into defend, rescue, or downgrade and scored against MEDDIC — from what you already recorded, with the proof, the gaps and the next actions attached. Then log what actually happened.
+  - list:
+    - text: A MEDDIC score on every deal, and the gap that is holding it down
+    - text: MEDDIC stakeholder map built from real evidence, not guessed labels
+    - text: Win/loss and objection history — what your follow-ups actually revived
+  - link "See this for your business":
+    - /url: /use-cases
+    - text: See this for your business
+  - generic: Opportunities · MEDDIC and decision
+  - paragraph: "3"
+  - paragraph: Defend
+  - paragraph: "2"
+  - paragraph: Rescue
+  - paragraph: "1"
+  - paragraph: Downgrade
+  - paragraph: Northwind Trading / Line audit
+  - generic: Rescue
+  - paragraph: "\"I can rescue this deal only if the lead time objection is answered with proof this week.\""
+  - generic: High
+  - generic: Identify a champion inside the account
+  - generic: Medium
+  - generic: Confirm the economic buyer
+  - paragraph: Meridian Group / Q3 supply
+  - generic: Defend
+  - paragraph: "\"I can defend this deal — budget approved, champion active, proof pack ready.\""
+  - text: Scored out of 32 - champion and economic buyer hold it at zero
+  - paragraph: It remembers so you do not have to
+  - heading "A month of work, still answerable in six months." [level=2]
+  - paragraph: "Including the part most tools never admit: what you still do not know."
+  - generic: Business Vault · knowledge gaps
+  - paragraph: "35"
+  - paragraph: Knowledge nodes
+  - paragraph: "53"
+  - paragraph: Connections
+  - paragraph: "27"
+  - paragraph: Open gaps
+  - paragraph: Ranked by what the relationship is worth
+  - paragraph: Caldera Systems
+  - generic: 9/11 known
+  - generic: $186,000
+  - paragraph: Who signs at Caldera Systems?
+  - paragraph: Deals stall at the last metre when nobody named the signer.
+  - paragraph: Halden Industrial
+  - generic: 8/11 known
+  - generic: $96,000
+  - paragraph: Who is your champion inside Halden Industrial?
+  - paragraph: Without one, every objection has to be answered by you, in the room.
+  - generic: "Portfolio coverage: every customer against every line you carry. The squares you have never filled are the business you have never asked for."
+  - figure "Portfolio coverage 13 of 25 squares sold":
+    - generic: Portfolio coverage
+    - generic: 13 of 25 squares sold
+    - generic: Instruments
+    - generic: Consumables
+    - generic: Service
+    - generic: Training
+    - generic: Spares
+    - generic: Meridian Group
+    - 'generic "Meridian Group · Instruments: 3 of 3"'
+    - 'generic "Meridian Group · Consumables: 2 of 3"'
+    - 'generic "Meridian Group · Service: 1 of 3"'
+    - 'generic "Meridian Group · Training: never sold"'
+    - 'generic "Meridian Group · Spares: never sold"'
+    - generic: Caldera Systems
+    - 'generic "Caldera Systems · Instruments: 3 of 3"'
+    - 'generic "Caldera Systems · Consumables: 3 of 3"'
+    - 'generic "Caldera Systems · Service: 2 of 3"'
+    - 'generic "Caldera Systems · Training: 1 of 3"'
+    - 'generic "Caldera Systems · Spares: never sold"'
+    - generic: Halden Industrial
+    - 'generic "Halden Industrial · Instruments: 2 of 3"'
+    - 'generic "Halden Industrial · Consumables: 1 of 3"'
+    - 'generic "Halden Industrial · Service: never sold"'
+    - 'generic "Halden Industrial · Training: never sold"'
+    - 'generic "Halden Industrial · Spares: never sold"'
+    - generic: Northwind Trading
+    - 'generic "Northwind Trading · Instruments: 1 of 3"'
+    - 'generic "Northwind Trading · Consumables: 2 of 3"'
+    - 'generic "Northwind Trading · Service: never sold"'
+    - 'generic "Northwind Trading · Training: never sold"'
+    - 'generic "Northwind Trading · Spares: 1 of 3"'
+    - generic: Ardent Supply
+    - 'generic "Ardent Supply · Instruments: 2 of 3"'
+    - 'generic "Ardent Supply · Consumables: never sold"'
+    - 'generic "Ardent Supply · Service: never sold"'
+    - 'generic "Ardent Supply · Training: never sold"'
+    - 'generic "Ardent Supply · Spares: never sold"'
+    - generic: Never sold
+    - generic: Less to more
+    - table "Products sold into each account":
+      - caption: Products sold into each account
+      - rowgroup:
+        - row "Account Instruments Consumables Service Training Spares":
+          - columnheader "Account"
+          - columnheader "Instruments"
+          - columnheader "Consumables"
+          - columnheader "Service"
+          - columnheader "Training"
+          - columnheader "Spares"
+      - rowgroup:
+        - row "Meridian Group 3 of 3 2 of 3 1 of 3 Never sold Never sold":
+          - rowheader "Meridian Group"
+          - cell "3 of 3"
+          - cell "2 of 3"
+          - cell "1 of 3"
+          - cell "Never sold"
+          - cell "Never sold"
+        - row "Caldera Systems 3 of 3 3 of 3 2 of 3 1 of 3 Never sold":
+          - rowheader "Caldera Systems"
+          - cell "3 of 3"
+          - cell "3 of 3"
+          - cell "2 of 3"
+          - cell "1 of 3"
+          - cell "Never sold"
+        - row "Halden Industrial 2 of 3 1 of 3 Never sold Never sold Never sold":
+          - rowheader "Halden Industrial"
+          - cell "2 of 3"
+          - cell "1 of 3"
+          - cell "Never sold"
+          - cell "Never sold"
+          - cell "Never sold"
+        - row "Northwind Trading 1 of 3 2 of 3 Never sold Never sold 1 of 3":
+          - rowheader "Northwind Trading"
+          - cell "1 of 3"
+          - cell "2 of 3"
+          - cell "Never sold"
+          - cell "Never sold"
+          - cell "1 of 3"
+        - row "Ardent Supply 2 of 3 Never sold Never sold Never sold Never sold":
+          - rowheader "Ardent Supply"
+          - cell "2 of 3"
+          - cell "Never sold"
+          - cell "Never sold"
+          - cell "Never sold"
+          - cell "Never sold"
+  - heading "Every customer's memory, on the customer" [level=3]
+  - paragraph: What was agreed, who said it, what is still open and what you have never asked — kept on the customer itself, built from what you already captured. The connected map of people, products and deals is one click further in, for when the question is really about how things join up.
+  - heading "Search from anywhere" [level=3]
+  - generic: Personal
+  - paragraph: "One keystroke, from any screen: find a customer, a deal, or ask what is at risk, where the money sits, or whether your follow-ups worked. Every answer is computed from your own history on your own device — nothing is sent to an AI service."
+  - paragraph: Ask, in your own words
+  - generic: Which deals may go silent?
+  - generic: Where is the money?
+  - generic: Did my follow-ups work?
+  - generic: What do I owe today?
+  - paragraph: Not a CRM, and not for everyone
+  - heading "Your CRM keeps records for the company. Memoire prepares you." [level=2]
+  - paragraph: Memoire is your private working layer for evidence, objections, stakeholders, money and review answers — and it is deliberately narrow. If it is not for you, we would rather you found out here than after paying.
+  - heading "Best for" [level=3]
+  - list:
+    - text: B2B sellers who own their own follow-up
+    - text: Founder-led sellers, consultants and agency owners
+    - text: Trading, distribution and supply — quote, deliver, then chase payment
+    - text: Long-cycle deals with procurement and several stakeholders
+  - heading "Not ideal yet for" [level=3]
+  - list:
+    - text: Enterprise teams needing SSO and a formal security review today
+    - text: Anyone wanting a company system of record or a manager dashboard
+    - text: Accounting, payroll, inventory or ecommerce operations
+    - text: Quick transactional selling with no follow-up loop
+  - paragraph: Pricing
+  - heading "Free while in preview. $10 a month later." [level=2]
+  - paragraph: "Memoire is being run by its first operators before the store opens, and while that lasts the whole product is free: no card at signup, no trial clock, nothing charged. When it ends it is $10 a month for one person, and there is no smaller plan pretending to be enough."
+  - heading "Personal" [level=3]
+  - generic: Most people
+  - paragraph: Freewhile in preview
+  - paragraph: Everything Memoire does, for one operator running the whole commercial loop. Nothing is held back during the preview.
+  - list:
+    - text: Unlimited capture and unlimited records
+    - text: Leads, from first conversation to qualified deal - the same record all the way
+    - text: Search & Insights over everything you have written down
+    - text: Orders, Cash Collection, Cost Analysis and money at risk
+    - text: MEDDIC scoring on every qualified deal, from what you have already recorded
+    - text: Business Vault and full data export
+  - paragraph: Nothing is charged today and no card is taken. When the preview ends it is $10 a month for one person, and every account here hears it from us first - nothing starts billing on its own.
+  - heading "Team" [level=3]
+  - paragraph: Later
+  - paragraph: A shared workspace for the people you sell alongside.
+  - list:
+    - text: Shared workspace and review standards
+    - text: Manager workflows
+    - text: Team security review
+    - text: CRM sync
+  - paragraph: Not on sale yet. The individual loop gets finished first.
+  - link "Start free — no card":
+    - /url: /signup
+    - text: Start free — no card
+  - link "Request guided access":
+    - /url: /request-access
+  - paragraph: There is nothing to buy today — the billing screen is closed and no card can be taken. When paid plans open, upgrading happens inside the app, in Settings under Billing, with Lemon Squeezy as the seller on your invoice handling tax where you are — Memoire never sees your card.
+  - paragraph: Questions
+  - heading "Built for sensitive commercial work." [level=2]
+  - paragraph: Customer, tender, pricing and forecast data is sensitive. Memoire is careful with it — and careful about what it claims.
+  - generic "Is Memoire really free right now?":
+    - text: Is Memoire really free right now?
+  - generic "What happens when the preview ends?":
+    - text: What happens when the preview ends?
+  - generic "Does Memoire use AI?":
+    - text: Does Memoire use AI?
+  - generic "Is Memoire a CRM, and does it change my CRM?":
+    - text: Is Memoire a CRM, and does it change my CRM?
+  - generic "Does it handle my currency and my market?":
+    - text: Does it handle my currency and my market?
+  - generic "Where is my data stored?":
+    - text: Where is my data stored?
+  - paragraph: Start today
+  - heading "Find out what went quiet while you can still fix it ." [level=2]:
+    - text: Find out what went quiet
+    - generic: while you can still fix it
+    - text: .
+  - paragraph: Take a week to capture your own real work and see what it caught. While Memoire is in preview that costs nothing and asks for no card.
+  - link "Start free":
+    - /url: /signup
+    - text: Start free
+  - link "See it for your business":
+    - /url: /use-cases
+- contentinfo:
+  - link "Memoire home":
+    - /url: /
+    - generic: Memoire
+  - link "support@memoire-official.com":
+    - /url: mailto:support@memoire-official.com
+  - heading "Product" [level=4]
+  - list:
+    - link "Features":
+      - /url: /#features
+    - link "Use Cases":
+      - /url: /use-cases
+    - link "Pricing":
+      - /url: /pricing
+    - link "Talk to us":
+      - /url: /request-access
+    - link "Create Account":
+      - /url: /signup
+    - link "Log in":
+      - /url: /login
+  - heading "Guides" [level=4]
+  - list:
+    - link "Why deals go quiet":
+      - /url: /why-deals-go-quiet
+    - link "Quote to cash":
+      - /url: /quote-to-cash
+  - heading "Legal" [level=4]
+  - list:
+    - link "Privacy Policy":
+      - /url: /legal/privacy
+    - link "Terms of Service":
+      - /url: /legal/terms
+    - link "Product Boundaries":
+      - /url: /legal/boundaries
+  - generic: © 2026 Memoire. All rights reserved.

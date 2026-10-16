@@ -1,0 +1,317 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 5 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "5 open": "5"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 5 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: ⌘K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace" [active]:
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Accounts
+  - heading "Portfolio Coverage" [level=1]
+  - generic: Every customer against every line you carry. The filled squares are the business you have; the empty ones are the business you have never asked for.
+  - link "Back to Accounts":
+    - /url: /app/accounts
+  - paragraph:
+    - text: "5"
+    - generic: of 8 customers buy only part of the range
+  - paragraph: 32 of 40 customer × line squares have never been taken to the customer. Click an empty square to start that opportunity.
+  - generic: 20% covered
+  - table:
+    - rowgroup:
+      - row "Customer Tailin Scitek PMM MicroView Others Relationship":
+        - columnheader "Customer"
+        - columnheader "Tailin":
+          - generic "Tailin"
+        - columnheader "Scitek":
+          - generic "Scitek"
+        - columnheader "PMM":
+          - generic "PMM"
+        - columnheader "MicroView":
+          - generic "MicroView"
+        - columnheader "Others":
+          - generic "Others"
+        - columnheader "Relationship"
+    - rowgroup:
+      - row "Apex Labs Apex Labs · Tailin — In play · 112.3K USD Apex Labs has never been offered Scitek — start that opportunity Apex Labs has never been offered PMM — start that opportunity Apex Labs has never been offered MicroView — start that opportunity Apex Labs has never been offered Others — start that opportunity 112.3K USD":
+        - cell "Apex Labs":
+          - link "Apex Labs":
+            - /url: /app/accounts?accountName=Apex%20Labs
+        - cell "Apex Labs · Tailin — In play · 112.3K USD":
+          - link "Apex Labs · Tailin — In play · 112.3K USD":
+            - /url: /app/opportunities?account=Apex%20Labs&brand=Tailin
+            - generic "Apex Labs · Tailin — In play · 112.3K USD": ○
+        - cell "Apex Labs has never been offered Scitek — start that opportunity":
+          - link "Apex Labs has never been offered Scitek — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Apex%20Labs&brand=Scitek
+            - generic "Apex Labs has never been offered Scitek — start that opportunity": +
+        - cell "Apex Labs has never been offered PMM — start that opportunity":
+          - link "Apex Labs has never been offered PMM — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Apex%20Labs&brand=PMM
+            - generic "Apex Labs has never been offered PMM — start that opportunity": +
+        - cell "Apex Labs has never been offered MicroView — start that opportunity":
+          - link "Apex Labs has never been offered MicroView — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Apex%20Labs&brand=MicroView
+            - generic "Apex Labs has never been offered MicroView — start that opportunity": +
+        - cell "Apex Labs has never been offered Others — start that opportunity":
+          - link "Apex Labs has never been offered Others — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Apex%20Labs&brand=Others
+            - generic "Apex Labs has never been offered Others — start that opportunity": +
+        - cell "112.3K USD"
+      - row "Northstar Foods Northstar Foods has never been offered Tailin — start that opportunity Northstar Foods · Scitek — In play · 17.3K USD Northstar Foods · PMM — Won · 25.4K USD Northstar Foods has never been offered MicroView — start that opportunity Northstar Foods has never been offered Others — start that opportunity 42.7K USD":
+        - cell "Northstar Foods":
+          - link "Northstar Foods":
+            - /url: /app/accounts?accountName=Northstar%20Foods
+        - cell "Northstar Foods has never been offered Tailin — start that opportunity":
+          - link "Northstar Foods has never been offered Tailin — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Northstar%20Foods&brand=Tailin
+            - generic "Northstar Foods has never been offered Tailin — start that opportunity": +
+        - cell "Northstar Foods · Scitek — In play · 17.3K USD":
+          - link "Northstar Foods · Scitek — In play · 17.3K USD":
+            - /url: /app/opportunities?account=Northstar%20Foods&brand=Scitek
+            - generic "Northstar Foods · Scitek — In play · 17.3K USD": ○
+        - cell "Northstar Foods · PMM — Won · 25.4K USD":
+          - link "Northstar Foods · PMM — Won · 25.4K USD":
+            - /url: /app/opportunities?account=Northstar%20Foods&brand=PMM
+            - generic "Northstar Foods · PMM — Won · 25.4K USD": ●
+        - cell "Northstar Foods has never been offered MicroView — start that opportunity":
+          - link "Northstar Foods has never been offered MicroView — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Northstar%20Foods&brand=MicroView
+            - generic "Northstar Foods has never been offered MicroView — start that opportunity": +
+        - cell "Northstar Foods has never been offered Others — start that opportunity":
+          - link "Northstar Foods has never been offered Others — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Northstar%20Foods&brand=Others
+            - generic "Northstar Foods has never been offered Others — start that opportunity": +
+        - cell "42.7K USD"
+      - row "Orion Pharma Orion Pharma has never been offered Tailin — start that opportunity Orion Pharma · Scitek — Committed to order · 34.6K USD Orion Pharma has never been offered PMM — start that opportunity Orion Pharma has never been offered MicroView — start that opportunity Orion Pharma has never been offered Others — start that opportunity 34.6K USD":
+        - cell "Orion Pharma":
+          - link "Orion Pharma":
+            - /url: /app/accounts?accountName=Orion%20Pharma
+        - cell "Orion Pharma has never been offered Tailin — start that opportunity":
+          - link "Orion Pharma has never been offered Tailin — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Orion%20Pharma&brand=Tailin
+            - generic "Orion Pharma has never been offered Tailin — start that opportunity": +
+        - cell "Orion Pharma · Scitek — Committed to order · 34.6K USD":
+          - link "Orion Pharma · Scitek — Committed to order · 34.6K USD":
+            - /url: /app/opportunities?account=Orion%20Pharma&brand=Scitek
+            - generic "Orion Pharma · Scitek — Committed to order · 34.6K USD": ◐
+        - cell "Orion Pharma has never been offered PMM — start that opportunity":
+          - link "Orion Pharma has never been offered PMM — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Orion%20Pharma&brand=PMM
+            - generic "Orion Pharma has never been offered PMM — start that opportunity": +
+        - cell "Orion Pharma has never been offered MicroView — start that opportunity":
+          - link "Orion Pharma has never been offered MicroView — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Orion%20Pharma&brand=MicroView
+            - generic "Orion Pharma has never been offered MicroView — start that opportunity": +
+        - cell "Orion Pharma has never been offered Others — start that opportunity":
+          - link "Orion Pharma has never been offered Others — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Orion%20Pharma&brand=Others
+            - generic "Orion Pharma has never been offered Others — start that opportunity": +
+        - cell "34.6K USD"
+      - row "Summit Diagnostics Summit Diagnostics has never been offered Tailin — start that opportunity Summit Diagnostics has never been offered Scitek — start that opportunity Summit Diagnostics has never been offered PMM — start that opportunity Summit Diagnostics · MicroView — Won · 25K USD Summit Diagnostics has never been offered Others — start that opportunity 25K USD":
+        - cell "Summit Diagnostics":
+          - link "Summit Diagnostics":
+            - /url: /app/accounts?accountName=Summit%20Diagnostics
+        - cell "Summit Diagnostics has never been offered Tailin — start that opportunity":
+          - link "Summit Diagnostics has never been offered Tailin — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Summit%20Diagnostics&brand=Tailin
+            - generic "Summit Diagnostics has never been offered Tailin — start that opportunity": +
+        - cell "Summit Diagnostics has never been offered Scitek — start that opportunity":
+          - link "Summit Diagnostics has never been offered Scitek — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Summit%20Diagnostics&brand=Scitek
+            - generic "Summit Diagnostics has never been offered Scitek — start that opportunity": +
+        - cell "Summit Diagnostics has never been offered PMM — start that opportunity":
+          - link "Summit Diagnostics has never been offered PMM — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Summit%20Diagnostics&brand=PMM
+            - generic "Summit Diagnostics has never been offered PMM — start that opportunity": +
+        - cell "Summit Diagnostics · MicroView — Won · 25K USD":
+          - link "Summit Diagnostics · MicroView — Won · 25K USD":
+            - /url: /app/opportunities?account=Summit%20Diagnostics&brand=MicroView
+            - generic "Summit Diagnostics · MicroView — Won · 25K USD": ●
+        - cell "Summit Diagnostics has never been offered Others — start that opportunity":
+          - link "Summit Diagnostics has never been offered Others — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Summit%20Diagnostics&brand=Others
+            - generic "Summit Diagnostics has never been offered Others — start that opportunity": +
+        - cell "25K USD"
+      - row "[SIMULATED R2] Atlas Lab [SIMULATED R2] Atlas Lab has never been offered Tailin — start that opportunity [SIMULATED R2] Atlas Lab has never been offered Scitek — start that opportunity [SIMULATED R2] Atlas Lab has never been offered PMM — start that opportunity [SIMULATED R2] Atlas Lab has never been offered MicroView — start that opportunity [SIMULATED R2] Atlas Lab · Others — In play —":
+        - cell "[SIMULATED R2] Atlas Lab":
+          - link "[SIMULATED R2] Atlas Lab":
+            - /url: /app/accounts?accountName=%5BSIMULATED%20R2%5D%20Atlas%20Lab
+        - cell "[SIMULATED R2] Atlas Lab has never been offered Tailin — start that opportunity":
+          - link "[SIMULATED R2] Atlas Lab has never been offered Tailin — start that opportunity":
+            - /url: /app/opportunities?new=1&account=%5BSIMULATED%20R2%5D%20Atlas%20Lab&brand=Tailin
+            - generic "[SIMULATED R2] Atlas Lab has never been offered Tailin — start that opportunity": +
+        - cell "[SIMULATED R2] Atlas Lab has never been offered Scitek — start that opportunity":
+          - link "[SIMULATED R2] Atlas Lab has never been offered Scitek — start that opportunity":
+            - /url: /app/opportunities?new=1&account=%5BSIMULATED%20R2%5D%20Atlas%20Lab&brand=Scitek
+            - generic "[SIMULATED R2] Atlas Lab has never been offered Scitek — start that opportunity": +
+        - cell "[SIMULATED R2] Atlas Lab has never been offered PMM — start that opportunity":
+          - link "[SIMULATED R2] Atlas Lab has never been offered PMM — start that opportunity":
+            - /url: /app/opportunities?new=1&account=%5BSIMULATED%20R2%5D%20Atlas%20Lab&brand=PMM
+            - generic "[SIMULATED R2] Atlas Lab has never been offered PMM — start that opportunity": +
+        - cell "[SIMULATED R2] Atlas Lab has never been offered MicroView — start that opportunity":
+          - link "[SIMULATED R2] Atlas Lab has never been offered MicroView — start that opportunity":
+            - /url: /app/opportunities?new=1&account=%5BSIMULATED%20R2%5D%20Atlas%20Lab&brand=MicroView
+            - generic "[SIMULATED R2] Atlas Lab has never been offered MicroView — start that opportunity": +
+        - cell "[SIMULATED R2] Atlas Lab · Others — In play":
+          - link "[SIMULATED R2] Atlas Lab · Others — In play":
+            - /url: /app/opportunities?account=%5BSIMULATED%20R2%5D%20Atlas%20Lab&brand=Others
+            - generic "[SIMULATED R2] Atlas Lab · Others — In play": ○
+        - cell "—"
+      - row "Delta Nutrition Delta Nutrition has never been offered Tailin — start that opportunity Delta Nutrition has never been offered Scitek — start that opportunity Delta Nutrition · PMM — In play Delta Nutrition has never been offered MicroView — start that opportunity Delta Nutrition has never been offered Others — start that opportunity —":
+        - cell "Delta Nutrition":
+          - link "Delta Nutrition":
+            - /url: /app/accounts?accountName=Delta%20Nutrition
+        - cell "Delta Nutrition has never been offered Tailin — start that opportunity":
+          - link "Delta Nutrition has never been offered Tailin — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Delta%20Nutrition&brand=Tailin
+            - generic "Delta Nutrition has never been offered Tailin — start that opportunity": +
+        - cell "Delta Nutrition has never been offered Scitek — start that opportunity":
+          - link "Delta Nutrition has never been offered Scitek — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Delta%20Nutrition&brand=Scitek
+            - generic "Delta Nutrition has never been offered Scitek — start that opportunity": +
+        - cell "Delta Nutrition · PMM — In play":
+          - link "Delta Nutrition · PMM — In play":
+            - /url: /app/opportunities?account=Delta%20Nutrition&brand=PMM
+            - generic "Delta Nutrition · PMM — In play": ○
+        - cell "Delta Nutrition has never been offered MicroView — start that opportunity":
+          - link "Delta Nutrition has never been offered MicroView — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Delta%20Nutrition&brand=MicroView
+            - generic "Delta Nutrition has never been offered MicroView — start that opportunity": +
+        - cell "Delta Nutrition has never been offered Others — start that opportunity":
+          - link "Delta Nutrition has never been offered Others — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Delta%20Nutrition&brand=Others
+            - generic "Delta Nutrition has never been offered Others — start that opportunity": +
+        - cell "—"
+      - row "Riverside Foods Riverside Foods has never been offered Tailin — start that opportunity Riverside Foods has never been offered Scitek — start that opportunity Riverside Foods · PMM — In play Riverside Foods has never been offered MicroView — start that opportunity Riverside Foods has never been offered Others — start that opportunity —":
+        - cell "Riverside Foods":
+          - link "Riverside Foods":
+            - /url: /app/accounts?accountName=Riverside%20Foods
+        - cell "Riverside Foods has never been offered Tailin — start that opportunity":
+          - link "Riverside Foods has never been offered Tailin — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Riverside%20Foods&brand=Tailin
+            - generic "Riverside Foods has never been offered Tailin — start that opportunity": +
+        - cell "Riverside Foods has never been offered Scitek — start that opportunity":
+          - link "Riverside Foods has never been offered Scitek — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Riverside%20Foods&brand=Scitek
+            - generic "Riverside Foods has never been offered Scitek — start that opportunity": +
+        - cell "Riverside Foods · PMM — In play":
+          - link "Riverside Foods · PMM — In play":
+            - /url: /app/opportunities?account=Riverside%20Foods&brand=PMM
+            - generic "Riverside Foods · PMM — In play": ○
+        - cell "Riverside Foods has never been offered MicroView — start that opportunity":
+          - link "Riverside Foods has never been offered MicroView — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Riverside%20Foods&brand=MicroView
+            - generic "Riverside Foods has never been offered MicroView — start that opportunity": +
+        - cell "Riverside Foods has never been offered Others — start that opportunity":
+          - link "Riverside Foods has never been offered Others — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Riverside%20Foods&brand=Others
+            - generic "Riverside Foods has never been offered Others — start that opportunity": +
+        - cell "—"
+      - row "Harbor Diagnostics Harbor Diagnostics has never been offered Tailin — start that opportunity Harbor Diagnostics has never been offered Scitek — start that opportunity Harbor Diagnostics has never been offered PMM — start that opportunity Harbor Diagnostics has never been offered MicroView — start that opportunity Harbor Diagnostics has never been offered Others — start that opportunity —":
+        - cell "Harbor Diagnostics":
+          - link "Harbor Diagnostics":
+            - /url: /app/accounts?accountName=Harbor%20Diagnostics
+        - cell "Harbor Diagnostics has never been offered Tailin — start that opportunity":
+          - link "Harbor Diagnostics has never been offered Tailin — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Harbor%20Diagnostics&brand=Tailin
+            - generic "Harbor Diagnostics has never been offered Tailin — start that opportunity": +
+        - cell "Harbor Diagnostics has never been offered Scitek — start that opportunity":
+          - link "Harbor Diagnostics has never been offered Scitek — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Harbor%20Diagnostics&brand=Scitek
+            - generic "Harbor Diagnostics has never been offered Scitek — start that opportunity": +
+        - cell "Harbor Diagnostics has never been offered PMM — start that opportunity":
+          - link "Harbor Diagnostics has never been offered PMM — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Harbor%20Diagnostics&brand=PMM
+            - generic "Harbor Diagnostics has never been offered PMM — start that opportunity": +
+        - cell "Harbor Diagnostics has never been offered MicroView — start that opportunity":
+          - link "Harbor Diagnostics has never been offered MicroView — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Harbor%20Diagnostics&brand=MicroView
+            - generic "Harbor Diagnostics has never been offered MicroView — start that opportunity": +
+        - cell "Harbor Diagnostics has never been offered Others — start that opportunity":
+          - link "Harbor Diagnostics has never been offered Others — start that opportunity":
+            - /url: /app/opportunities?new=1&account=Harbor%20Diagnostics&brand=Others
+            - generic "Harbor Diagnostics has never been offered Others — start that opportunity": +
+        - cell "—"
+  - generic: ●
+  - text: Won
+  - generic: ◐
+  - text: Committed to order
+  - generic: ○
+  - text: In play
+  - generic: ×
+  - text: Tried and lost
+  - generic: +
+  - text: Never taken to them
+  - heading "The gaps worth closing first" [level=2]
+  - paragraph: Customers who already buy from you and carry only part of the range. A line missing at a customer who already trusts you is a shorter conversation than a new logo.
+  - list:
+    - link "Apex Labs":
+      - /url: /app/accounts?accountName=Apex%20Labs
+    - generic: 112.3K USD · 1 of 5 lines
+    - paragraph: "Never offered: Scitek, PMM, MicroView, Others"
+    - link "Northstar Foods":
+      - /url: /app/accounts?accountName=Northstar%20Foods
+    - generic: 42.7K USD · 2 of 5 lines
+    - paragraph: "Never offered: Tailin, MicroView, Others"
+    - link "Orion Pharma":
+      - /url: /app/accounts?accountName=Orion%20Pharma
+    - generic: 34.6K USD · 1 of 5 lines
+    - paragraph: "Never offered: Tailin, PMM, MicroView, Others"
+    - link "Summit Diagnostics":
+      - /url: /app/accounts?accountName=Summit%20Diagnostics
+    - generic: 25K USD · 1 of 5 lines
+    - paragraph: "Never offered: Tailin, Scitek, PMM, Others"
+    - link "[SIMULATED R2] Atlas Lab":
+      - /url: /app/accounts?accountName=%5BSIMULATED%20R2%5D%20Atlas%20Lab
+    - generic: 0 USD · 1 of 5 lines
+    - paragraph: "Never offered: Tailin, Scitek, PMM, MicroView"

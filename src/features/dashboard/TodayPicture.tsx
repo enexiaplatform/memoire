@@ -33,7 +33,7 @@ export function TodayMetricCards({
   promises: TodayPromisesPicture;
 }) {
   return (
-    <section aria-label="The picture" className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+    <section aria-label="The picture" className="grid grid-cols-2 gap-2 sm:gap-4 xl:grid-cols-4">
       <MetricCard
         index={0}
         href="/app/opportunities"
@@ -143,14 +143,14 @@ function MetricCard({
   return (
     <Link
       to={href}
-      className="group block min-w-0 animate-rise rounded-tile bg-white px-5 py-[18px] shadow-lift transition duration-200 hover:-translate-y-[3px] hover:shadow-lift-hi focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
+      className="group block min-w-0 animate-rise rounded-tile bg-white p-3 sm:px-5 sm:py-[18px] shadow-lift transition duration-200 hover:-translate-y-[3px] hover:shadow-lift-hi focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
       style={delay(40 + index * 50)}
     >
-      <span className="flex items-center gap-[9px]">
+      <span className="flex items-center gap-1.5 sm:gap-[9px]">
         <span className={`inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[9px] ${iconTone}`}>{icon}</span>
-        <span className="text-[11px] font-bold uppercase tracking-[0.11em] text-muted">{label}</span>
+        <span className="text-[10px] font-bold uppercase tracking-wide text-muted sm:text-[11px] sm:tracking-[0.11em]">{label}</span>
       </span>
-      <span className="mt-3.5 block truncate font-display text-[30px] font-extrabold leading-none tracking-[-0.03em] sm:text-[34px]">
+      <span className="mt-2 block font-display text-[24px] font-extrabold leading-none tracking-[-0.03em] sm:mt-3.5 sm:text-[34px]">
         {figure}
       </span>
       {viz}

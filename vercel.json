@@ -102,6 +102,10 @@
   ],
   "rewrites": [
     {
+      "source": "/api/ai-chat",
+      "destination": "/api/commercial?resource=ai-chat"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },

@@ -1,0 +1,59 @@
+- main:
+  - link "Memoire home":
+    - /url: /
+    - generic: Memoire
+  - link "Log in":
+    - /url: /login
+  - paragraph: Talk to us
+  - heading "Tell us where your follow-up falls through." [level=1]
+  - paragraph:
+    - text: You do not need permission to use Memoire -
+    - link "create an account":
+      - /url: /signup
+    - text: "and use the free preview, with no card or trial countdown. This is the other conversation: how you handle follow-up, pipeline reviews and deal memory today, and whether this is built for it."
+  - paragraph: Do not include confidential customer data. This form is only for use-case context.
+  - paragraph: What happens next
+  - paragraph: We read what you wrote and reply to your work email within 2 business days. Submitting does not add you to a marketing list, and it is not a queue - your account works the moment you create one.
+  - heading "Tell us what you want to test" [level=2]
+  - paragraph: Keep it high level. Customer names, pricing, tender details, and competitor-sensitive notes should stay out of this request.
+  - generic: Name *
+  - textbox "Name *":
+    - /placeholder: Your name
+  - generic: Work email *
+  - textbox "Work email *":
+    - /placeholder: name@company.com
+  - text: Role
+  - combobox "Role":
+    - option "Account Executive / Sales Rep" [selected]
+    - option "Sales Manager"
+    - option "Founder-led sales"
+    - option "Consultant / Freelancer"
+    - option "Agency owner"
+    - option "Creator / Partnerships"
+    - option "Solo entrepreneur / Solo operator"
+    - option "Business Development"
+    - option "Other"
+  - generic: Current CRM, spreadsheet, notes, or pipeline tool *
+  - textbox "Current CRM, spreadsheet, notes, or pipeline tool *":
+    - /placeholder: Salesforce, HubSpot, Excel, Notion, private notes...
+  - text: Biggest pipeline review pain
+  - combobox "Biggest pipeline review pain":
+    - option "Rebuilding deal context before review" [selected]
+    - option "Remembering client or partner follow-ups alone"
+    - option "Weak forecast evidence"
+    - option "Objections/proof gaps"
+    - option "CRM is too noisy"
+    - option "Manual Excel/Notion prep"
+    - option "Duplicate entry"
+    - option "Manager-ready summary"
+    - option "Other"
+  - generic: Preferred use case *
+  - textbox "Preferred use case *":
+    - /placeholder: "Example: I want to remember client follow-ups and prepare review-ready deal stories without rebuilding context manually."
+  - checkbox "Memoire may use these details to reply to me about this message. See the Privacy Policy."
+  - text: Memoire may use these details to reply to me about this message. See the
+  - link "Privacy Policy":
+    - /url: /legal/privacy
+  - text: .
+  - button "Submit Request":
+    - text: Submit Request

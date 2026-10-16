@@ -1,0 +1,298 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 5 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "5 open": "5"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 5 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - generic: Settings · changes save as you go
+  - button "Export & Delete":
+    - text: Export & Delete
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace" [active]:
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Workspace
+  - heading "Your rules, your data" [level=1]
+  - heading "Settings" [level=2]
+  - paragraph: Five tabs, each owning one decision about your workspace.
+  - tablist "Settings":
+    - tab "Workspace Money, notifications, storage" [selected]:
+      - generic: Workspace
+      - generic: Money, notifications, storage
+    - tab "Account Your name and sign-in":
+      - generic: Account
+      - generic: Your name and sign-in
+    - tab "Plan & Billing What you pay for":
+      - generic: Plan & Billing
+      - generic: What you pay for
+    - tab "Data & Privacy What Memoire is, and is not":
+      - generic: Data & Privacy
+      - generic: What Memoire is, and is not
+    - tab "Export & Delete Take it out, or remove it":
+      - generic: Export & Delete
+      - generic: Take it out, or remove it
+  - paragraph: Products & Brands
+  - paragraph: Manage business units, brands and products; classify deals without changing their original text.
+  - link "Manage portfolio":
+    - /url: /app/products
+  - link "Build reports":
+    - /url: /app/reports
+  - link "Build dashboards":
+    - /url: /app/dashboards
+  - paragraph: Reporting currency
+  - paragraph: Totals and charts are shown in this currency. Each deal keeps its own currency; amounts are converted for reporting.
+  - generic: Reporting currency
+  - combobox "Reporting currency":
+    - option "AED — UAE Dirham"
+    - option "AUD — Australian Dollar"
+    - option "CAD — Canadian Dollar"
+    - option "CHF — Swiss Franc"
+    - option "CNY — Chinese Yuan"
+    - option "EUR — Euro"
+    - option "GBP — British Pound"
+    - option "HKD — Hong Kong Dollar"
+    - option "IDR — Indonesian Rupiah"
+    - option "INR — Indian Rupee"
+    - option "JPY — Japanese Yen"
+    - option "KRW — South Korean Won"
+    - option "MYR — Malaysian Ringgit"
+    - option "NZD — New Zealand Dollar"
+    - option "PHP — Philippine Peso"
+    - option "SAR — Saudi Riyal"
+    - option "SGD — Singapore Dollar"
+    - option "THB — Thai Baht"
+    - option "TWD — New Taiwan Dollar"
+    - option "USD — US Dollar" [selected]
+    - option "VND — Vietnamese Dong"
+    - option "AFN — Afghan Afghani · needs a rate"
+    - option "ALL — Albanian Lek · needs a rate"
+    - option "AMD — Armenian Dram · needs a rate"
+    - option "ANG — Netherlands Antillean Guilder · needs a rate"
+    - option "AOA — Angolan Kwanza · needs a rate"
+    - option "ARS — Argentine Peso · needs a rate"
+    - option "AWG — Aruban Florin · needs a rate"
+    - option "AZN — Azerbaijani Manat · needs a rate"
+    - option "BAM — Bosnia-Herzegovina Convertible Mark · needs a rate"
+    - option "BBD — Barbadian Dollar · needs a rate"
+    - option "BDT — Bangladeshi Taka · needs a rate"
+    - option "BGN — Bulgarian Lev · needs a rate"
+    - option "BHD — Bahraini Dinar · needs a rate"
+    - option "BIF — Burundian Franc · needs a rate"
+    - option "BMD — Bermudan Dollar · needs a rate"
+    - option "BND — Brunei Dollar · needs a rate"
+    - option "BOB — Bolivian Boliviano · needs a rate"
+    - option "BRL — Brazilian Real · needs a rate"
+    - option "BSD — Bahamian Dollar · needs a rate"
+    - option "BTN — Bhutanese Ngultrum · needs a rate"
+    - option "BWP — Botswanan Pula · needs a rate"
+    - option "BYN — Belarusian Ruble · needs a rate"
+    - option "BZD — Belize Dollar · needs a rate"
+    - option "CDF — Congolese Franc · needs a rate"
+    - option "CLP — Chilean Peso · needs a rate"
+    - option "COP — Colombian Peso · needs a rate"
+    - option "CRC — Costa Rican Colón · needs a rate"
+    - option "CUC — Cuban Convertible Peso · needs a rate"
+    - option "CUP — Cuban Peso · needs a rate"
+    - option "CVE — Cape Verdean Escudo · needs a rate"
+    - option "CZK — Czech Koruna · needs a rate"
+    - option "DJF — Djiboutian Franc · needs a rate"
+    - option "DKK — Danish Krone · needs a rate"
+    - option "DOP — Dominican Peso · needs a rate"
+    - option "DZD — Algerian Dinar · needs a rate"
+    - option "EGP — Egyptian Pound · needs a rate"
+    - option "ERN — Eritrean Nakfa · needs a rate"
+    - option "ETB — Ethiopian Birr · needs a rate"
+    - option "FJD — Fijian Dollar · needs a rate"
+    - option "FKP — Falkland Islands Pound · needs a rate"
+    - option "GEL — Georgian Lari · needs a rate"
+    - option "GHS — Ghanaian Cedi · needs a rate"
+    - option "GIP — Gibraltar Pound · needs a rate"
+    - option "GMD — Gambian Dalasi · needs a rate"
+    - option "GNF — Guinean Franc · needs a rate"
+    - option "GTQ — Guatemalan Quetzal · needs a rate"
+    - option "GYD — Guyanaese Dollar · needs a rate"
+    - option "HNL — Honduran Lempira · needs a rate"
+    - option "HRK — Croatian Kuna · needs a rate"
+    - option "HTG — Haitian Gourde · needs a rate"
+    - option "HUF — Hungarian Forint · needs a rate"
+    - option "ILS — Israeli New Shekel · needs a rate"
+    - option "IQD — Iraqi Dinar · needs a rate"
+    - option "IRR — Iranian Rial · needs a rate"
+    - option "ISK — Icelandic Króna · needs a rate"
+    - option "JMD — Jamaican Dollar · needs a rate"
+    - option "JOD — Jordanian Dinar · needs a rate"
+    - option "KES — Kenyan Shilling · needs a rate"
+    - option "KGS — Kyrgyz Som · needs a rate"
+    - option "KHR — Cambodian Riel · needs a rate"
+    - option "KMF — Comorian Franc · needs a rate"
+    - option "KPW — North Korean Won · needs a rate"
+    - option "KWD — Kuwaiti Dinar · needs a rate"
+    - option "KYD — Cayman Islands Dollar · needs a rate"
+    - option "KZT — Kazakhstani Tenge · needs a rate"
+    - option "LAK — Laotian Kip · needs a rate"
+    - option "LBP — Lebanese Pound · needs a rate"
+    - option "LKR — Sri Lankan Rupee · needs a rate"
+    - option "LRD — Liberian Dollar · needs a rate"
+    - option "LSL — Lesotho Loti · needs a rate"
+    - option "LYD — Libyan Dinar · needs a rate"
+    - option "MAD — Moroccan Dirham · needs a rate"
+    - option "MDL — Moldovan Leu · needs a rate"
+    - option "MGA — Malagasy Ariary · needs a rate"
+    - option "MKD — Macedonian Denar · needs a rate"
+    - option "MMK — Myanmar Kyat · needs a rate"
+    - option "MNT — Mongolian Tugrik · needs a rate"
+    - option "MOP — Macanese Pataca · needs a rate"
+    - option "MRU — Mauritanian Ouguiya · needs a rate"
+    - option "MUR — Mauritian Rupee · needs a rate"
+    - option "MVR — Maldivian Rufiyaa · needs a rate"
+    - option "MWK — Malawian Kwacha · needs a rate"
+    - option "MXN — Mexican Peso · needs a rate"
+    - option "MZN — Mozambican Metical · needs a rate"
+    - option "NAD — Namibian Dollar · needs a rate"
+    - option "NGN — Nigerian Naira · needs a rate"
+    - option "NIO — Nicaraguan Córdoba · needs a rate"
+    - option "NOK — Norwegian Krone · needs a rate"
+    - option "NPR — Nepalese Rupee · needs a rate"
+    - option "OMR — Omani Rial · needs a rate"
+    - option "PAB — Panamanian Balboa · needs a rate"
+    - option "PEN — Peruvian Sol · needs a rate"
+    - option "PGK — Papua New Guinean Kina · needs a rate"
+    - option "PKR — Pakistani Rupee · needs a rate"
+    - option "PLN — Polish Zloty · needs a rate"
+    - option "PYG — Paraguayan Guarani · needs a rate"
+    - option "QAR — Qatari Riyal · needs a rate"
+    - option "RON — Romanian Leu · needs a rate"
+    - option "RSD — Serbian Dinar · needs a rate"
+    - option "RUB — Russian Ruble · needs a rate"
+    - option "RWF — Rwandan Franc · needs a rate"
+    - option "SBD — Solomon Islands Dollar · needs a rate"
+    - option "SCR — Seychellois Rupee · needs a rate"
+    - option "SDG — Sudanese Pound · needs a rate"
+    - option "SEK — Swedish Krona · needs a rate"
+    - option "SHP — St. Helena Pound · needs a rate"
+    - option "SLL — Sierra Leonean Leone (1964—2022) · needs a rate"
+    - option "SOS — Somali Shilling · needs a rate"
+    - option "SRD — Surinamese Dollar · needs a rate"
+    - option "SSP — South Sudanese Pound · needs a rate"
+    - option "STN — São Tomé & Príncipe Dobra · needs a rate"
+    - option "SVC — Salvadoran Colón · needs a rate"
+    - option "SYP — Syrian Pound · needs a rate"
+    - option "SZL — Swazi Lilangeni · needs a rate"
+    - option "TJS — Tajikistani Somoni · needs a rate"
+    - option "TMT — Turkmenistani Manat · needs a rate"
+    - option "TND — Tunisian Dinar · needs a rate"
+    - option "TOP — Tongan Paʻanga · needs a rate"
+    - option "TRY — Turkish Lira · needs a rate"
+    - option "TTD — Trinidad & Tobago Dollar · needs a rate"
+    - option "TZS — Tanzanian Shilling · needs a rate"
+    - option "UAH — Ukrainian Hryvnia · needs a rate"
+    - option "UGX — Ugandan Shilling · needs a rate"
+    - option "UYU — Uruguayan Peso · needs a rate"
+    - option "UZS — Uzbekistani Som · needs a rate"
+    - option "VES — Venezuelan Bolívar · needs a rate"
+    - option "VUV — Vanuatu Vatu · needs a rate"
+    - option "WST — Samoan Tala · needs a rate"
+    - option "XAF — Central African CFA Franc · needs a rate"
+    - option "XCD — East Caribbean Dollar · needs a rate"
+    - option "XDR — Special Drawing Rights · needs a rate"
+    - option "XOF — West African CFA Franc · needs a rate"
+    - option "XPF — CFP Franc · needs a rate"
+    - option "XSU — Sucre · needs a rate"
+    - option "YER — Yemeni Rial · needs a rate"
+    - option "ZAR — South African Rand · needs a rate"
+    - option "ZMW — Zambian Kwacha · needs a rate"
+    - option "ZWL — Zimbabwean Dollar (2009–2024) · needs a rate"
+  - paragraph: Exchange rates
+  - paragraph: A deal in another currency is converted at these rates before it is added to any total. They are planning rates set on 2026-08-01, not a live feed, and they are stored in this browser. Enter your own where you know better.
+  - button "Show rates"
+  - paragraph: Pricing assumptions
+  - paragraph: What every quote is priced back from. Cost Analysis on a deal uses both to work out the price that holds your margin after the terms you are offering.
+  - paragraph: Target margin
+  - paragraph: The share of the selling price you expect to keep. Every figure is graded against it.
+  - generic: Target margin percent
+  - textbox "Target margin percent %": "20"
+  - generic: "%"
+  - paragraph: Cost of money
+  - paragraph: Your overdraft or facility rate, per year. Giving a customer 60 days to pay is lending them money at this rate, and the suggested price includes what that costs you.
+  - generic: Annual financing rate percent
+  - textbox "Annual financing rate percent % / yr": "10"
+  - generic: "% / yr"
+  - paragraph: Email reminders
+  - paragraph: Memoire can send a short morning digest of what is overdue, what has gone quiet and where money is stuck - and a Monday note on what last week produced. Both need an account, because both are sent from the records in it. Sign in to turn them on.
+  - region "Sync and recovery":
+    - heading "Sync & recovery" [level=2]
+    - paragraph: Where this workspace's records actually live right now.
+    - text: demo-local
+    - term: "Cloud status:"
+    - definition: Not configured - browser only
+    - term: "Last successful sync:"
+    - definition: Never
+    - term: "Last backup exported:"
+    - definition: Never
+    - term: "Unsynced changes:"
+    - definition: Everything - nothing is syncing
+    - button "Retry sync" [disabled]:
+      - text: Retry sync
+    - link "Download a backup":
+      - /url: "#export"
+    - paragraph: What restore does, and does not do
+    - list:
+      - listitem: Browser restore - putting a backup back into this browser. It replaces the local copy of your workspace, collection by collection, and reports what landed.
+      - listitem: Account restore - when you are signed in, every restored collection that lives in your account is pushed there as part of the same operation, so the next sync agrees with the file instead of overwriting it. Accounts, deals, activities, stakeholders and objections sync through their own stores; the restore says per collection whether the account copy accepted it.
+      - listitem: A restore can be undone in one click straight afterwards - the workspace it replaced is held until you leave the page.
+      - listitem: Demo records are always dropped on restore. They never enter a real workspace.
+  - paragraph: Storage in this browser
+  - paragraph: Every record is written here first. Browsers cap this at around 5 MB and give no warning of their own - the first sign is a save that fails.
+  - button "Recheck"
+  - paragraph: 224 KB
+  - paragraph: of about 5 MB · 4% used · 145 records
+  - paragraph: "Whole-site storage reported by this browser: 0 B of 10 GB. That figure covers caches and databases too, and is not the limit local records hit first."
+  - generic "What is taking the space (43 collections)"
+  - paragraph: Getting started
+  - paragraph: Bring back the five-step guide above the workspace content. If your workspace is still empty, the welcome screen comes back too.
+  - button "Show the guide again"

@@ -64,6 +64,7 @@ import { MicroLabel, Panel, Segmented, StatusChip } from '../../components/ui/da
 import { delay, ghostPillClass } from '../../components/ui/daylightStyles';
 import { formatCount } from '../../utils/numberFormat';
 import { useEntitlement } from '../../hooks/useEntitlement';
+import { AiChatPanel } from '../aiChat/AiChatPanel';
 
 /** What counts as an objection in a stuck-deal or context-health reason. */
 const OBJECTION_TEXT = /objection|blocker|blocked|concern/i;
@@ -74,7 +75,15 @@ const COMMITMENT_WINDOW_DAYS = 7;
 export function AskMemoirePage() {
   const { user } = useAuth();
   const { canSearch } = useEntitlement();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const aiMode = searchParams.get('mode') === 'ai';
+  const changeMode = (ai: boolean) => {
+    setSearchParams(previous => {
+      const next = new URLSearchParams(previous);
+      if (ai) next.set('mode', 'ai'); else next.delete('mode');
+      return next;
+    });
+  };
   const [scope, setScope] = useState<AskMemoireContext['scope']>((searchParams.get('scope') as AskMemoireContext['scope']) || 'all');
   const [selectedAccountId, setSelectedAccountId] = useState(searchParams.get('accountId') || '');
   const [selectedOpportunityId, setSelectedOpportunityId] = useState(searchParams.get('opportunityId') || '');
@@ -523,12 +532,12 @@ export function AskMemoirePage() {
   // Deep-linked questions (e.g. from the Today morning brief) run once the
   // workspace context has loaded, so the answer uses real memory.
   useEffect(() => {
-    if (contextLoading || urlQuestionConsumed) return;
+    if (aiMode || contextLoading || urlQuestionConsumed) return;
     const urlQuestion = (searchParams.get('question') || searchParams.get('q'))?.trim();
     if (!urlQuestion) return;
     setUrlQuestionConsumed(true);
     void ask(urlQuestion);
-  }, [ask, contextLoading, searchParams, urlQuestionConsumed]);
+  }, [aiMode, ask, contextLoading, searchParams, urlQuestionConsumed]);
 
   const startNewThread = () => {
     setAnswer(null);
@@ -543,6 +552,25 @@ export function AskMemoirePage() {
   const earlierQuestions = askedThisVisit.filter((item) => item !== askedQuestion).slice(0, 4);
   const answerParts = answer ? splitAnswer(answer) : null;
 
+  if (aiMode) return (
+    <PageContainer>
+      <TopBar lead={<Link to="/app/today" className="text-sm font-semibold text-muted">← Back to Today</Link>} />
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+        <PageHeader eyebrow="Ask Memoire" title="A conversation with your pipeline" documentTitle="Chat with Memoire" />
+        <Segmented label="Answer mode" value="ai" onChange={() => changeMode(false)} options={[{ value: 'local', label: 'Local insights' }, { value: 'ai', label: 'Chat AI' }]} />
+        <Panel as="div" className="flex min-w-0 flex-wrap items-center gap-3 px-4 py-3">
+          <label className="text-xs font-bold text-muted" htmlFor="ai-chat-scope">Asking about</label>
+          <select id="ai-chat-scope" value={scope} onChange={event => setScope(event.target.value as typeof scope)} className="min-h-10 rounded-full border border-line bg-white px-3 text-sm text-ink">
+            <option value="all">Relevant workspace records</option><option value="account">An account</option><option value="opportunity">An opportunity</option>
+          </select>
+          {scope === 'account' && <select aria-label="AI account context" value={selectedAccountId} onChange={event => setSelectedAccountId(event.target.value)} className="min-h-10 min-w-0 max-w-full flex-1 rounded-full border border-line bg-white px-3 text-sm text-ink"><option value="">Choose account</option>{accounts.map(account => <option key={account.id} value={account.id}>{account.name}</option>)}</select>}
+          {scope === 'opportunity' && <select aria-label="AI opportunity context" value={selectedOpportunityId} onChange={event => setSelectedOpportunityId(event.target.value)} className="min-h-10 min-w-0 max-w-full flex-1 rounded-full border border-line bg-white px-3 text-sm text-ink"><option value="">Choose opportunity</option>{visibleOpportunities.map(deal => <option key={deal.id} value={deal.id}>{deal.title}</option>)}</select>}
+        </Panel>
+        {user && user.id !== DEMO_USER_ID && !hasLocalSampleData() ? <AiChatPanel key={`${user.id}:${scope}:${selectedAccountId}:${selectedOpportunityId}`} userId={user.id} scope={{ kind: scope, id: scope === 'account' ? selectedAccountId : scope === 'opportunity' ? selectedOpportunityId : undefined }} onLocal={() => changeMode(false)} /> : <Panel as="div" className="p-5"><p className="text-sm text-muted">Sign in to a real workspace to use AI chat. Sample and local-only data stay in Local insights.</p><button type="button" onClick={() => changeMode(false)} className="mt-3 text-sm font-bold text-brand-blue">Use Local insights</button></Panel>}
+      </div>
+    </PageContainer>
+  );
+
   return (
     <PageContainer>
       <TopBar
@@ -555,7 +583,7 @@ export function AskMemoirePage() {
               <ArrowLeft className="h-[15px] w-[15px]" />
               Back to Today
             </Link>
-            <span className="hidden truncate text-[12.5px] text-muted xl:inline">Ask Memoire · computed from your own records, no AI service</span>
+            <span className="hidden truncate text-[12.5px] text-muted xl:inline">Ask Memoire · Local insights · computed on this device</span>
           </>
         )}
         status={contextLoading ? undefined : (
@@ -570,16 +598,7 @@ export function AskMemoirePage() {
         )}
       />
 
-      {/* This is Search & Insights, not a chatbot. An open text box with a
-          blinking cursor promises unlimited natural-language intelligence;
-          Memoire answers a bounded set of questions from the user's own
-          records, deterministically. So the supported questions are shown as
-          buttons and named as a list - what it can answer is visible before
-          anything is typed, and nothing is implied that is not true.
-
-          Under Daylight the list sits in the column beside the conversation,
-          where it stays in view while an answer is read, instead of below the
-          box it describes. */}
+      <div className="mb-4"><Segmented label="Answer mode" value="local" onChange={() => changeMode(true)} options={[{ value: 'local', label: 'Local insights' }, { value: 'ai', label: 'Chat AI' }]} /></div>
       <div className="grid items-start gap-[18px] xl:grid-cols-[minmax(0,1fr)_300px]">
         <div className="flex min-w-0 flex-col gap-4">
           {/* The eyebrow carries the surface's own name rather than a rail

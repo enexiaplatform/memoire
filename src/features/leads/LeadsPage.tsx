@@ -304,7 +304,7 @@ export function LeadsPage() {
   const worst = headlineFor(queue.counts, queue.total);
 
   return (
-    <PageContainer>
+    <PageContainer density="compact">
       <TopBar
         status={!loading && queue.total > 0 ? (
           <StatusChip tone={worst.tone} className="hidden md:inline-flex">{worst.chip}</StatusChip>
@@ -320,6 +320,8 @@ export function LeadsPage() {
       />
 
       <PageHeader
+        size="compact"
+        descriptionDisclosure
         // The empty panel below already says "No leads waiting."; a headline
         // saying it too is the same sentence twice, one above the other.
         title={loading || queue.total === 0 ? 'Leads' : `${formatCount(queue.total)} ${queue.total === 1 ? 'lead' : 'leads'}`}

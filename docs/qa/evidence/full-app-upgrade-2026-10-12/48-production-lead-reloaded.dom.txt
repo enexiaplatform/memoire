@@ -1,0 +1,1558 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities":
+    - /url: /app/opportunities
+    - text: Opportunities
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: "[Q"
+  - generic "[SIMULATED QC R5] Orion Calibration Partners"
+  - generic: Personal workspace
+  - button "Account and settings for [SIMULATED QC R5] Orion Calibration Partners":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic "Pipeline records, review packs, assets, and action outcomes sync to your account. Lightweight setup preferences may remain in this browser. Cloud records are available across devices. Browser preferences may reset when browser data is cleared.":
+    - generic: Cloud + browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - heading "Opportunities" [level=1]
+  - paragraph: 61 shown of 61 · loaded Oct 13, 2026
+  - text: Qualified pipeline.
+  - link "14 leads are on Leads":
+    - /url: /app/leads
+  - text: until qualified.
+  - button "Add":
+    - text: Add
+  - generic "More":
+    - text: More
+  - textbox:
+    - /placeholder: Search account, deal, brand, channel...
+  - generic: Stage
+  - combobox "Stage":
+    - option "Stage" [selected]
+    - option "Discovery"
+    - option "Qualification"
+    - option "Technical discussion"
+    - option "Demo"
+    - option "Proposal"
+    - option "Negotiation"
+    - option "Procurement"
+    - option "Won"
+    - option "Lost"
+    - option "On hold"
+  - generic: Status
+  - combobox "Status":
+    - option "Status" [selected]
+    - option "Active"
+    - option "Won"
+    - option "Lost"
+    - option "On hold"
+  - generic: Forecast
+  - combobox "Forecast":
+    - option "Forecast" [selected]
+    - option "Defensible"
+    - option "Weak but recoverable"
+    - option "Hope-based"
+    - option "Unsupported"
+  - generic: Decision
+  - combobox "Decision":
+    - option "Decision" [selected]
+    - option "Defend"
+    - option "Downgrade"
+    - option "Rescue"
+    - option "Monitor"
+    - option "Deprioritize"
+  - generic: Brand
+  - combobox "Brand":
+    - option "Brand" [selected]
+    - option "[SIM QC R5] CalPro"
+    - option "CalPro"
+    - option "Inspectra"
+  - generic: Close
+  - combobox "Close":
+    - option "Close" [selected]
+    - option "Q4 2025"
+    - option "Q1 2026"
+    - option "Q2 2026"
+    - option "Q3 2026"
+    - option "Q4 2026"
+    - option "Oct 2025"
+    - option "Nov 2025"
+    - option "Dec 2025"
+    - option "Jan 2026"
+    - option "Feb 2026"
+    - option "Mar 2026"
+    - option "Apr 2026"
+    - option "May 2026"
+    - option "Jun 2026"
+    - option "Jul 2026"
+    - option "Aug 2026"
+    - option "Sep 2026"
+    - option "Nov 2026"
+  - button "All pipeline"
+  - button "Imported core"
+  - button "Stage inferred"
+  - button "FY26 value"
+  - button "FY27 value"
+  - button "Needs action"
+  - button "Going silent (12)"
+  - button "No champion"
+  - heading "Opportunity Master List" [level=2]
+  - paragraph: 61 after filters / 75 total · open pipeline first, closed deals last
+  - text: Rows
+  - combobox "Rows":
+    - option "25" [selected]
+    - option "50"
+    - option "100"
+  - table:
+    - rowgroup:
+      - row "Deal Not sorted Close Sorted asc Stage Not sorted MEDDIC Not sorted Value Not sorted Brand Health Not sorted Next action Not sorted Last touch Not sorted Open":
+        - columnheader "Deal Not sorted":
+          - button "Deal Not sorted":
+            - text: Deal
+            - generic: Not sorted
+        - columnheader "Close Sorted asc":
+          - button "Close Sorted asc":
+            - text: Close
+            - generic: Sorted asc
+        - columnheader "Stage Not sorted":
+          - button "Stage Not sorted":
+            - text: Stage
+            - generic: Not sorted
+        - columnheader "MEDDIC Not sorted":
+          - button "MEDDIC Not sorted":
+            - text: MEDDIC
+            - generic: Not sorted
+        - columnheader "Value Not sorted":
+          - button "Value Not sorted":
+            - text: Value
+            - generic: Not sorted
+        - columnheader "Brand"
+        - columnheader "Health Not sorted":
+          - button "Health Not sorted":
+            - text: Health
+            - generic: Not sorted
+        - columnheader "Next action Not sorted":
+          - button "Next action Not sorted":
+            - text: Next action
+            - generic: Not sorted
+        - columnheader "Last touch Not sorted":
+          - button "Last touch Not sorted":
+            - text: Last touch
+            - generic: Not sorted
+        - columnheader "Open":
+          - generic: Open
+          - text: ·
+    - rowgroup:
+      - row "Q4 2025 3 deals 33,750 USD":
+        - cell "Q4 2025 3 deals 33,750 USD":
+          - generic: Q4 2025
+          - generic: 3 deals
+          - generic: 33,750 USD
+      - 'row "[SIM QC R5] US Precision Lab 11 [SIM QC R5] 2025-12 Calibration station 5 No decision maker Q4 ''25 Proposal Active Needs action · 3 checkpoints 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 10,500 EUR Inspectra Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches Confirm service coverage Dec 28, 2025 Dec 15, 2025 Quiet 28d Draft follow-up"':
+        - cell "[SIM QC R5] US Precision Lab 11 [SIM QC R5] 2025-12 Calibration station 5 No decision maker":
+          - paragraph: "[SIM QC R5] US Precision Lab 11"
+          - paragraph: "[SIM QC R5] 2025-12 Calibration station 5"
+          - paragraph: No decision maker
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-12\"":
+            - generic: Q4 '25
+        - cell "Proposal Active Needs action · 3 checkpoints":
+          - text: Proposal
+          - paragraph: Active
+          - paragraph: Needs action · 3 checkpoints
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "10,500 EUR"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Weak but recoverable · Monitor
+          - paragraph: 2 record gaps · 3 touches
+        - cell "Confirm service coverage Dec 28, 2025":
+          - paragraph: Confirm service coverage
+          - paragraph: Dec 28, 2025
+        - cell "Dec 15, 2025 Quiet 28d Draft follow-up":
+          - paragraph: Dec 15, 2025
+          - paragraph: Quiet 28d
+          - button "Draft follow-up"
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] US Precision Lab 08 [SIM QC R5] 2025-11 Calibration station 5 No decision maker Q4 ''25 Proposal Active Needs action · 3 checkpoints 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 9,750 EUR Inspectra Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches Confirm service coverage Nov 28, 2025 Nov 15, 2025 Quiet 59d Draft follow-up"':
+        - cell "[SIM QC R5] US Precision Lab 08 [SIM QC R5] 2025-11 Calibration station 5 No decision maker":
+          - paragraph: "[SIM QC R5] US Precision Lab 08"
+          - paragraph: "[SIM QC R5] 2025-11 Calibration station 5"
+          - paragraph: No decision maker
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-11\"":
+            - generic: Q4 '25
+        - cell "Proposal Active Needs action · 3 checkpoints":
+          - text: Proposal
+          - paragraph: Active
+          - paragraph: Needs action · 3 checkpoints
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "9,750 EUR"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Weak but recoverable · Monitor
+          - paragraph: 2 record gaps · 3 touches
+        - cell "Confirm service coverage Nov 28, 2025":
+          - paragraph: Confirm service coverage
+          - paragraph: Nov 28, 2025
+        - cell "Nov 15, 2025 Quiet 59d Draft follow-up":
+          - paragraph: Nov 15, 2025
+          - paragraph: Quiet 59d
+          - button "Draft follow-up"
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] US Precision Lab 05 [SIM QC R5] 2025-10 Calibration station 5 No decision maker Q4 ''25 Proposal Active Needs action · 3 checkpoints 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 9,000 EUR Inspectra Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches Confirm service coverage Oct 28, 2025 Oct 15, 2025 Quiet 90d Draft follow-up"':
+        - cell "[SIM QC R5] US Precision Lab 05 [SIM QC R5] 2025-10 Calibration station 5 No decision maker":
+          - paragraph: "[SIM QC R5] US Precision Lab 05"
+          - paragraph: "[SIM QC R5] 2025-10 Calibration station 5"
+          - paragraph: No decision maker
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-10\"":
+            - generic: Q4 '25
+        - cell "Proposal Active Needs action · 3 checkpoints":
+          - text: Proposal
+          - paragraph: Active
+          - paragraph: Needs action · 3 checkpoints
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "9,000 EUR"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Weak but recoverable · Monitor
+          - paragraph: 2 record gaps · 3 touches
+        - cell "Confirm service coverage Oct 28, 2025":
+          - paragraph: Confirm service coverage
+          - paragraph: Oct 28, 2025
+        - cell "Oct 15, 2025 Quiet 90d Draft follow-up":
+          - paragraph: Oct 15, 2025
+          - paragraph: Quiet 90d
+          - button "Draft follow-up"
+        - cell:
+          - button "Open opportunity details":
+    - rowgroup:
+      - row "Q1 2026 3 deals 41,538.46 USD":
+        - cell "Q1 2026 3 deals 41,538.46 USD":
+          - generic: Q1 2026
+          - generic: 3 deals
+          - generic: 41,538.46 USD
+      - 'row "[SIM QC R5] US Precision Lab 08 [SIM QC R5] 2026-03 Calibration station 5 No decision maker Q1 ''26 Proposal Active Needs action · 3 checkpoints 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 12,750 EUR Inspectra Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches Confirm service coverage Mar 28, 2026 Mar 15, 2026 Quiet 59d Draft follow-up"':
+        - cell "[SIM QC R5] US Precision Lab 08 [SIM QC R5] 2026-03 Calibration station 5 No decision maker":
+          - paragraph: "[SIM QC R5] US Precision Lab 08"
+          - paragraph: "[SIM QC R5] 2026-03 Calibration station 5"
+          - paragraph: No decision maker
+        - cell "Q1 '26":
+          - generic "Recorded as \"2026-03\"":
+            - generic: Q1 '26
+        - cell "Proposal Active Needs action · 3 checkpoints":
+          - text: Proposal
+          - paragraph: Active
+          - paragraph: Needs action · 3 checkpoints
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "12,750 EUR"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Weak but recoverable · Monitor
+          - paragraph: 2 record gaps · 3 touches
+        - cell "Confirm service coverage Mar 28, 2026":
+          - paragraph: Confirm service coverage
+          - paragraph: Mar 28, 2026
+        - cell "Mar 15, 2026 Quiet 59d Draft follow-up":
+          - paragraph: Mar 15, 2026
+          - paragraph: Quiet 59d
+          - button "Draft follow-up"
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] US Precision Lab 05 [SIM QC R5] 2026-02 Calibration station 5 No decision maker Q1 ''26 Proposal Active Needs action · 3 checkpoints 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 12,000 EUR Inspectra Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches Confirm service coverage Feb 28, 2026 Feb 15, 2026 Quiet 90d Draft follow-up"':
+        - cell "[SIM QC R5] US Precision Lab 05 [SIM QC R5] 2026-02 Calibration station 5 No decision maker":
+          - paragraph: "[SIM QC R5] US Precision Lab 05"
+          - paragraph: "[SIM QC R5] 2026-02 Calibration station 5"
+          - paragraph: No decision maker
+        - cell "Q1 '26":
+          - generic "Recorded as \"2026-02\"":
+            - generic: Q1 '26
+        - cell "Proposal Active Needs action · 3 checkpoints":
+          - text: Proposal
+          - paragraph: Active
+          - paragraph: Needs action · 3 checkpoints
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "12,000 EUR"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Weak but recoverable · Monitor
+          - paragraph: 2 record gaps · 3 touches
+        - cell "Confirm service coverage Feb 28, 2026":
+          - paragraph: Confirm service coverage
+          - paragraph: Feb 28, 2026
+        - cell "Feb 15, 2026 Quiet 90d Draft follow-up":
+          - paragraph: Feb 15, 2026
+          - paragraph: Quiet 90d
+          - button "Draft follow-up"
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] US Precision Lab 02 [SIM QC R5] 2026-01 Calibration station 5 No decision maker Q1 ''26 Proposal Active Needs action · 3 checkpoints 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 11,250 EUR Inspectra Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches Confirm service coverage Jan 28, 2026 Jan 15, 2026 Quiet 7d Draft follow-up"':
+        - cell "[SIM QC R5] US Precision Lab 02 [SIM QC R5] 2026-01 Calibration station 5 No decision maker":
+          - paragraph: "[SIM QC R5] US Precision Lab 02"
+          - paragraph: "[SIM QC R5] 2026-01 Calibration station 5"
+          - paragraph: No decision maker
+        - cell "Q1 '26":
+          - generic "Recorded as \"2026-01\"":
+            - generic: Q1 '26
+        - cell "Proposal Active Needs action · 3 checkpoints":
+          - text: Proposal
+          - paragraph: Active
+          - paragraph: Needs action · 3 checkpoints
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "11,250 EUR"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Weak but recoverable · Monitor
+          - paragraph: 2 record gaps · 3 touches
+        - cell "Confirm service coverage Jan 28, 2026":
+          - paragraph: Confirm service coverage
+          - paragraph: Jan 28, 2026
+        - cell "Jan 15, 2026 Quiet 7d Draft follow-up":
+          - paragraph: Jan 15, 2026
+          - paragraph: Quiet 7d
+          - button "Draft follow-up"
+        - cell:
+          - button "Open opportunity details":
+    - rowgroup:
+      - row "Q2 2026 3 deals 49,326.92 USD":
+        - cell "Q2 2026 3 deals 49,326.92 USD":
+          - generic: Q2 2026
+          - generic: 3 deals
+          - generic: 49,326.92 USD
+      - 'row "[SIM QC R5] US Precision Lab 05 [SIM QC R5] 2026-06 Calibration station 5 No decision maker Q2 ''26 Proposal Active Needs action · 3 checkpoints 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 15,000 EUR Inspectra Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches Confirm service coverage Jun 28, 2026 Jun 15, 2026 Quiet 90d Draft follow-up"':
+        - cell "[SIM QC R5] US Precision Lab 05 [SIM QC R5] 2026-06 Calibration station 5 No decision maker":
+          - paragraph: "[SIM QC R5] US Precision Lab 05"
+          - paragraph: "[SIM QC R5] 2026-06 Calibration station 5"
+          - paragraph: No decision maker
+        - cell "Q2 '26":
+          - generic "Recorded as \"2026-06\"":
+            - generic: Q2 '26
+        - cell "Proposal Active Needs action · 3 checkpoints":
+          - text: Proposal
+          - paragraph: Active
+          - paragraph: Needs action · 3 checkpoints
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "15,000 EUR"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Weak but recoverable · Monitor
+          - paragraph: 2 record gaps · 3 touches
+        - cell "Confirm service coverage Jun 28, 2026":
+          - paragraph: Confirm service coverage
+          - paragraph: Jun 28, 2026
+        - cell "Jun 15, 2026 Quiet 90d Draft follow-up":
+          - paragraph: Jun 15, 2026
+          - paragraph: Quiet 90d
+          - button "Draft follow-up"
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] US Precision Lab 02 [SIM QC R5] 2026-05 Calibration station 5 No decision maker Q2 ''26 Proposal Active Needs action · 3 checkpoints 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 14,250 EUR Inspectra Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches Confirm service coverage May 28, 2026 May 15, 2026 Quiet 7d Draft follow-up"':
+        - cell "[SIM QC R5] US Precision Lab 02 [SIM QC R5] 2026-05 Calibration station 5 No decision maker":
+          - paragraph: "[SIM QC R5] US Precision Lab 02"
+          - paragraph: "[SIM QC R5] 2026-05 Calibration station 5"
+          - paragraph: No decision maker
+        - cell "Q2 '26":
+          - generic "Recorded as \"2026-05\"":
+            - generic: Q2 '26
+        - cell "Proposal Active Needs action · 3 checkpoints":
+          - text: Proposal
+          - paragraph: Active
+          - paragraph: Needs action · 3 checkpoints
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "14,250 EUR"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Weak but recoverable · Monitor
+          - paragraph: 2 record gaps · 3 touches
+        - cell "Confirm service coverage May 28, 2026":
+          - paragraph: Confirm service coverage
+          - paragraph: May 28, 2026
+        - cell "May 15, 2026 Quiet 7d Draft follow-up":
+          - paragraph: May 15, 2026
+          - paragraph: Quiet 7d
+          - button "Draft follow-up"
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] US Precision Lab 11 [SIM QC R5] 2026-04 Calibration station 5 No decision maker Q2 ''26 Proposal Active Needs action · 3 checkpoints 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 13,500 EUR Inspectra Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches Confirm service coverage Apr 28, 2026 Apr 15, 2026 Quiet 28d Draft follow-up"':
+        - cell "[SIM QC R5] US Precision Lab 11 [SIM QC R5] 2026-04 Calibration station 5 No decision maker":
+          - paragraph: "[SIM QC R5] US Precision Lab 11"
+          - paragraph: "[SIM QC R5] 2026-04 Calibration station 5"
+          - paragraph: No decision maker
+        - cell "Q2 '26":
+          - generic "Recorded as \"2026-04\"":
+            - generic: Q2 '26
+        - cell "Proposal Active Needs action · 3 checkpoints":
+          - text: Proposal
+          - paragraph: Active
+          - paragraph: Needs action · 3 checkpoints
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "13,500 EUR"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Weak but recoverable · Monitor
+          - paragraph: 2 record gaps · 3 touches
+        - cell "Confirm service coverage Apr 28, 2026":
+          - paragraph: Confirm service coverage
+          - paragraph: Apr 28, 2026
+        - cell "Apr 15, 2026 Quiet 28d Draft follow-up":
+          - paragraph: Apr 15, 2026
+          - paragraph: Quiet 28d
+          - button "Draft follow-up"
+        - cell:
+          - button "Open opportunity details":
+    - rowgroup:
+      - row "Q3 2026 3 deals 57,115.38 USD":
+        - cell "Q3 2026 3 deals 57,115.38 USD":
+          - generic: Q3 2026
+          - generic: 3 deals
+          - generic: 57,115.38 USD
+      - 'row "[SIM QC R5] US Precision Lab 02 [SIM QC R5] 2026-09 Calibration station 5 No decision maker Q3 ''26 Proposal Active Needs action · 3 checkpoints 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 17,250 EUR Inspectra Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches Confirm service coverage Sep 28, 2026 Sep 15, 2026 Quiet 7d Draft follow-up"':
+        - cell "[SIM QC R5] US Precision Lab 02 [SIM QC R5] 2026-09 Calibration station 5 No decision maker":
+          - paragraph: "[SIM QC R5] US Precision Lab 02"
+          - paragraph: "[SIM QC R5] 2026-09 Calibration station 5"
+          - paragraph: No decision maker
+        - cell "Q3 '26":
+          - generic "Recorded as \"2026-09\"":
+            - generic: Q3 '26
+        - cell "Proposal Active Needs action · 3 checkpoints":
+          - text: Proposal
+          - paragraph: Active
+          - paragraph: Needs action · 3 checkpoints
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "17,250 EUR"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Weak but recoverable · Monitor
+          - paragraph: 2 record gaps · 3 touches
+        - cell "Confirm service coverage Sep 28, 2026":
+          - paragraph: Confirm service coverage
+          - paragraph: Sep 28, 2026
+        - cell "Sep 15, 2026 Quiet 7d Draft follow-up":
+          - paragraph: Sep 15, 2026
+          - paragraph: Quiet 7d
+          - button "Draft follow-up"
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] US Precision Lab 11 [SIM QC R5] 2026-08 Calibration station 5 No decision maker Q3 ''26 Proposal Active Needs action · 3 checkpoints 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 16,500 EUR Inspectra Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches Confirm service coverage Aug 28, 2026 Aug 15, 2026 Quiet 28d Draft follow-up"':
+        - cell "[SIM QC R5] US Precision Lab 11 [SIM QC R5] 2026-08 Calibration station 5 No decision maker":
+          - paragraph: "[SIM QC R5] US Precision Lab 11"
+          - paragraph: "[SIM QC R5] 2026-08 Calibration station 5"
+          - paragraph: No decision maker
+        - cell "Q3 '26":
+          - generic "Recorded as \"2026-08\"":
+            - generic: Q3 '26
+        - cell "Proposal Active Needs action · 3 checkpoints":
+          - text: Proposal
+          - paragraph: Active
+          - paragraph: Needs action · 3 checkpoints
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "16,500 EUR"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Weak but recoverable · Monitor
+          - paragraph: 2 record gaps · 3 touches
+        - cell "Confirm service coverage Aug 28, 2026":
+          - paragraph: Confirm service coverage
+          - paragraph: Aug 28, 2026
+        - cell "Aug 15, 2026 Quiet 28d Draft follow-up":
+          - paragraph: Aug 15, 2026
+          - paragraph: Quiet 28d
+          - button "Draft follow-up"
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] US Precision Lab 08 [SIM QC R5] 2026-07 Calibration station 5 No decision maker Q3 ''26 Proposal Active Needs action · 3 checkpoints 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 15,750 EUR Inspectra Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches Confirm service coverage Jul 28, 2026 Jul 15, 2026 Quiet 59d Draft follow-up"':
+        - cell "[SIM QC R5] US Precision Lab 08 [SIM QC R5] 2026-07 Calibration station 5 No decision maker":
+          - paragraph: "[SIM QC R5] US Precision Lab 08"
+          - paragraph: "[SIM QC R5] 2026-07 Calibration station 5"
+          - paragraph: No decision maker
+        - cell "Q3 '26":
+          - generic "Recorded as \"2026-07\"":
+            - generic: Q3 '26
+        - cell "Proposal Active Needs action · 3 checkpoints":
+          - text: Proposal
+          - paragraph: Active
+          - paragraph: Needs action · 3 checkpoints
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "15,750 EUR"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Needs cleanup Weak but recoverable · Monitor 2 record gaps · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Weak but recoverable · Monitor
+          - paragraph: 2 record gaps · 3 touches
+        - cell "Confirm service coverage Jul 28, 2026":
+          - paragraph: Confirm service coverage
+          - paragraph: Jul 28, 2026
+        - cell "Jul 15, 2026 Quiet 59d Draft follow-up":
+          - paragraph: Jul 15, 2026
+          - paragraph: Quiet 59d
+          - button "Draft follow-up"
+        - cell:
+          - button "Open opportunity details":
+    - rowgroup:
+      - row "Closed · won and lost 13 of 49 deals":
+        - cell "Closed · won and lost 13 of 49 deals":
+          - generic: Closed · won and lost
+          - generic: 13 of 49 deals
+      - 'row "[SIM QC R5] US Precision Lab 08 [SIM QC R5] 2025-12 Calibration station 2 Q4 ''25 Won Won Completed 13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion 9,750 EUR CalPro Healthy Defensible · Monitor 0 record gaps · 3 touches Plan annual recalibration Dec 28, 2025 Dec 15, 2025"':
+        - cell "[SIM QC R5] US Precision Lab 08 [SIM QC R5] 2025-12 Calibration station 2":
+          - paragraph: "[SIM QC R5] US Precision Lab 08"
+          - paragraph: "[SIM QC R5] 2025-12 Calibration station 2"
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-12\"":
+            - generic: Q4 '25
+        - cell "Won Won Completed":
+          - text: Won
+          - paragraph: Won
+          - paragraph: Completed
+        - 'cell "13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion"':
+          - paragraph:
+            - text: "13"
+            - generic: /32
+            - generic: 41%
+          - 'img "Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Missing"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "9,750 EUR"
+        - cell "CalPro":
+          - generic: CalPro
+        - cell "Healthy Defensible · Monitor 0 record gaps · 3 touches":
+          - text: Healthy
+          - paragraph: Defensible · Monitor
+          - paragraph: 0 record gaps · 3 touches
+        - cell "Plan annual recalibration Dec 28, 2025":
+          - paragraph: Plan annual recalibration
+          - paragraph: Dec 28, 2025
+        - cell "Dec 15, 2025":
+          - paragraph: Dec 15, 2025
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] US Precision Lab 05 [SIM QC R5] 2025-11 Calibration station 2 Q4 ''25 Won Won Completed 13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion 9,000 EUR CalPro Healthy Defensible · Monitor 0 record gaps · 3 touches Plan annual recalibration Nov 28, 2025 Nov 15, 2025"':
+        - cell "[SIM QC R5] US Precision Lab 05 [SIM QC R5] 2025-11 Calibration station 2":
+          - paragraph: "[SIM QC R5] US Precision Lab 05"
+          - paragraph: "[SIM QC R5] 2025-11 Calibration station 2"
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-11\"":
+            - generic: Q4 '25
+        - cell "Won Won Completed":
+          - text: Won
+          - paragraph: Won
+          - paragraph: Completed
+        - 'cell "13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion"':
+          - paragraph:
+            - text: "13"
+            - generic: /32
+            - generic: 41%
+          - 'img "Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Missing"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "9,000 EUR"
+        - cell "CalPro":
+          - generic: CalPro
+        - cell "Healthy Defensible · Monitor 0 record gaps · 3 touches":
+          - text: Healthy
+          - paragraph: Defensible · Monitor
+          - paragraph: 0 record gaps · 3 touches
+        - cell "Plan annual recalibration Nov 28, 2025":
+          - paragraph: Plan annual recalibration
+          - paragraph: Nov 28, 2025
+        - cell "Nov 15, 2025":
+          - paragraph: Nov 15, 2025
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] EU Precision Lab 10 [SIM QC R5] 2025-12 Calibration station 4 Q4 ''25 Lost Lost Closed 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 10,250 USD CalPro Needs cleanup Defensible · Monitor 1 record gap · 3 touches Plan annual recalibration Dec 28, 2025 Dec 15, 2025"':
+        - cell "[SIM QC R5] EU Precision Lab 10 [SIM QC R5] 2025-12 Calibration station 4":
+          - paragraph: "[SIM QC R5] EU Precision Lab 10"
+          - paragraph: "[SIM QC R5] 2025-12 Calibration station 4"
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-12\"":
+            - generic: Q4 '25
+        - cell "Lost Lost Closed":
+          - text: Lost
+          - paragraph: Lost
+          - paragraph: Closed
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "10,250 USD"
+        - cell "CalPro":
+          - generic: CalPro
+        - cell "Needs cleanup Defensible · Monitor 1 record gap · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Defensible · Monitor
+          - paragraph: 1 record gap · 3 touches
+        - cell "Plan annual recalibration Dec 28, 2025":
+          - paragraph: Plan annual recalibration
+          - paragraph: Dec 28, 2025
+        - cell "Dec 15, 2025":
+          - paragraph: Dec 15, 2025
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] US Precision Lab 02 [SIM QC R5] 2025-10 Calibration station 2 Q4 ''25 Won Won Completed 13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion 8,250 EUR CalPro Healthy Defensible · Monitor 0 record gaps · 3 touches Plan annual recalibration Oct 28, 2025 Oct 15, 2025"':
+        - cell "[SIM QC R5] US Precision Lab 02 [SIM QC R5] 2025-10 Calibration station 2":
+          - paragraph: "[SIM QC R5] US Precision Lab 02"
+          - paragraph: "[SIM QC R5] 2025-10 Calibration station 2"
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-10\"":
+            - generic: Q4 '25
+        - cell "Won Won Completed":
+          - text: Won
+          - paragraph: Won
+          - paragraph: Completed
+        - 'cell "13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion"':
+          - paragraph:
+            - text: "13"
+            - generic: /32
+            - generic: 41%
+          - 'img "Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Missing"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "8,250 EUR"
+        - cell "CalPro":
+          - generic: CalPro
+        - cell "Healthy Defensible · Monitor 0 record gaps · 3 touches":
+          - text: Healthy
+          - paragraph: Defensible · Monitor
+          - paragraph: 0 record gaps · 3 touches
+        - cell "Plan annual recalibration Oct 28, 2025":
+          - paragraph: Plan annual recalibration
+          - paragraph: Oct 28, 2025
+        - cell "Oct 15, 2025":
+          - paragraph: Oct 15, 2025
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] EU Precision Lab 07 [SIM QC R5] 2025-12 Calibration station 1 Q4 ''25 Won Won Completed 13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion 9,500 USD Inspectra Healthy Defensible · Monitor 0 record gaps · 3 touches Plan annual recalibration Dec 28, 2025 Dec 15, 2025"':
+        - cell "[SIM QC R5] EU Precision Lab 07 [SIM QC R5] 2025-12 Calibration station 1":
+          - paragraph: "[SIM QC R5] EU Precision Lab 07"
+          - paragraph: "[SIM QC R5] 2025-12 Calibration station 1"
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-12\"":
+            - generic: Q4 '25
+        - cell "Won Won Completed":
+          - text: Won
+          - paragraph: Won
+          - paragraph: Completed
+        - 'cell "13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion"':
+          - paragraph:
+            - text: "13"
+            - generic: /32
+            - generic: 41%
+          - 'img "Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Missing"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "9,500 USD"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Healthy Defensible · Monitor 0 record gaps · 3 touches":
+          - text: Healthy
+          - paragraph: Defensible · Monitor
+          - paragraph: 0 record gaps · 3 touches
+        - cell "Plan annual recalibration Dec 28, 2025":
+          - paragraph: Plan annual recalibration
+          - paragraph: Dec 28, 2025
+        - cell "Dec 15, 2025":
+          - paragraph: Dec 15, 2025
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] EU Precision Lab 07 [SIM QC R5] 2025-11 Calibration station 4 Q4 ''25 Lost Lost Closed 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 9,500 USD CalPro Needs cleanup Defensible · Monitor 1 record gap · 3 touches Plan annual recalibration Nov 28, 2025 Nov 15, 2025"':
+        - cell "[SIM QC R5] EU Precision Lab 07 [SIM QC R5] 2025-11 Calibration station 4":
+          - paragraph: "[SIM QC R5] EU Precision Lab 07"
+          - paragraph: "[SIM QC R5] 2025-11 Calibration station 4"
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-11\"":
+            - generic: Q4 '25
+        - cell "Lost Lost Closed":
+          - text: Lost
+          - paragraph: Lost
+          - paragraph: Closed
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "9,500 USD"
+        - cell "CalPro":
+          - generic: CalPro
+        - cell "Needs cleanup Defensible · Monitor 1 record gap · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Defensible · Monitor
+          - paragraph: 1 record gap · 3 touches
+        - cell "Plan annual recalibration Nov 28, 2025":
+          - paragraph: Plan annual recalibration
+          - paragraph: Nov 28, 2025
+        - cell "Nov 15, 2025":
+          - paragraph: Nov 15, 2025
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] EU Precision Lab 04 [SIM QC R5] 2025-11 Calibration station 1 Q4 ''25 Won Won Completed 13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion 8,750 USD Inspectra Healthy Defensible · Monitor 0 record gaps · 3 touches Plan annual recalibration Nov 28, 2025 Nov 15, 2025"':
+        - cell "[SIM QC R5] EU Precision Lab 04 [SIM QC R5] 2025-11 Calibration station 1":
+          - paragraph: "[SIM QC R5] EU Precision Lab 04"
+          - paragraph: "[SIM QC R5] 2025-11 Calibration station 1"
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-11\"":
+            - generic: Q4 '25
+        - cell "Won Won Completed":
+          - text: Won
+          - paragraph: Won
+          - paragraph: Completed
+        - 'cell "13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion"':
+          - paragraph:
+            - text: "13"
+            - generic: /32
+            - generic: 41%
+          - 'img "Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Missing"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "8,750 USD"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Healthy Defensible · Monitor 0 record gaps · 3 touches":
+          - text: Healthy
+          - paragraph: Defensible · Monitor
+          - paragraph: 0 record gaps · 3 touches
+        - cell "Plan annual recalibration Nov 28, 2025":
+          - paragraph: Plan annual recalibration
+          - paragraph: Nov 28, 2025
+        - cell "Nov 15, 2025":
+          - paragraph: Nov 15, 2025
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] EU Precision Lab 04 [SIM QC R5] 2025-10 Calibration station 4 Q4 ''25 Lost Lost Closed 16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion 8,750 USD CalPro Needs cleanup Defensible · Monitor 1 record gap · 3 touches Plan annual recalibration Oct 28, 2025 Oct 15, 2025"':
+        - cell "[SIM QC R5] EU Precision Lab 04 [SIM QC R5] 2025-10 Calibration station 4":
+          - paragraph: "[SIM QC R5] EU Precision Lab 04"
+          - paragraph: "[SIM QC R5] 2025-10 Calibration station 4"
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-10\"":
+            - generic: Q4 '25
+        - cell "Lost Lost Closed":
+          - text: Lost
+          - paragraph: Lost
+          - paragraph: Closed
+        - 'cell "16/3250% Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial No champion"':
+          - paragraph:
+            - text: "16"
+            - generic: /32
+            - generic: 50%
+          - 'img "Identify the pain: Strong; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Partial; Competition: Partial"':
+            - 'generic "Identify the pain: Strong"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Partial"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "8,750 USD"
+        - cell "CalPro":
+          - generic: CalPro
+        - cell "Needs cleanup Defensible · Monitor 1 record gap · 3 touches":
+          - text: Needs cleanup
+          - paragraph: Defensible · Monitor
+          - paragraph: 1 record gap · 3 touches
+        - cell "Plan annual recalibration Oct 28, 2025":
+          - paragraph: Plan annual recalibration
+          - paragraph: Oct 28, 2025
+        - cell "Oct 15, 2025":
+          - paragraph: Oct 15, 2025
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] EU Precision Lab 01 [SIM QC R5] 2025-10 Calibration station 1 Q4 ''25 Won Won Completed 13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion 8,000 USD Inspectra Healthy Defensible · Monitor 0 record gaps · 3 touches Plan annual recalibration Oct 28, 2025 Oct 15, 2025"':
+        - cell "[SIM QC R5] EU Precision Lab 01 [SIM QC R5] 2025-10 Calibration station 1":
+          - paragraph: "[SIM QC R5] EU Precision Lab 01"
+          - paragraph: "[SIM QC R5] 2025-10 Calibration station 1"
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-10\"":
+            - generic: Q4 '25
+        - cell "Won Won Completed":
+          - text: Won
+          - paragraph: Won
+          - paragraph: Completed
+        - 'cell "13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion"':
+          - paragraph:
+            - text: "13"
+            - generic: /32
+            - generic: 41%
+          - 'img "Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Missing"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "8,000 USD"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Healthy Defensible · Monitor 0 record gaps · 3 touches":
+          - text: Healthy
+          - paragraph: Defensible · Monitor
+          - paragraph: 0 record gaps · 3 touches
+        - cell "Plan annual recalibration Oct 28, 2025":
+          - paragraph: Plan annual recalibration
+          - paragraph: Oct 28, 2025
+        - cell "Oct 15, 2025":
+          - paragraph: Oct 15, 2025
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] APAC Precision Lab 09 [SIM QC R5] 2025-12 Calibration station 3 Q4 ''25 Won Won Completed 13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion 10,000 SGD Inspectra Healthy Defensible · Monitor 0 record gaps · 3 touches Plan annual recalibration Dec 28, 2025 Dec 15, 2025"':
+        - cell "[SIM QC R5] APAC Precision Lab 09 [SIM QC R5] 2025-12 Calibration station 3":
+          - paragraph: "[SIM QC R5] APAC Precision Lab 09"
+          - paragraph: "[SIM QC R5] 2025-12 Calibration station 3"
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-12\"":
+            - generic: Q4 '25
+        - cell "Won Won Completed":
+          - text: Won
+          - paragraph: Won
+          - paragraph: Completed
+        - 'cell "13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion"':
+          - paragraph:
+            - text: "13"
+            - generic: /32
+            - generic: 41%
+          - 'img "Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Missing"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "10,000 SGD"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Healthy Defensible · Monitor 0 record gaps · 3 touches":
+          - text: Healthy
+          - paragraph: Defensible · Monitor
+          - paragraph: 0 record gaps · 3 touches
+        - cell "Plan annual recalibration Dec 28, 2025":
+          - paragraph: Plan annual recalibration
+          - paragraph: Dec 28, 2025
+        - cell "Dec 15, 2025":
+          - paragraph: Dec 15, 2025
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] APAC Precision Lab 06 [SIM QC R5] 2025-11 Calibration station 3 Q4 ''25 Won Won Completed 13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion 9,250 SGD Inspectra Healthy Defensible · Monitor 0 record gaps · 3 touches Plan annual recalibration Nov 28, 2025 Nov 15, 2025"':
+        - cell "[SIM QC R5] APAC Precision Lab 06 [SIM QC R5] 2025-11 Calibration station 3":
+          - paragraph: "[SIM QC R5] APAC Precision Lab 06"
+          - paragraph: "[SIM QC R5] 2025-11 Calibration station 3"
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-11\"":
+            - generic: Q4 '25
+        - cell "Won Won Completed":
+          - text: Won
+          - paragraph: Won
+          - paragraph: Completed
+        - 'cell "13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion"':
+          - paragraph:
+            - text: "13"
+            - generic: /32
+            - generic: 41%
+          - 'img "Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Missing"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "9,250 SGD"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Healthy Defensible · Monitor 0 record gaps · 3 touches":
+          - text: Healthy
+          - paragraph: Defensible · Monitor
+          - paragraph: 0 record gaps · 3 touches
+        - cell "Plan annual recalibration Nov 28, 2025":
+          - paragraph: Plan annual recalibration
+          - paragraph: Nov 28, 2025
+        - cell "Nov 15, 2025":
+          - paragraph: Nov 15, 2025
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] APAC Precision Lab 03 [SIM QC R5] 2025-10 Calibration station 3 Q4 ''25 Won Won Completed 13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion 8,500 SGD Inspectra Healthy Defensible · Monitor 0 record gaps · 3 touches Plan annual recalibration Oct 28, 2025 Oct 15, 2025"':
+        - cell "[SIM QC R5] APAC Precision Lab 03 [SIM QC R5] 2025-10 Calibration station 3":
+          - paragraph: "[SIM QC R5] APAC Precision Lab 03"
+          - paragraph: "[SIM QC R5] 2025-10 Calibration station 3"
+        - cell "Q4 '25":
+          - generic "Recorded as \"2025-10\"":
+            - generic: Q4 '25
+        - cell "Won Won Completed":
+          - text: Won
+          - paragraph: Won
+          - paragraph: Completed
+        - 'cell "13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion"':
+          - paragraph:
+            - text: "13"
+            - generic: /32
+            - generic: 41%
+          - 'img "Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Missing"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "8,500 SGD"
+        - cell "Inspectra":
+          - generic: Inspectra
+        - cell "Healthy Defensible · Monitor 0 record gaps · 3 touches":
+          - text: Healthy
+          - paragraph: Defensible · Monitor
+          - paragraph: 0 record gaps · 3 touches
+        - cell "Plan annual recalibration Oct 28, 2025":
+          - paragraph: Plan annual recalibration
+          - paragraph: Oct 28, 2025
+        - cell "Oct 15, 2025":
+          - paragraph: Oct 15, 2025
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+      - 'row "[SIM QC R5] US Precision Lab 05 [SIM QC R5] 2026-03 Calibration station 2 Q1 ''26 Won Won Completed 13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion 12,000 EUR CalPro Healthy Defensible · Monitor 0 record gaps · 3 touches Plan annual recalibration Mar 28, 2026 Mar 15, 2026"':
+        - cell "[SIM QC R5] US Precision Lab 05 [SIM QC R5] 2026-03 Calibration station 2":
+          - paragraph: "[SIM QC R5] US Precision Lab 05"
+          - paragraph: "[SIM QC R5] 2026-03 Calibration station 2"
+        - cell "Q1 '26":
+          - generic "Recorded as \"2026-03\"":
+            - generic: Q1 '26
+        - cell "Won Won Completed":
+          - text: Won
+          - paragraph: Won
+          - paragraph: Completed
+        - 'cell "13/3241% Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial No champion"':
+          - paragraph:
+            - text: "13"
+            - generic: /32
+            - generic: 41%
+          - 'img "Identify the pain: Missing; Metrics: Missing; Urgency: Partial; Decision criteria: Strong; Decision process: Strong; Champion: Missing; Economic buyer: Partial; Paper process: Strong; Competition: Partial"':
+            - 'generic "Identify the pain: Missing"'
+            - 'generic "Metrics: Missing"'
+            - 'generic "Urgency: Partial"'
+            - 'generic "Decision criteria: Strong"'
+            - 'generic "Decision process: Strong"'
+            - 'generic "Champion: Missing (blocks the forecast)"'
+            - 'generic "Economic buyer: Partial"'
+            - 'generic "Paper process: Strong"'
+            - 'generic "Competition: Partial"'
+          - paragraph: No champion
+        - cell "12,000 EUR"
+        - cell "CalPro":
+          - generic: CalPro
+        - cell "Healthy Defensible · Monitor 0 record gaps · 3 touches":
+          - text: Healthy
+          - paragraph: Defensible · Monitor
+          - paragraph: 0 record gaps · 3 touches
+        - cell "Plan annual recalibration Mar 28, 2026":
+          - paragraph: Plan annual recalibration
+          - paragraph: Mar 28, 2026
+        - cell "Mar 15, 2026":
+          - paragraph: Mar 15, 2026
+          - paragraph
+        - cell:
+          - button "Open opportunity details":
+  - paragraph: Showing 1-25 of 61
+  - button "Previous page" [disabled]:
+  - generic: Page 1 / 3
+  - button "Next page":
+  - generic "Pipeline analysisquality, shape, forecast and import coverage Open":
+    - generic: Pipeline analysisquality, shape, forecast and import coverage
+    - generic: Open
+  - region "Commercial threads · [SIMULATED QC UPGRADE] Brand cloud acceptance":
+    - heading "Commercial threads · [SIMULATED QC UPGRADE] Brand cloud acceptance" [level=2]
+    - paragraph: Quietest first
+    - article:
+      - heading "[SIMULATED QC UPGRADE] Catalog link acceptance 2026-10-13" [level=3]
+      - generic: active
+      - paragraph: "[SIMULATED QC UPGRADE] Brand cloud acceptance"
+      - link "Open":
+        - /url: /app/opportunities?opportunityId=5f10e008-7e7c-4b69-bbc3-ffb5ba633634
+        - text: Open
+      - term: "Money:"
+      - definition: No money in play yet
+      - term: "Waiting:"
+      - definition: Nobody is waiting
+      - term: "Quiet for:"
+      - definition: 0 days
+      - term: "Next commitment:"
+      - definition: None — nothing is scheduled to move this
+  - button "Close opportunity details"
+  - dialog "Opportunity details":
+    - paragraph: Edit Lead
+    - heading "[SIMULATED QC UPGRADE] Catalog link acceptance 2026-10-13" [level=2]
+    - paragraph: Created Oct 13, 2026
+    - link "View Account Memory" [active]:
+      - /url: /app/accounts?accountName=%5BSIMULATED%20QC%20UPGRADE%5D%20Brand%20cloud%20acceptance
+    - link "Capture Update":
+      - /url: /app/capture?mode=quick&account=%5BSIMULATED%20QC%20UPGRADE%5D%20Brand%20cloud%20acceptance&opportunity=%5BSIMULATED%20QC%20UPGRADE%5D%20Catalog%20link%20acceptance%202026-10-13&opportunityId=5f10e008-7e7c-4b69-bbc3-ffb5ba633634
+    - button "Close":
+    - paragraph: This is a Lead. Record the contact, need and next step here; qualify it before including it in pipeline, forecast or MEDDIC analysis.
+    - region "Next customer step":
+      - heading "Next customer step" [level=3]
+      - text: Next action
+      - textbox "Next action"
+      - text: Next action date
+      - textbox "Next action date"
+    - generic "Recent changes and history"
+    - heading "Details" [level=3]
+    - paragraph: The record itself, and the full analysis behind it
+    - generic: Account *
+    - textbox "Account *":
+      - /placeholder: Your customer's company
+      - text: "[SIMULATED QC UPGRADE] Brand cloud acceptance"
+    - generic: Lead *
+    - textbox "Lead *": "[SIMULATED QC UPGRADE] Catalog link acceptance 2026-10-13"
+    - text: Stage
+    - combobox "Stage":
+      - option "Lead" [selected]
+      - option "Discovery"
+      - option "Qualification"
+      - option "Technical discussion"
+      - option "Demo"
+      - option "Proposal"
+      - option "Negotiation"
+      - option "Procurement"
+      - option "Won"
+      - option "Lost"
+      - option "On hold"
+    - text: Status
+    - combobox "Status":
+      - option "Active" [selected]
+      - option "Won"
+      - option "Lost"
+      - option "On hold"
+    - text: Estimated value
+    - spinbutton "Estimated value"
+    - text: Currency
+    - combobox "Currency":
+      - option "AED"
+      - option "AUD"
+      - option "CAD"
+      - option "CHF"
+      - option "CNY"
+      - option "EUR"
+      - option "GBP"
+      - option "HKD"
+      - option "IDR"
+      - option "INR"
+      - option "JPY"
+      - option "KRW"
+      - option "MYR"
+      - option "NZD"
+      - option "PHP"
+      - option "SAR"
+      - option "SGD"
+      - option "THB"
+      - option "TWD"
+      - option "USD" [selected]
+      - option "VND"
+      - option "AFN"
+      - option "ALL"
+      - option "AMD"
+      - option "ANG"
+      - option "AOA"
+      - option "ARS"
+      - option "AWG"
+      - option "AZN"
+      - option "BAM"
+      - option "BBD"
+      - option "BDT"
+      - option "BGN"
+      - option "BHD"
+      - option "BIF"
+      - option "BMD"
+      - option "BND"
+      - option "BOB"
+      - option "BRL"
+      - option "BSD"
+      - option "BTN"
+      - option "BWP"
+      - option "BYN"
+      - option "BZD"
+      - option "CDF"
+      - option "CLP"
+      - option "COP"
+      - option "CRC"
+      - option "CUC"
+      - option "CUP"
+      - option "CVE"
+      - option "CZK"
+      - option "DJF"
+      - option "DKK"
+      - option "DOP"
+      - option "DZD"
+      - option "EGP"
+      - option "ERN"
+      - option "ETB"
+      - option "FJD"
+      - option "FKP"
+      - option "GEL"
+      - option "GHS"
+      - option "GIP"
+      - option "GMD"
+      - option "GNF"
+      - option "GTQ"
+      - option "GYD"
+      - option "HNL"
+      - option "HRK"
+      - option "HTG"
+      - option "HUF"
+      - option "ILS"
+      - option "IQD"
+      - option "IRR"
+      - option "ISK"
+      - option "JMD"
+      - option "JOD"
+      - option "KES"
+      - option "KGS"
+      - option "KHR"
+      - option "KMF"
+      - option "KPW"
+      - option "KWD"
+      - option "KYD"
+      - option "KZT"
+      - option "LAK"
+      - option "LBP"
+      - option "LKR"
+      - option "LRD"
+      - option "LSL"
+      - option "LYD"
+      - option "MAD"
+      - option "MDL"
+      - option "MGA"
+      - option "MKD"
+      - option "MMK"
+      - option "MNT"
+      - option "MOP"
+      - option "MRU"
+      - option "MUR"
+      - option "MVR"
+      - option "MWK"
+      - option "MXN"
+      - option "MZN"
+      - option "NAD"
+      - option "NGN"
+      - option "NIO"
+      - option "NOK"
+      - option "NPR"
+      - option "OMR"
+      - option "PAB"
+      - option "PEN"
+      - option "PGK"
+      - option "PKR"
+      - option "PLN"
+      - option "PYG"
+      - option "QAR"
+      - option "RON"
+      - option "RSD"
+      - option "RUB"
+      - option "RWF"
+      - option "SBD"
+      - option "SCR"
+      - option "SDG"
+      - option "SEK"
+      - option "SHP"
+      - option "SLL"
+      - option "SOS"
+      - option "SRD"
+      - option "SSP"
+      - option "STN"
+      - option "SVC"
+      - option "SYP"
+      - option "SZL"
+      - option "TJS"
+      - option "TMT"
+      - option "TND"
+      - option "TOP"
+      - option "TRY"
+      - option "TTD"
+      - option "TZS"
+      - option "UAH"
+      - option "UGX"
+      - option "UYU"
+      - option "UZS"
+      - option "VES"
+      - option "VUV"
+      - option "WST"
+      - option "XAF"
+      - option "XCD"
+      - option "XDR"
+      - option "XOF"
+      - option "XPF"
+      - option "XSU"
+      - option "YER"
+      - option "ZAR"
+      - option "ZMW"
+      - option "ZWL"
+    - text: Expected close date
+    - textbox "Expected close date"
+    - text: Product / solution
+    - textbox "Product / solution":
+      - /placeholder: ""
+    - paragraph:
+      - text: Classifications feed Reports and Dashboards.
+      - link "Classify this record":
+        - /url: /app/products?opportunityId=5f10e008-7e7c-4b69-bbc3-ffb5ba633634
+      - generic: Save any changes before opening classification.
+    - text: Brand / principal
+    - combobox "Brand / principal":
+      - option "No brand yet"
+      - option "[SIM QC R5] CalPro" [selected]
+      - option "[SIM QC R5] Inspectra"
+      - option "Others — enter manually"
+    - paragraph:
+      - text: Choose a catalog Brand or enter a name under Others.
+      - link "Manage Brands":
+        - /url: /app/products
+    - text: Decision maker
+    - textbox "Decision maker":
+      - /placeholder: ""
+    - text: Budget owner
+    - textbox "Budget owner":
+      - /placeholder: ""
+    - text: Procurement path
+    - combobox "Procurement path":
+      - option "Not known yet" [selected]
+      - option "Direct purchase"
+      - option "Quote comparison"
+      - option "Open tender"
+      - option "Framework / existing contract"
+      - option "Through distributor or agent"
+    - text: Technical criteria
+    - textbox "Technical criteria"
+    - text: Evidence
+    - textbox "Evidence"
+    - text: Missing context
+    - textbox "Missing context"
+    - text: Objection debt
+    - textbox "Objection debt"
+    - button "Save Lead":
+      - text: Save Lead
+    - button "Delete":
+      - text: Delete

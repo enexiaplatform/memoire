@@ -1,0 +1,103 @@
+{
+  "capturedAt": "2026-10-13T06:56:36.724Z",
+  "releaseSha": "33bf06b56c7fe9356523e205c61f29d148304abd",
+  "scope": "Post-commit local QA and authenticated fictional QC owner production acceptance; source unchanged after release",
+  "files": [
+    {
+      "file": "40-others-lead-qualified.dom.txt",
+      "sha256": "0f89b620550393d936badbb6e3846fe649e4c0be19c0f7020ad7f01a73ba462f"
+    },
+    {
+      "file": "41-qualified-account-check.dom.txt",
+      "sha256": "04ea7502ce7fec4d793a0d01ad297d04b5b28de49031378cffc20c06b0c514c2"
+    },
+    {
+      "file": "42-preview-verify.dom.txt",
+      "sha256": "ce2951acef7a1ffd30374a01e87d54c12016a8c9b2076912a5a42e3cfb29f3b8"
+    },
+    {
+      "file": "43-preview-signup.dom.txt",
+      "sha256": "916a11c7ac070be3055287e03deca4ebc920767cc5bc926a7e416487044ea1ed"
+    },
+    {
+      "file": "44-production-before-collections.dom.txt",
+      "sha256": "af7318601cc8fd6a68bed0dd632f93d98f98cf00d7bef09d059d08e1a82a7fe1"
+    },
+    {
+      "file": "45-production-after-collections.dom.txt",
+      "sha256": "859a907a23c3f78ddd565b359ccbf872a3e8c2e2c48932c6f04a39411b449294"
+    },
+    {
+      "file": "46-production-catalog-before.dom.txt",
+      "sha256": "f11363aafb863224341f20efd2ff1d6b31b3d3e4125ba353ecbf896c386c5410"
+    },
+    {
+      "file": "47-production-lead-created.dom.txt",
+      "sha256": "999bedc7d20d95bf9cea9fdd92785cd39981a099de62b454ab25f210babf2d66"
+    },
+    {
+      "file": "48-production-lead-reloaded.dom.txt",
+      "sha256": "919fcfad89c4a03e53d9b36e9266e75d1c54814456b2bbad4ab51ada70349ebe"
+    },
+    {
+      "file": "49-production-catalog-after.dom.txt",
+      "sha256": "163a7977b6cc08e67c9837bfdb84e1c69a6c4d49c3ea2364cf5f290b4b0f9b97"
+    },
+    {
+      "file": "50-production-brand-cloud.png",
+      "sha256": "dbd64220a707fcc4ef0050eadcf053fa65b86c0d7040d9290f512c95544ce35d"
+    },
+    {
+      "file": "51-production-brand-report.dom.txt",
+      "sha256": "1d6c545664e6c55d3090134b355f280710c9d1379d09b7f37facee155c74221f"
+    },
+    {
+      "file": "52-production-payment-report.dom.txt",
+      "sha256": "13fe444cfd75b6c029b94a1295dfb04929afee8341a19519095e19d63f1568a6"
+    },
+    {
+      "file": "53-export-parity.json",
+      "sha256": "156cc3951ec291d0ff04a686be940f9893287afc20edbd683858acb9f6cbe501"
+    },
+    {
+      "file": "53-production-payments-report.zip",
+      "sha256": "644134948e64d56df94dfa9a3891d14b44f173d08c484f9933ead36c6e4a55b5"
+    },
+    {
+      "file": "54-master-ci.json",
+      "sha256": "2420464972c78a8dae1d3c7310dccf8540355be607763d7af56181ce5f6ffd81"
+    },
+    {
+      "file": "54-production-health.json",
+      "sha256": "45d5318ca557014e5c95b93c700de5c26df3919bbbbf271f498aaa4a5fc94d74"
+    },
+    {
+      "file": "54-production-today.dom.txt",
+      "sha256": "cf65d290b61780e6939aec7922bb6d6ce352a3c9b52566efc22f7cdd17fa4445"
+    },
+    {
+      "file": "55-production-ask-money.dom.txt",
+      "sha256": "b3aac99f6810e6964aa9bcd5d4ef340cfca76a52dffd531205c179d1d3530b63"
+    },
+    {
+      "file": "56-production-quote-receipt-state.dom.txt",
+      "sha256": "be61c009b60ce4448af4caf78b1423738ec6462bd137e306b381e8dfc4261e18"
+    },
+    {
+      "file": "57-production-mobile-today.dom.txt",
+      "sha256": "316b0c3a3f5f513eb7241bfcf949357428e06e14757f5937b179c75f061bb4e5"
+    },
+    {
+      "file": "57-production-mobile-today.png",
+      "sha256": "5ac890dc4593210c9a5aebc4ca70c014dc0b382e95ae3c4477433b82e3f4b124"
+    },
+    {
+      "file": "58-production-console-errors.json",
+      "sha256": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+    },
+    {
+      "file": "59-production-deployment.json",
+      "sha256": "1af9bff274a7fd1eed119e881ea16b4e188ebdd87f5ac9bf791a33152a51709a"
+    }
+  ]
+}

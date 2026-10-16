@@ -178,14 +178,16 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
     <p role="alert" className="text-sm text-red-700">{loadError || calculationError}</p></PageContainer>;
 
   return (
-    <PageContainer>
+    <PageContainer density="compact">
       <PageHeader
-        tabs={tabs}
-        eyebrow="Money"
+        size="compact"
+        descriptionDisclosure
         title="Collections"
         documentTitle="Money · Collections"
         description="What customers still owe you, when each part fell due, and what has arrived. Orders follows the goods; this follows the money. Yours only — recording a payment here never reaches the customer."
         actions={
+          <>
+          {tabs}
           <button
             type="button"
             onClick={() => void reload()}
@@ -195,6 +197,7 @@ export function CashCollectionPage({ tabs }: { tabs?: ReactNode } = {}) {
           >
             <RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
           </button>
+          </>
         }
           /*
            * No per-page sync chrome.

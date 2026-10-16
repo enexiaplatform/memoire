@@ -1,0 +1,472 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 5 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "5 open": "5"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 5 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: ⌘K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace" [active]:
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Playbook
+  - heading "Personal Sales Playbook" [level=1]
+  - paragraph: Reusable sales patterns from objections, stakeholders, MEDDIC gaps, outcomes, and captured activity. Rule-based only.
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - heading "What worked against objections" [level=2]
+  - paragraph: The highest recorded resolution rate is Competitor (1 of 1 resolved). This is a sample of 1 records; it does not establish reliability.
+  - paragraph: Built from your own resolved objections and deal outcomes. The longer you capture, the sharper this gets.
+  - button "Copy recorded responses":
+    - text: Copy recorded responses
+  - article:
+    - paragraph: Competitor
+    - generic: 1 of 1 resolved
+    - paragraph: Responses with recorded outcomes · inspect the sample
+    - list:
+      - listitem: "- Won the comparison on validation package plus local service coverage; incumbent dropped off the shortlist."
+    - paragraph: "Seen at: Apex Labs"
+  - article:
+    - paragraph: Compliance / validation
+    - generic: 1 of 1 resolved
+    - paragraph: Responses with recorded outcomes · inspect the sample
+    - list:
+      - listitem: "- Shared the full IQ/OQ/PQ validation pack plus two pharma references; QA signed off the same week."
+    - paragraph: "Seen at: Apex Labs"
+  - article:
+    - paragraph: Lead time
+    - generic: 0 of 1 resolved
+    - paragraph: 1 still open. When one resolves, log what worked - it becomes reusable here.
+    - paragraph: "Seen at: Northstar Foods"
+  - article:
+    - paragraph: Local support
+    - generic: 0 of 1 resolved
+    - paragraph: 1 still open. When one resolves, log what worked - it becomes reusable here.
+    - paragraph: "Seen at: Summit Diagnostics"
+  - article:
+    - paragraph: Procurement
+    - generic: 0 of 1 resolved
+    - paragraph: 1 still open. When one resolves, log what worked - it becomes reusable here.
+    - paragraph: "Seen at: Orion Pharma"
+  - heading "Pattern Library" [level=2]
+  - paragraph: Derived from existing Memoire data. No separate knowledge base or manual sync required.
+  - paragraph: Patterns
+  - paragraph: "17"
+  - paragraph: High severity
+  - paragraph: "9"
+  - paragraph: Objections
+  - paragraph: "3"
+  - paragraph: Stakeholder gaps
+  - paragraph: "2"
+  - paragraph: Winning moves
+  - paragraph: "3"
+  - textbox:
+    - /placeholder: Search pattern, account, objection, or playbook response
+  - combobox:
+    - option "All categories" [selected]
+    - option "Objection Pattern"
+    - option "Stakeholder Gap"
+    - option "MEDDIC Gap"
+    - option "Proof Asset Needed"
+    - option "Winning Move"
+    - option "Repeated Mistake"
+    - option "Follow-up Risk"
+    - option "Competitor Risk"
+    - option "Procurement Risk"
+    - option "Documentation / Compliance Pattern"
+  - combobox:
+    - option "All severity" [selected]
+    - option "High"
+    - option "Medium"
+    - option "Low"
+  - paragraph: 17 visible patterns
+  - link "Open Weekly Brief":
+    - /url: /app/reviews
+  - article:
+    - 'button "MEDDIC Gap High 8x Business impact is not measurable enough Without measurable impact, urgency is easy to lose and internal budget defense becomes weak. [SIMULATED R2] Atlas Lab / Round 2 qualification test: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source. Suggested Asset Needed: Competitor Response"':
+      - generic: MEDDIC Gap
+      - generic: High
+      - generic: 8x
+      - heading "Business impact is not measurable enough" [level=2]
+      - paragraph: Without measurable impact, urgency is easy to lose and internal budget defense becomes weak.
+      - paragraph: "[SIMULATED R2] Atlas Lab / Round 2 qualification test: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source."
+      - paragraph: "Suggested Asset Needed: Competitor Response"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Procurement Risk High 7x Procurement path often remains unclear before forecast review Procurement uncertainty makes timing, budget approval, and close period fragile. [SIMULATED R2] Atlas Lab / Round 2 qualification test: procurement or decision process is unclear. Suggested Asset Needed: Procurement Justification"':
+      - generic: Procurement Risk
+      - generic: High
+      - generic: 7x
+      - heading "Procurement path often remains unclear before forecast review" [level=2]
+      - paragraph: Procurement uncertainty makes timing, budget approval, and close period fragile.
+      - paragraph: "[SIMULATED R2] Atlas Lab / Round 2 qualification test: procurement or decision process is unclear."
+      - paragraph: "Suggested Asset Needed: Procurement Justification"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Stakeholder Gap High 6x Champion is not confirmed before review Deals without an internal supporter are harder to defend and easier to stall. [SIMULATED R2] Atlas Lab / Round 2 qualification test: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source. Suggested Asset Needed: Procurement Justification"':
+      - generic: Stakeholder Gap
+      - generic: High
+      - generic: 6x
+      - heading "Champion is not confirmed before review" [level=2]
+      - paragraph: Deals without an internal supporter are harder to defend and easier to stall.
+      - paragraph: "[SIMULATED R2] Atlas Lab / Round 2 qualification test: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source."
+      - paragraph: "Suggested Asset Needed: Procurement Justification"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Documentation / Compliance Pattern High 6x Proof assets needed for validation, compliance, or local support Proof gaps slow technical validation and make pipeline review answers less defensible. Apex Labs / Validation Expansion: proof or compliance appears in deal context. Suggested Asset Needed: Validation / Documentation Note"':
+      - generic: Documentation / Compliance Pattern
+      - generic: High
+      - generic: 6x
+      - heading "Proof assets needed for validation, compliance, or local support" [level=2]
+      - paragraph: Proof gaps slow technical validation and make pipeline review answers less defensible.
+      - paragraph: "Apex Labs / Validation Expansion: proof or compliance appears in deal context."
+      - paragraph: "Suggested Asset Needed: Validation / Documentation Note"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Procurement Risk High 5x Decision process is unclear before proposal Unclear process makes timing, committee ownership, and procurement risk hard to defend. [SIMULATED R2] Atlas Lab / Round 2 qualification test: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source. Suggested Asset Needed: Procurement Justification"':
+      - generic: Procurement Risk
+      - generic: High
+      - generic: 5x
+      - heading "Decision process is unclear before proposal" [level=2]
+      - paragraph: Unclear process makes timing, committee ownership, and procurement risk hard to defend.
+      - paragraph: "[SIMULATED R2] Atlas Lab / Round 2 qualification test: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source."
+      - paragraph: "Suggested Asset Needed: Procurement Justification"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Stakeholder Gap High 5x Economic buyer missing in active opportunities Budget authority gaps create late-stage surprises and hope-based forecasts. [SIMULATED R2] Atlas Lab / Round 2 qualification test: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source. Suggested Asset Needed: Procurement Justification"':
+      - generic: Stakeholder Gap
+      - generic: High
+      - generic: 5x
+      - heading "Economic buyer missing in active opportunities" [level=2]
+      - paragraph: Budget authority gaps create late-stage surprises and hope-based forecasts.
+      - paragraph: "[SIMULATED R2] Atlas Lab / Round 2 qualification test: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source."
+      - paragraph: "Suggested Asset Needed: Procurement Justification"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Competitor Risk High 4x Competitor risk appears without a reusable response plan Competitor presence weakens forecast confidence unless differentiation and proof are explicit. Apex Labs: Incumbent Vendor Suggested Asset Needed: Competitor Response"':
+      - generic: Competitor Risk
+      - generic: High
+      - generic: 4x
+      - heading "Competitor risk appears without a reusable response plan" [level=2]
+      - paragraph: Competitor presence weakens forecast confidence unless differentiation and proof are explicit.
+      - paragraph: "Apex Labs: Incumbent Vendor"
+      - paragraph: "Suggested Asset Needed: Competitor Response"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Objection Pattern High 1x Procurement objection needs a response These are unresolved objections. Resolved history remains available for learning in the Library; this list identifies current response work. Orion Pharma / Procurement review: Tender timeline and decision committee are still unclear. Suggested Asset Needed: Procurement Justification"':
+      - generic: Objection Pattern
+      - generic: High
+      - generic: 1x
+      - heading "Procurement objection needs a response" [level=2]
+      - paragraph: These are unresolved objections. Resolved history remains available for learning in the Library; this list identifies current response work.
+      - paragraph: "Orion Pharma / Procurement review: Tender timeline and decision committee are still unclear."
+      - paragraph: "Suggested Asset Needed: Procurement Justification"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Repeated Mistake High 1x Some defended deals later slipped or lost 1 deal marked Defend/Defensible later became lost, delayed, or no-decision. Lost on Sep 11, 2026 for Apex Labs / Spare parts annual contract: Price. final amount not captured. Suggested Asset Needed: Proof Asset"':
+      - generic: Repeated Mistake
+      - generic: High
+      - generic: 1x
+      - heading "Some defended deals later slipped or lost" [level=2]
+      - paragraph: 1 deal marked Defend/Defensible later became lost, delayed, or no-decision.
+      - paragraph: "Lost on Sep 11, 2026 for Apex Labs / Spare parts annual contract: Price. final amount not captured."
+      - paragraph: "Suggested Asset Needed: Proof Asset"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "MEDDIC Gap Medium 4x Technical decision criteria are not captured Vendor comparison becomes subjective when criteria are not explicit. [SIMULATED R2] Atlas Lab / Round 2 qualification test: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source. Suggested Asset Needed: Discovery Question Set"':
+      - generic: MEDDIC Gap
+      - generic: Medium
+      - generic: 4x
+      - heading "Technical decision criteria are not captured" [level=2]
+      - paragraph: Vendor comparison becomes subjective when criteria are not explicit.
+      - paragraph: "[SIMULATED R2] Atlas Lab / Round 2 qualification test: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source."
+      - paragraph: "Suggested Asset Needed: Discovery Question Set"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Follow-up Risk Medium 2x Follow-up risk appears in stale or missing next actions Stale or missing follow-up lets active deals go quiet before the next review. Harbor Diagnostics / New microbiology lab: No next action captured Suggested Asset Needed: Follow-up Script"':
+      - generic: Follow-up Risk
+      - generic: Medium
+      - generic: 2x
+      - heading "Follow-up risk appears in stale or missing next actions" [level=2]
+      - paragraph: Stale or missing follow-up lets active deals go quiet before the next review.
+      - paragraph: "Harbor Diagnostics / New microbiology lab: No next action captured"
+      - paragraph: "Suggested Asset Needed: Follow-up Script"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Winning Move Medium 2x Several wins were at procurement when they closed 2 won deals had pre-outcome stage procurement. Won on Aug 27, 2026 for Northstar Foods / Water lab starter package: Technical fit — Method validation matched their lab workflow out of the box.. 260,000,000 VND · 10,000 USD. Suggested Asset Needed: Procurement Justification"':
+      - generic: Winning Move
+      - generic: Medium
+      - generic: 2x
+      - heading "Several wins were at procurement when they closed" [level=2]
+      - paragraph: 2 won deals had pre-outcome stage procurement.
+      - paragraph: "Won on Aug 27, 2026 for Northstar Foods / Water lab starter package: Technical fit — Method validation matched their lab workflow out of the box.. 260,000,000 VND · 10,000 USD."
+      - paragraph: "Suggested Asset Needed: Procurement Justification"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Winning Move Medium 2x technical fit was written down on deals you won technical fit showed up in 2 won deals. Won on Aug 27, 2026 for Northstar Foods / Water lab starter package: Technical fit — Method validation matched their lab workflow out of the box.. 260,000,000 VND · 10,000 USD. Suggested Asset Needed: Case Study"':
+      - generic: Winning Move
+      - generic: Medium
+      - generic: 2x
+      - heading "technical fit was written down on deals you won" [level=2]
+      - paragraph: technical fit showed up in 2 won deals.
+      - paragraph: "Won on Aug 27, 2026 for Northstar Foods / Water lab starter package: Technical fit — Method validation matched their lab workflow out of the box.. 260,000,000 VND · 10,000 USD."
+      - paragraph: "Suggested Asset Needed: Case Study"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Repeated Mistake Medium 1x Completed actions often have unclear outcomes A completed action is not useful unless the customer response changes the deal truth. Northstar Foods / Lab workflow: Prepare proof for lead time objection Suggested Asset Needed: Proof Asset"':
+      - generic: Repeated Mistake
+      - generic: Medium
+      - generic: 1x
+      - heading "Completed actions often have unclear outcomes" [level=2]
+      - paragraph: A completed action is not useful unless the customer response changes the deal truth.
+      - paragraph: "Northstar Foods / Lab workflow: Prepare proof for lead time objection"
+      - paragraph: "Suggested Asset Needed: Proof Asset"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Objection Pattern Low 1x Lead time objection needs a response These are unresolved objections. Resolved history remains available for learning in the Library; this list identifies current response work. Northstar Foods / Lab workflow: Customer is concerned implementation lead time may not meet project timing. Suggested Asset Needed: Objection Response"':
+      - generic: Objection Pattern
+      - generic: Low
+      - generic: 1x
+      - heading "Lead time objection needs a response" [level=2]
+      - paragraph: These are unresolved objections. Resolved history remains available for learning in the Library; this list identifies current response work.
+      - paragraph: "Northstar Foods / Lab workflow: Customer is concerned implementation lead time may not meet project timing."
+      - paragraph: "Suggested Asset Needed: Objection Response"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Objection Pattern Low 1x Local support objection needs a response These are unresolved objections. Resolved history remains available for learning in the Library; this list identifies current response work. Summit Diagnostics / QC workflow: Local support confidence is not established for the QC workflow. Suggested Asset Needed: Objection Response"':
+      - generic: Objection Pattern
+      - generic: Low
+      - generic: 1x
+      - heading "Local support objection needs a response" [level=2]
+      - paragraph: These are unresolved objections. Resolved history remains available for learning in the Library; this list identifies current response work.
+      - paragraph: "Summit Diagnostics / QC workflow: Local support confidence is not established for the QC workflow."
+      - paragraph: "Suggested Asset Needed: Objection Response"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - article:
+    - 'button "Winning Move Low 1x MEDDIC Gap actions are improving deals Actions with positive outcomes should become repeatable habits instead of one-off fixes. Apex Labs / Validation Expansion: Confirm economic buyer for Validation Expansion - Dr. Avery confirmed budget approval and CFO office is aligned for next-quarter procurement. Suggested Asset Needed: Case Study"':
+      - generic: Winning Move
+      - generic: Low
+      - generic: 1x
+      - heading "MEDDIC Gap actions are improving deals" [level=2]
+      - paragraph: Actions with positive outcomes should become repeatable habits instead of one-off fixes.
+      - paragraph: "Apex Labs / Validation Expansion: Confirm economic buyer for Validation Expansion - Dr. Avery confirmed budget approval and CFO office is aligned for next-quarter procurement."
+      - paragraph: "Suggested Asset Needed: Case Study"
+    - button "Copy Response":
+      - text: Copy Response
+    - button "Copy Summary":
+      - text: Copy Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft
+  - complementary:
+    - generic: MEDDIC Gap
+    - generic: High
+    - generic: 8x
+    - heading "Business impact is not measurable enough" [level=2]
+    - paragraph: Evidence
+    - list:
+      - listitem: "- [SIMULATED R2] Atlas Lab / Round 2 qualification test: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source."
+      - listitem: "- Apex Labs / Validation Expansion: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source."
+      - listitem: "- Apex Labs / Validated decontamination service renewal: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source."
+      - listitem: "- Northstar Foods / Lab workflow: Customer impact needs a quantified baseline or target; deal value does not establish it.; Record who confirmed the measurable customer impact and its source."
+    - paragraph: Why it matters
+    - list:
+      - listitem: "- Without measurable impact, urgency is easy to lose and internal budget defense becomes weak."
+    - paragraph: Suggested response
+    - list:
+      - listitem: "- Connect the project to cost, compliance risk, throughput, downtime, or decision deadline."
+    - paragraph: Reusable action
+    - list:
+      - listitem: "- Ask: what happens if the customer does not solve this issue this quarter?"
+    - paragraph: Suggested asset needed
+    - list:
+      - listitem: "- Competitor Response: Competitor response note"
+    - paragraph: Accounts
+    - list:
+      - listitem: "- [SIMULATED R2] Atlas Lab"
+      - listitem: "- Apex Labs"
+      - listitem: "- Northstar Foods"
+      - listitem: "- Orion Pharma"
+      - listitem: "- Delta Nutrition"
+      - listitem: "- Harbor Diagnostics"
+      - listitem: "- Riverside Foods"
+    - paragraph: Opportunities
+    - list:
+      - listitem: "- Round 2 qualification test"
+      - listitem: "- Validation Expansion"
+      - listitem: "- Validated decontamination service renewal"
+      - listitem: "- Lab workflow"
+      - listitem: "- Procurement review"
+      - listitem: "- Second QC line"
+      - listitem: "- New microbiology lab"
+      - listitem: "- Allergen testing"
+    - button "Copy Playbook Response":
+      - text: Copy Playbook Response
+    - button "Copy Reusable Action":
+      - text: Copy Reusable Action
+    - button "Copy Pattern Summary":
+      - text: Copy Pattern Summary
+    - button "Create Asset Draft":
+      - text: Create Asset Draft
+    - button "Copy Asset Draft":
+      - text: Copy Asset Draft

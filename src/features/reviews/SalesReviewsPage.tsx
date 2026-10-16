@@ -129,8 +129,10 @@ export function SalesReviewsPage() {
   };
 
   return (
-    <PageContainer>
+    <PageContainer density="compact">
       <PageHeader
+        size="compact"
+        descriptionDisclosure
         title="Review"
         description="Close the week: what moved, what slipped, what went quiet, where money is stuck - and what you commit to next."
         actions={

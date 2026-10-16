@@ -350,7 +350,7 @@ for (const marker of [
   'billing API blocks checkout when flag is not enabled',
   'pricing page quotes the real personal price and keeps checkout disconnected',
   'landing page quotes the real personal price and keeps checkout out of the marketing bundle',
-  'landing page makes no AI capability claim',
+  'landing page describes optional AI with explicit sharing',
 ]) {
   requireIncludes(commercialVerifier, marker, `commercial verifier missing checkout exposure marker: ${marker}`);
 }

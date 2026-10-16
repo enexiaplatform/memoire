@@ -16,6 +16,7 @@ import { useAuth } from '../../hooks/useAuth';
 import { PageContainer } from './PageFrame';
 import { RouteErrorBoundary } from '../common/RouteErrorBoundary';
 import { TopBarProvider } from './TopBarSlot';
+import { MemoireChat } from '../../features/aiChat/MemoireChat';
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -141,6 +142,7 @@ export function AppShell() {
         </div>
       </main>
       <MobileTabBar onOpenMenu={() => setMobileNavOpen(true)} menuOpen={mobileNavOpen} />
+      <MemoireChat key={user?.id || 'local'} />
       {/* Guidance rides the shell rather than a page, because the whole point is
           that it survives walking from Today to Capture to do the thing it just
           asked for. It renders nothing on a workspace that is past it. */}

@@ -1,0 +1,1489 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities":
+    - /url: /app/opportunities
+    - text: Opportunities
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: "[Q"
+  - generic "[SIMULATED QC R5] Orion Calibration Partners"
+  - generic: Personal workspace
+  - button "Account and settings for [SIMULATED QC R5] Orion Calibration Partners":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic "Pipeline records, review packs, assets, and action outcomes sync to your account. Lightweight setup preferences may remain in this browser. Cloud records are available across devices. Browser preferences may reset when browser data is cleared.":
+    - generic: Cloud + browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace" [active]:
+  - paragraph: Quotes
+  - heading "Quotes" [level=1]
+  - generic: Track expiry, PO, delivery, payment, and the next commercial action.
+  - button "Create quote":
+    - text: Create quote
+  - generic "Pipeline records, review packs, assets, and action outcomes sync to your account. Lightweight setup preferences may remain in this browser. Cloud records are available across devices. Browser preferences may reset when browser data is cleared.":
+    - generic: Cloud + browser
+  - paragraph: Sent quotes
+  - paragraph: "0"
+  - paragraph: Expiring soon
+  - paragraph: "0"
+  - paragraph: Pending PO
+  - paragraph: "1"
+  - paragraph: Accepted value
+  - paragraph: 435,884.62 USD
+  - textbox:
+    - /placeholder: Search quote, account, action...
+  - combobox "Filter quotes by status":
+    - option "All" [selected]
+    - option "Draft"
+    - option "Sent"
+    - option "Revised"
+    - option "Accepted"
+    - option "Rejected"
+    - option "Expired"
+  - link "Open pipeline":
+    - /url: /app/opportunities
+  - heading "Quote list" [level=2]
+  - paragraph: 73 quotes after filters
+  - table:
+    - rowgroup:
+      - row "Quote Account Opportunity Amount Status Valid until Next action Open":
+        - columnheader "Quote"
+        - columnheader "Account"
+        - columnheader "Opportunity"
+        - columnheader "Amount"
+        - columnheader "Status"
+        - columnheader "Valid until"
+        - columnheader "Next action"
+        - columnheader "Open"
+    - rowgroup:
+      - row "[SIM QC R5] Calibration equipment ACC-2026-09-2-R2 [SIM QC R5] US Precision Lab 11 [SIM QC R5] 2026-09 Calibration station 2 16,500 EUR Accepted Payment due Payment overdue Sep 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-09-2-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-09-2-R2
+        - cell "[SIM QC R5] US Precision Lab 11"
+        - cell "[SIM QC R5] 2026-09 Calibration station 2"
+        - cell "16,500 EUR"
+        - cell "Accepted Payment due Payment overdue":
+          - generic: Accepted
+          - generic: Payment due
+          - generic: Payment overdue
+        - cell "Sep 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-08-2-R2 [SIM QC R5] US Precision Lab 08 [SIM QC R5] 2026-08 Calibration station 2 15,750 EUR Accepted Payment due Payment overdue Aug 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-08-2-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-08-2-R2
+        - cell "[SIM QC R5] US Precision Lab 08"
+        - cell "[SIM QC R5] 2026-08 Calibration station 2"
+        - cell "15,750 EUR"
+        - cell "Accepted Payment due Payment overdue":
+          - generic: Accepted
+          - generic: Payment due
+          - generic: Payment overdue
+        - cell "Aug 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-07-2-R2 [SIM QC R5] US Precision Lab 05 [SIM QC R5] 2026-07 Calibration station 2 15,000 EUR Accepted Payment due Payment overdue Jul 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-07-2-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-07-2-R2
+        - cell "[SIM QC R5] US Precision Lab 05"
+        - cell "[SIM QC R5] 2026-07 Calibration station 2"
+        - cell "15,000 EUR"
+        - cell "Accepted Payment due Payment overdue":
+          - generic: Accepted
+          - generic: Payment due
+          - generic: Payment overdue
+        - cell "Jul 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-06-2-R2 [SIM QC R5] US Precision Lab 02 [SIM QC R5] 2026-06 Calibration station 2 14,250 EUR Accepted Payment due Payment overdue Jun 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-06-2-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-06-2-R2
+        - cell "[SIM QC R5] US Precision Lab 02"
+        - cell "[SIM QC R5] 2026-06 Calibration station 2"
+        - cell "14,250 EUR"
+        - cell "Accepted Payment due Payment overdue":
+          - generic: Accepted
+          - generic: Payment due
+          - generic: Payment overdue
+        - cell "Jun 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-05-2-R2 [SIM QC R5] US Precision Lab 11 [SIM QC R5] 2026-05 Calibration station 2 13,500 EUR Accepted Payment due Payment overdue May 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-05-2-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-05-2-R2
+        - cell "[SIM QC R5] US Precision Lab 11"
+        - cell "[SIM QC R5] 2026-05 Calibration station 2"
+        - cell "13,500 EUR"
+        - cell "Accepted Payment due Payment overdue":
+          - generic: Accepted
+          - generic: Payment due
+          - generic: Payment overdue
+        - cell "May 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-04-2-R2 [SIM QC R5] US Precision Lab 08 [SIM QC R5] 2026-04 Calibration station 2 12,750 EUR Accepted Payment due Payment overdue Apr 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-04-2-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-04-2-R2
+        - cell "[SIM QC R5] US Precision Lab 08"
+        - cell "[SIM QC R5] 2026-04 Calibration station 2"
+        - cell "12,750 EUR"
+        - cell "Accepted Payment due Payment overdue":
+          - generic: Accepted
+          - generic: Payment due
+          - generic: Payment overdue
+        - cell "Apr 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-03-2-R2 [SIM QC R5] US Precision Lab 05 [SIM QC R5] 2026-03 Calibration station 2 12,000 EUR Accepted Payment due Payment overdue Mar 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-03-2-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-03-2-R2
+        - cell "[SIM QC R5] US Precision Lab 05"
+        - cell "[SIM QC R5] 2026-03 Calibration station 2"
+        - cell "12,000 EUR"
+        - cell "Accepted Payment due Payment overdue":
+          - generic: Accepted
+          - generic: Payment due
+          - generic: Payment overdue
+        - cell "Mar 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-02-2-R2 [SIM QC R5] US Precision Lab 02 [SIM QC R5] 2026-02 Calibration station 2 11,250 EUR Accepted Payment due Payment overdue Feb 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-02-2-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-02-2-R2
+        - cell "[SIM QC R5] US Precision Lab 02"
+        - cell "[SIM QC R5] 2026-02 Calibration station 2"
+        - cell "11,250 EUR"
+        - cell "Accepted Payment due Payment overdue":
+          - generic: Accepted
+          - generic: Payment due
+          - generic: Payment overdue
+        - cell "Feb 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-01-2-R2 [SIM QC R5] US Precision Lab 11 [SIM QC R5] 2026-01 Calibration station 2 10,500 EUR Accepted Payment due Payment overdue Jan 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-01-2-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-01-2-R2
+        - cell "[SIM QC R5] US Precision Lab 11"
+        - cell "[SIM QC R5] 2026-01 Calibration station 2"
+        - cell "10,500 EUR"
+        - cell "Accepted Payment due Payment overdue":
+          - generic: Accepted
+          - generic: Payment due
+          - generic: Payment overdue
+        - cell "Jan 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-12-2-R2 [SIM QC R5] US Precision Lab 08 [SIM QC R5] 2025-12 Calibration station 2 9,750 EUR Accepted Payment due Payment overdue Dec 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-12-2-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-12-2-R2
+        - cell "[SIM QC R5] US Precision Lab 08"
+        - cell "[SIM QC R5] 2025-12 Calibration station 2"
+        - cell "9,750 EUR"
+        - cell "Accepted Payment due Payment overdue":
+          - generic: Accepted
+          - generic: Payment due
+          - generic: Payment overdue
+        - cell "Dec 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-11-2-R2 [SIM QC R5] US Precision Lab 05 [SIM QC R5] 2025-11 Calibration station 2 9,000 EUR Accepted Payment due Payment overdue Nov 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-11-2-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-11-2-R2
+        - cell "[SIM QC R5] US Precision Lab 05"
+        - cell "[SIM QC R5] 2025-11 Calibration station 2"
+        - cell "9,000 EUR"
+        - cell "Accepted Payment due Payment overdue":
+          - generic: Accepted
+          - generic: Payment due
+          - generic: Payment overdue
+        - cell "Nov 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-10-2-R2 [SIM QC R5] US Precision Lab 02 [SIM QC R5] 2025-10 Calibration station 2 8,250 EUR Accepted Payment due Payment overdue Oct 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-10-2-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-10-2-R2
+        - cell "[SIM QC R5] US Precision Lab 02"
+        - cell "[SIM QC R5] 2025-10 Calibration station 2"
+        - cell "8,250 EUR"
+        - cell "Accepted Payment due Payment overdue":
+          - generic: Accepted
+          - generic: Payment due
+          - generic: Payment overdue
+        - cell "Oct 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] UK annual renewal revision 2 SIM-R5-UK-Q1 [SIM QC R5] UK Metrology Buyer [SIM QC R5] UK annual service renewal 2,500 USD Accepted Paid PO follow-up Oct 31, 2026 [SIM QC R5] Confirm PO and service delivery date":
+        - cell "[SIM QC R5] UK annual renewal revision 2 SIM-R5-UK-Q1":
+          - paragraph: "[SIM QC R5] UK annual renewal revision 2"
+          - paragraph: SIM-R5-UK-Q1
+        - cell "[SIM QC R5] UK Metrology Buyer"
+        - cell "[SIM QC R5] UK annual service renewal"
+        - cell "2,500 USD"
+        - cell "Accepted Paid PO follow-up":
+          - generic: Accepted
+          - generic: Paid
+          - generic: PO follow-up
+        - cell "Oct 31, 2026"
+        - cell "[SIM QC R5] Confirm PO and service delivery date":
+          - paragraph: "[SIM QC R5] Confirm PO and service delivery date"
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-09-2-R1 [SIM QC R5] US Precision Lab 11 [SIM QC R5] 2026-09 Calibration station 2 17,100 EUR Rejected Sep 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-09-2-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-09-2-R1
+        - cell "[SIM QC R5] US Precision Lab 11"
+        - cell "[SIM QC R5] 2026-09 Calibration station 2"
+        - cell "17,100 EUR"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Sep 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-09-3-R1 [SIM QC R5] APAC Precision Lab 12 [SIM QC R5] 2026-09 Calibration station 3 17,350 SGD Rejected Sep 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-09-3-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-09-3-R1
+        - cell "[SIM QC R5] APAC Precision Lab 12"
+        - cell "[SIM QC R5] 2026-09 Calibration station 3"
+        - cell "17,350 SGD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Sep 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-09-3-R2 [SIM QC R5] APAC Precision Lab 12 [SIM QC R5] 2026-09 Calibration station 3 16,750 SGD Accepted Paid Sep 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-09-3-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-09-3-R2
+        - cell "[SIM QC R5] APAC Precision Lab 12"
+        - cell "[SIM QC R5] 2026-09 Calibration station 3"
+        - cell "16,750 SGD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Sep 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-09-1-R1 [SIM QC R5] EU Precision Lab 10 [SIM QC R5] 2026-09 Calibration station 1 16,850 USD Rejected Sep 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-09-1-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-09-1-R1
+        - cell "[SIM QC R5] EU Precision Lab 10"
+        - cell "[SIM QC R5] 2026-09 Calibration station 1"
+        - cell "16,850 USD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Sep 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-09-1-R2 [SIM QC R5] EU Precision Lab 10 [SIM QC R5] 2026-09 Calibration station 1 16,250 USD Accepted Paid Sep 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-09-1-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-09-1-R2
+        - cell "[SIM QC R5] EU Precision Lab 10"
+        - cell "[SIM QC R5] 2026-09 Calibration station 1"
+        - cell "16,250 USD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Sep 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-08-3-R2 [SIM QC R5] APAC Precision Lab 09 [SIM QC R5] 2026-08 Calibration station 3 16,000 SGD Accepted Paid Aug 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-08-3-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-08-3-R2
+        - cell "[SIM QC R5] APAC Precision Lab 09"
+        - cell "[SIM QC R5] 2026-08 Calibration station 3"
+        - cell "16,000 SGD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Aug 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-08-3-R1 [SIM QC R5] APAC Precision Lab 09 [SIM QC R5] 2026-08 Calibration station 3 16,600 SGD Rejected Aug 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-08-3-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-08-3-R1
+        - cell "[SIM QC R5] APAC Precision Lab 09"
+        - cell "[SIM QC R5] 2026-08 Calibration station 3"
+        - cell "16,600 SGD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Aug 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-08-1-R2 [SIM QC R5] EU Precision Lab 07 [SIM QC R5] 2026-08 Calibration station 1 15,500 USD Accepted Paid Aug 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-08-1-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-08-1-R2
+        - cell "[SIM QC R5] EU Precision Lab 07"
+        - cell "[SIM QC R5] 2026-08 Calibration station 1"
+        - cell "15,500 USD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Aug 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-08-2-R1 [SIM QC R5] US Precision Lab 08 [SIM QC R5] 2026-08 Calibration station 2 16,350 EUR Rejected Aug 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-08-2-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-08-2-R1
+        - cell "[SIM QC R5] US Precision Lab 08"
+        - cell "[SIM QC R5] 2026-08 Calibration station 2"
+        - cell "16,350 EUR"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Aug 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-08-1-R1 [SIM QC R5] EU Precision Lab 07 [SIM QC R5] 2026-08 Calibration station 1 16,100 USD Rejected Aug 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-08-1-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-08-1-R1
+        - cell "[SIM QC R5] EU Precision Lab 07"
+        - cell "[SIM QC R5] 2026-08 Calibration station 1"
+        - cell "16,100 USD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Aug 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-07-3-R1 [SIM QC R5] APAC Precision Lab 06 [SIM QC R5] 2026-07 Calibration station 3 15,850 SGD Rejected Jul 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-07-3-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-07-3-R1
+        - cell "[SIM QC R5] APAC Precision Lab 06"
+        - cell "[SIM QC R5] 2026-07 Calibration station 3"
+        - cell "15,850 SGD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Jul 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-07-3-R2 [SIM QC R5] APAC Precision Lab 06 [SIM QC R5] 2026-07 Calibration station 3 15,250 SGD Accepted Paid Jul 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-07-3-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-07-3-R2
+        - cell "[SIM QC R5] APAC Precision Lab 06"
+        - cell "[SIM QC R5] 2026-07 Calibration station 3"
+        - cell "15,250 SGD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Jul 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-07-2-R1 [SIM QC R5] US Precision Lab 05 [SIM QC R5] 2026-07 Calibration station 2 15,600 EUR Rejected Jul 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-07-2-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-07-2-R1
+        - cell "[SIM QC R5] US Precision Lab 05"
+        - cell "[SIM QC R5] 2026-07 Calibration station 2"
+        - cell "15,600 EUR"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Jul 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-07-1-R1 [SIM QC R5] EU Precision Lab 04 [SIM QC R5] 2026-07 Calibration station 1 15,350 USD Rejected Jul 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-07-1-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-07-1-R1
+        - cell "[SIM QC R5] EU Precision Lab 04"
+        - cell "[SIM QC R5] 2026-07 Calibration station 1"
+        - cell "15,350 USD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Jul 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-07-1-R2 [SIM QC R5] EU Precision Lab 04 [SIM QC R5] 2026-07 Calibration station 1 14,750 USD Accepted Paid Jul 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-07-1-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-07-1-R2
+        - cell "[SIM QC R5] EU Precision Lab 04"
+        - cell "[SIM QC R5] 2026-07 Calibration station 1"
+        - cell "14,750 USD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Jul 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-06-1-R2 [SIM QC R5] EU Precision Lab 01 [SIM QC R5] 2026-06 Calibration station 1 14,000 USD Accepted Paid Jun 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-06-1-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-06-1-R2
+        - cell "[SIM QC R5] EU Precision Lab 01"
+        - cell "[SIM QC R5] 2026-06 Calibration station 1"
+        - cell "14,000 USD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Jun 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-06-3-R2 [SIM QC R5] APAC Precision Lab 03 [SIM QC R5] 2026-06 Calibration station 3 14,500 SGD Accepted Paid Jun 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-06-3-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-06-3-R2
+        - cell "[SIM QC R5] APAC Precision Lab 03"
+        - cell "[SIM QC R5] 2026-06 Calibration station 3"
+        - cell "14,500 SGD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Jun 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-06-1-R1 [SIM QC R5] EU Precision Lab 01 [SIM QC R5] 2026-06 Calibration station 1 14,600 USD Rejected Jun 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-06-1-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-06-1-R1
+        - cell "[SIM QC R5] EU Precision Lab 01"
+        - cell "[SIM QC R5] 2026-06 Calibration station 1"
+        - cell "14,600 USD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Jun 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-06-2-R1 [SIM QC R5] US Precision Lab 02 [SIM QC R5] 2026-06 Calibration station 2 14,850 EUR Rejected Jun 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-06-2-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-06-2-R1
+        - cell "[SIM QC R5] US Precision Lab 02"
+        - cell "[SIM QC R5] 2026-06 Calibration station 2"
+        - cell "14,850 EUR"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Jun 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-06-3-R1 [SIM QC R5] APAC Precision Lab 03 [SIM QC R5] 2026-06 Calibration station 3 15,100 SGD Rejected Jun 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-06-3-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-06-3-R1
+        - cell "[SIM QC R5] APAC Precision Lab 03"
+        - cell "[SIM QC R5] 2026-06 Calibration station 3"
+        - cell "15,100 SGD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Jun 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-05-3-R1 [SIM QC R5] APAC Precision Lab 12 [SIM QC R5] 2026-05 Calibration station 3 14,350 SGD Rejected May 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-05-3-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-05-3-R1
+        - cell "[SIM QC R5] APAC Precision Lab 12"
+        - cell "[SIM QC R5] 2026-05 Calibration station 3"
+        - cell "14,350 SGD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "May 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-05-3-R2 [SIM QC R5] APAC Precision Lab 12 [SIM QC R5] 2026-05 Calibration station 3 13,750 SGD Accepted Paid May 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-05-3-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-05-3-R2
+        - cell "[SIM QC R5] APAC Precision Lab 12"
+        - cell "[SIM QC R5] 2026-05 Calibration station 3"
+        - cell "13,750 SGD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "May 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-05-1-R1 [SIM QC R5] EU Precision Lab 10 [SIM QC R5] 2026-05 Calibration station 1 13,850 USD Rejected May 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-05-1-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-05-1-R1
+        - cell "[SIM QC R5] EU Precision Lab 10"
+        - cell "[SIM QC R5] 2026-05 Calibration station 1"
+        - cell "13,850 USD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "May 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-05-2-R1 [SIM QC R5] US Precision Lab 11 [SIM QC R5] 2026-05 Calibration station 2 14,100 EUR Rejected May 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-05-2-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-05-2-R1
+        - cell "[SIM QC R5] US Precision Lab 11"
+        - cell "[SIM QC R5] 2026-05 Calibration station 2"
+        - cell "14,100 EUR"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "May 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-05-1-R2 [SIM QC R5] EU Precision Lab 10 [SIM QC R5] 2026-05 Calibration station 1 13,250 USD Accepted Paid May 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-05-1-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-05-1-R2
+        - cell "[SIM QC R5] EU Precision Lab 10"
+        - cell "[SIM QC R5] 2026-05 Calibration station 1"
+        - cell "13,250 USD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "May 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-04-3-R1 [SIM QC R5] APAC Precision Lab 09 [SIM QC R5] 2026-04 Calibration station 3 13,600 SGD Rejected Apr 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-04-3-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-04-3-R1
+        - cell "[SIM QC R5] APAC Precision Lab 09"
+        - cell "[SIM QC R5] 2026-04 Calibration station 3"
+        - cell "13,600 SGD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Apr 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-04-1-R1 [SIM QC R5] EU Precision Lab 07 [SIM QC R5] 2026-04 Calibration station 1 13,100 USD Rejected Apr 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-04-1-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-04-1-R1
+        - cell "[SIM QC R5] EU Precision Lab 07"
+        - cell "[SIM QC R5] 2026-04 Calibration station 1"
+        - cell "13,100 USD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Apr 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-04-2-R1 [SIM QC R5] US Precision Lab 08 [SIM QC R5] 2026-04 Calibration station 2 13,350 EUR Rejected Apr 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-04-2-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-04-2-R1
+        - cell "[SIM QC R5] US Precision Lab 08"
+        - cell "[SIM QC R5] 2026-04 Calibration station 2"
+        - cell "13,350 EUR"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Apr 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-04-3-R2 [SIM QC R5] APAC Precision Lab 09 [SIM QC R5] 2026-04 Calibration station 3 13,000 SGD Accepted Paid Apr 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-04-3-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-04-3-R2
+        - cell "[SIM QC R5] APAC Precision Lab 09"
+        - cell "[SIM QC R5] 2026-04 Calibration station 3"
+        - cell "13,000 SGD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Apr 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-04-1-R2 [SIM QC R5] EU Precision Lab 07 [SIM QC R5] 2026-04 Calibration station 1 12,500 USD Accepted Paid Apr 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-04-1-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-04-1-R2
+        - cell "[SIM QC R5] EU Precision Lab 07"
+        - cell "[SIM QC R5] 2026-04 Calibration station 1"
+        - cell "12,500 USD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Apr 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-03-3-R2 [SIM QC R5] APAC Precision Lab 06 [SIM QC R5] 2026-03 Calibration station 3 12,250 SGD Accepted Paid Mar 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-03-3-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-03-3-R2
+        - cell "[SIM QC R5] APAC Precision Lab 06"
+        - cell "[SIM QC R5] 2026-03 Calibration station 3"
+        - cell "12,250 SGD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Mar 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-03-1-R2 [SIM QC R5] EU Precision Lab 04 [SIM QC R5] 2026-03 Calibration station 1 11,750 USD Accepted Paid Mar 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-03-1-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-03-1-R2
+        - cell "[SIM QC R5] EU Precision Lab 04"
+        - cell "[SIM QC R5] 2026-03 Calibration station 1"
+        - cell "11,750 USD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Mar 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-03-3-R1 [SIM QC R5] APAC Precision Lab 06 [SIM QC R5] 2026-03 Calibration station 3 12,850 SGD Rejected Mar 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-03-3-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-03-3-R1
+        - cell "[SIM QC R5] APAC Precision Lab 06"
+        - cell "[SIM QC R5] 2026-03 Calibration station 3"
+        - cell "12,850 SGD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Mar 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-03-2-R1 [SIM QC R5] US Precision Lab 05 [SIM QC R5] 2026-03 Calibration station 2 12,600 EUR Rejected Mar 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-03-2-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-03-2-R1
+        - cell "[SIM QC R5] US Precision Lab 05"
+        - cell "[SIM QC R5] 2026-03 Calibration station 2"
+        - cell "12,600 EUR"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Mar 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-03-1-R1 [SIM QC R5] EU Precision Lab 04 [SIM QC R5] 2026-03 Calibration station 1 12,350 USD Rejected Mar 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-03-1-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-03-1-R1
+        - cell "[SIM QC R5] EU Precision Lab 04"
+        - cell "[SIM QC R5] 2026-03 Calibration station 1"
+        - cell "12,350 USD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Mar 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-02-2-R1 [SIM QC R5] US Precision Lab 02 [SIM QC R5] 2026-02 Calibration station 2 11,850 EUR Rejected Feb 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-02-2-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-02-2-R1
+        - cell "[SIM QC R5] US Precision Lab 02"
+        - cell "[SIM QC R5] 2026-02 Calibration station 2"
+        - cell "11,850 EUR"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Feb 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-02-1-R2 [SIM QC R5] EU Precision Lab 01 [SIM QC R5] 2026-02 Calibration station 1 11,000 USD Accepted Paid Feb 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-02-1-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-02-1-R2
+        - cell "[SIM QC R5] EU Precision Lab 01"
+        - cell "[SIM QC R5] 2026-02 Calibration station 1"
+        - cell "11,000 USD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Feb 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-02-3-R1 [SIM QC R5] APAC Precision Lab 03 [SIM QC R5] 2026-02 Calibration station 3 12,100 SGD Rejected Feb 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-02-3-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-02-3-R1
+        - cell "[SIM QC R5] APAC Precision Lab 03"
+        - cell "[SIM QC R5] 2026-02 Calibration station 3"
+        - cell "12,100 SGD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Feb 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-02-1-R1 [SIM QC R5] EU Precision Lab 01 [SIM QC R5] 2026-02 Calibration station 1 11,600 USD Rejected Feb 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-02-1-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-02-1-R1
+        - cell "[SIM QC R5] EU Precision Lab 01"
+        - cell "[SIM QC R5] 2026-02 Calibration station 1"
+        - cell "11,600 USD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Feb 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-02-3-R2 [SIM QC R5] APAC Precision Lab 03 [SIM QC R5] 2026-02 Calibration station 3 11,500 SGD Accepted Paid Feb 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-02-3-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-02-3-R2
+        - cell "[SIM QC R5] APAC Precision Lab 03"
+        - cell "[SIM QC R5] 2026-02 Calibration station 3"
+        - cell "11,500 SGD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Feb 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-01-3-R2 [SIM QC R5] APAC Precision Lab 12 [SIM QC R5] 2026-01 Calibration station 3 10,750 SGD Accepted Paid Jan 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-01-3-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-01-3-R2
+        - cell "[SIM QC R5] APAC Precision Lab 12"
+        - cell "[SIM QC R5] 2026-01 Calibration station 3"
+        - cell "10,750 SGD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Jan 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-01-2-R1 [SIM QC R5] US Precision Lab 11 [SIM QC R5] 2026-01 Calibration station 2 11,100 EUR Rejected Jan 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-01-2-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-01-2-R1
+        - cell "[SIM QC R5] US Precision Lab 11"
+        - cell "[SIM QC R5] 2026-01 Calibration station 2"
+        - cell "11,100 EUR"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Jan 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-01-1-R1 [SIM QC R5] EU Precision Lab 10 [SIM QC R5] 2026-01 Calibration station 1 10,850 USD Rejected Jan 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-01-1-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-01-1-R1
+        - cell "[SIM QC R5] EU Precision Lab 10"
+        - cell "[SIM QC R5] 2026-01 Calibration station 1"
+        - cell "10,850 USD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Jan 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-01-1-R2 [SIM QC R5] EU Precision Lab 10 [SIM QC R5] 2026-01 Calibration station 1 10,250 USD Accepted Paid Jan 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-01-1-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-01-1-R2
+        - cell "[SIM QC R5] EU Precision Lab 10"
+        - cell "[SIM QC R5] 2026-01 Calibration station 1"
+        - cell "10,250 USD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Jan 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2026-01-3-R1 [SIM QC R5] APAC Precision Lab 12 [SIM QC R5] 2026-01 Calibration station 3 11,350 SGD Rejected Jan 28, 2026 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2026-01-3-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2026-01-3-R1
+        - cell "[SIM QC R5] APAC Precision Lab 12"
+        - cell "[SIM QC R5] 2026-01 Calibration station 3"
+        - cell "11,350 SGD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Jan 28, 2026"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-12-3-R1 [SIM QC R5] APAC Precision Lab 09 [SIM QC R5] 2025-12 Calibration station 3 10,600 SGD Rejected Dec 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-12-3-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-12-3-R1
+        - cell "[SIM QC R5] APAC Precision Lab 09"
+        - cell "[SIM QC R5] 2025-12 Calibration station 3"
+        - cell "10,600 SGD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Dec 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-12-1-R2 [SIM QC R5] EU Precision Lab 07 [SIM QC R5] 2025-12 Calibration station 1 9,500 USD Accepted Paid Dec 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-12-1-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-12-1-R2
+        - cell "[SIM QC R5] EU Precision Lab 07"
+        - cell "[SIM QC R5] 2025-12 Calibration station 1"
+        - cell "9,500 USD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Dec 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-12-1-R1 [SIM QC R5] EU Precision Lab 07 [SIM QC R5] 2025-12 Calibration station 1 10,100 USD Rejected Dec 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-12-1-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-12-1-R1
+        - cell "[SIM QC R5] EU Precision Lab 07"
+        - cell "[SIM QC R5] 2025-12 Calibration station 1"
+        - cell "10,100 USD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Dec 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-12-3-R2 [SIM QC R5] APAC Precision Lab 09 [SIM QC R5] 2025-12 Calibration station 3 10,000 SGD Accepted Paid Dec 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-12-3-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-12-3-R2
+        - cell "[SIM QC R5] APAC Precision Lab 09"
+        - cell "[SIM QC R5] 2025-12 Calibration station 3"
+        - cell "10,000 SGD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Dec 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-12-2-R1 [SIM QC R5] US Precision Lab 08 [SIM QC R5] 2025-12 Calibration station 2 10,350 EUR Rejected Dec 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-12-2-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-12-2-R1
+        - cell "[SIM QC R5] US Precision Lab 08"
+        - cell "[SIM QC R5] 2025-12 Calibration station 2"
+        - cell "10,350 EUR"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Dec 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-11-2-R1 [SIM QC R5] US Precision Lab 05 [SIM QC R5] 2025-11 Calibration station 2 9,600 EUR Rejected Nov 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-11-2-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-11-2-R1
+        - cell "[SIM QC R5] US Precision Lab 05"
+        - cell "[SIM QC R5] 2025-11 Calibration station 2"
+        - cell "9,600 EUR"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Nov 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-11-1-R2 [SIM QC R5] EU Precision Lab 04 [SIM QC R5] 2025-11 Calibration station 1 8,750 USD Accepted Paid Nov 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-11-1-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-11-1-R2
+        - cell "[SIM QC R5] EU Precision Lab 04"
+        - cell "[SIM QC R5] 2025-11 Calibration station 1"
+        - cell "8,750 USD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Nov 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-11-3-R2 [SIM QC R5] APAC Precision Lab 06 [SIM QC R5] 2025-11 Calibration station 3 9,250 SGD Accepted Paid Nov 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-11-3-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-11-3-R2
+        - cell "[SIM QC R5] APAC Precision Lab 06"
+        - cell "[SIM QC R5] 2025-11 Calibration station 3"
+        - cell "9,250 SGD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Nov 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-11-1-R1 [SIM QC R5] EU Precision Lab 04 [SIM QC R5] 2025-11 Calibration station 1 9,350 USD Rejected Nov 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-11-1-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-11-1-R1
+        - cell "[SIM QC R5] EU Precision Lab 04"
+        - cell "[SIM QC R5] 2025-11 Calibration station 1"
+        - cell "9,350 USD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Nov 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-11-3-R1 [SIM QC R5] APAC Precision Lab 06 [SIM QC R5] 2025-11 Calibration station 3 9,850 SGD Rejected Nov 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-11-3-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-11-3-R1
+        - cell "[SIM QC R5] APAC Precision Lab 06"
+        - cell "[SIM QC R5] 2025-11 Calibration station 3"
+        - cell "9,850 SGD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Nov 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-10-3-R2 [SIM QC R5] APAC Precision Lab 03 [SIM QC R5] 2025-10 Calibration station 3 8,500 SGD Accepted Paid Oct 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-10-3-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-10-3-R2
+        - cell "[SIM QC R5] APAC Precision Lab 03"
+        - cell "[SIM QC R5] 2025-10 Calibration station 3"
+        - cell "8,500 SGD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Oct 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-10-1-R1 [SIM QC R5] EU Precision Lab 01 [SIM QC R5] 2025-10 Calibration station 1 8,600 USD Rejected Oct 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-10-1-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-10-1-R1
+        - cell "[SIM QC R5] EU Precision Lab 01"
+        - cell "[SIM QC R5] 2025-10 Calibration station 1"
+        - cell "8,600 USD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Oct 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-10-1-R2 [SIM QC R5] EU Precision Lab 01 [SIM QC R5] 2025-10 Calibration station 1 8,000 USD Accepted Paid Oct 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-10-1-R2":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-10-1-R2
+        - cell "[SIM QC R5] EU Precision Lab 01"
+        - cell "[SIM QC R5] 2025-10 Calibration station 1"
+        - cell "8,000 USD"
+        - cell "Accepted Paid":
+          - generic: Accepted
+          - generic: Paid
+        - cell "Oct 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-10-2-R1 [SIM QC R5] US Precision Lab 02 [SIM QC R5] 2025-10 Calibration station 2 8,850 EUR Rejected Oct 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-10-2-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-10-2-R1
+        - cell "[SIM QC R5] US Precision Lab 02"
+        - cell "[SIM QC R5] 2025-10 Calibration station 2"
+        - cell "8,850 EUR"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Oct 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+      - row "[SIM QC R5] Calibration equipment ACC-2025-10-3-R1 [SIM QC R5] APAC Precision Lab 03 [SIM QC R5] 2025-10 Calibration station 3 9,100 SGD Rejected Oct 28, 2025 Check collection":
+        - cell "[SIM QC R5] Calibration equipment ACC-2025-10-3-R1":
+          - paragraph: "[SIM QC R5] Calibration equipment"
+          - paragraph: ACC-2025-10-3-R1
+        - cell "[SIM QC R5] APAC Precision Lab 03"
+        - cell "[SIM QC R5] 2025-10 Calibration station 3"
+        - cell "9,100 SGD"
+        - cell "Rejected":
+          - generic: Rejected
+        - cell "Oct 28, 2025"
+        - cell "Check collection":
+          - paragraph: Check collection
+        - cell:
+          - button "Open quote":
+  - generic "Why this matters"
+  - dialog "Edit quote":
+    - paragraph: Quote Tracker
+    - heading "Edit quote" [level=2]
+    - button "Close":
+    - generic: Payment overdue
+    - heading "Commercial progress" [level=3]
+    - text: PO
+    - combobox "PO":
+      - option "Pending"
+      - option "Received" [selected]
+    - text: Delivery
+    - combobox "Delivery":
+      - option "Not scheduled"
+      - option "Scheduled"
+      - option "Delivered" [selected]
+    - text: Expected delivery
+    - textbox "Expected delivery": 2025-10-20
+    - text: Payment
+    - combobox "Payment":
+      - option "Not due"
+      - option "Due" [selected]
+    - paragraph: Payment is confirmed by receipts in Collections.
+    - link "Record or review payment":
+      - /url: /app/cash-collection?opportunityId=5a931efe-86f9-45cb-8338-550f9e218939
+    - text: Payment due
+    - textbox "Payment due": 2025-10-24
+    - heading "Quote basics" [level=3]
+    - text: Quote title
+    - textbox "Quote title": "[SIM QC R5] Calibration equipment"
+    - text: Quote ID
+    - textbox "Quote ID":
+      - /placeholder: Auto if blank
+      - text: ACC-2025-10-2-R2
+    - text: Account
+    - combobox "Account":
+      - option "Select account"
+      - option "[SIM QC R5 FIX] Northstar Calibration"
+      - option "[SIM QC R5] Merge Fixture Ltd"
+      - option "[SIM QC R5] Merge Fixture"
+      - option "[SIM QC R5] UK Metrology Buyer"
+      - option "[SIM QC R5] EU Precision Lab 10"
+      - option "[SIM QC R5] US Precision Lab 11"
+      - option "[SIM QC R5] APAC Precision Lab 12"
+      - option "[SIM QC R5] APAC Precision Lab 09"
+      - option "[SIM QC R5] EU Precision Lab 07"
+      - option "[SIM QC R5] US Precision Lab 08"
+      - option "[SIM QC R5] APAC Precision Lab 03"
+      - option "[SIM QC R5] US Precision Lab 02" [selected]
+      - option "[SIM QC R5] EU Precision Lab 01"
+      - option "[SIM QC R5] EU Precision Lab 04"
+      - option "[SIM QC R5] US Precision Lab 05"
+      - option "[SIM QC R5] APAC Precision Lab 06"
+    - text: Opportunity
+    - combobox "Opportunity":
+      - option "Not linked"
+      - option "[SIMULATED QC UPGRADE] Brand cloud acceptance / [SIMULATED QC UPGRADE] Catalog link acceptance 2026-10-13"
+      - option "[SIM QC R5 FIX] Northstar Calibration / [SIM QC R5 FIX] Fictional contact reuse probe"
+      - option "[SIM QC R5] UK Metrology Buyer / [SIM QC R5] UK annual service renewal"
+      - option "[SIM QC R5] EU Precision Lab 01 / [SIM QC R5] 2026-09 Calibration station 4"
+      - option "[SIM QC R5] US Precision Lab 02 / [SIM QC R5] 2026-09 Calibration station 5"
+      - option "[SIM QC R5] APAC Precision Lab 12 / [SIM QC R5] 2026-09 Calibration station 3"
+      - option "[SIM QC R5] US Precision Lab 11 / [SIM QC R5] 2026-09 Calibration station 2"
+      - option "[SIM QC R5] APAC Precision Lab 03 / [SIM QC R5] 2026-09 Calibration station 6"
+      - option "[SIM QC R5] EU Precision Lab 10 / [SIM QC R5] 2026-09 Calibration station 1"
+      - option "[SIM QC R5] EU Precision Lab 07 / [SIM QC R5] 2026-08 Calibration station 1"
+      - option "[SIM QC R5] APAC Precision Lab 12 / [SIM QC R5] 2026-08 Calibration station 6"
+      - option "[SIM QC R5] EU Precision Lab 10 / [SIM QC R5] 2026-08 Calibration station 4"
+      - option "[SIM QC R5] APAC Precision Lab 09 / [SIM QC R5] 2026-08 Calibration station 3"
+      - option "[SIM QC R5] US Precision Lab 11 / [SIM QC R5] 2026-08 Calibration station 5"
+      - option "[SIM QC R5] US Precision Lab 08 / [SIM QC R5] 2026-08 Calibration station 2"
+      - option "[SIM QC R5] APAC Precision Lab 06 / [SIM QC R5] 2026-07 Calibration station 3"
+      - option "[SIM QC R5] APAC Precision Lab 09 / [SIM QC R5] 2026-07 Calibration station 6"
+      - option "[SIM QC R5] EU Precision Lab 04 / [SIM QC R5] 2026-07 Calibration station 1"
+      - option "[SIM QC R5] US Precision Lab 08 / [SIM QC R5] 2026-07 Calibration station 5"
+      - option "[SIM QC R5] US Precision Lab 05 / [SIM QC R5] 2026-07 Calibration station 2"
+      - option "[SIM QC R5] EU Precision Lab 07 / [SIM QC R5] 2026-07 Calibration station 4"
+      - option "[SIM QC R5] APAC Precision Lab 03 / [SIM QC R5] 2026-06 Calibration station 3"
+      - option "[SIM QC R5] APAC Precision Lab 06 / [SIM QC R5] 2026-06 Calibration station 6"
+      - option "[SIM QC R5] EU Precision Lab 01 / [SIM QC R5] 2026-06 Calibration station 1"
+      - option "[SIM QC R5] US Precision Lab 02 / [SIM QC R5] 2026-06 Calibration station 2"
+      - option "[SIM QC R5] US Precision Lab 05 / [SIM QC R5] 2026-06 Calibration station 5"
+      - option "[SIM QC R5] EU Precision Lab 04 / [SIM QC R5] 2026-06 Calibration station 4"
+      - option "[SIM QC R5] EU Precision Lab 10 / [SIM QC R5] 2026-05 Calibration station 1"
+      - option "[SIM QC R5] US Precision Lab 02 / [SIM QC R5] 2026-05 Calibration station 5"
+      - option "[SIM QC R5] APAC Precision Lab 03 / [SIM QC R5] 2026-05 Calibration station 6"
+      - option "[SIM QC R5] APAC Precision Lab 12 / [SIM QC R5] 2026-05 Calibration station 3"
+      - option "[SIM QC R5] EU Precision Lab 01 / [SIM QC R5] 2026-05 Calibration station 4"
+      - option "[SIM QC R5] US Precision Lab 11 / [SIM QC R5] 2026-05 Calibration station 2"
+      - option "[SIM QC R5] APAC Precision Lab 09 / [SIM QC R5] 2026-04 Calibration station 3"
+      - option "[SIM QC R5] US Precision Lab 08 / [SIM QC R5] 2026-04 Calibration station 2"
+      - option "[SIM QC R5] US Precision Lab 11 / [SIM QC R5] 2026-04 Calibration station 5"
+      - option "[SIM QC R5] EU Precision Lab 07 / [SIM QC R5] 2026-04 Calibration station 1"
+      - option "[SIM QC R5] EU Precision Lab 10 / [SIM QC R5] 2026-04 Calibration station 4"
+      - option "[SIM QC R5] APAC Precision Lab 12 / [SIM QC R5] 2026-04 Calibration station 6"
+      - option "[SIM QC R5] EU Precision Lab 07 / [SIM QC R5] 2026-03 Calibration station 4"
+      - option "[SIM QC R5] APAC Precision Lab 09 / [SIM QC R5] 2026-03 Calibration station 6"
+      - option "[SIM QC R5] US Precision Lab 05 / [SIM QC R5] 2026-03 Calibration station 2"
+      - option "[SIM QC R5] EU Precision Lab 04 / [SIM QC R5] 2026-03 Calibration station 1"
+      - option "[SIM QC R5] US Precision Lab 08 / [SIM QC R5] 2026-03 Calibration station 5"
+      - option "[SIM QC R5] APAC Precision Lab 06 / [SIM QC R5] 2026-03 Calibration station 3"
+      - option "[SIM QC R5] APAC Precision Lab 06 / [SIM QC R5] 2026-02 Calibration station 6"
+      - option "[SIM QC R5] EU Precision Lab 01 / [SIM QC R5] 2026-02 Calibration station 1"
+      - option "[SIM QC R5] APAC Precision Lab 03 / [SIM QC R5] 2026-02 Calibration station 3"
+      - option "[SIM QC R5] US Precision Lab 05 / [SIM QC R5] 2026-02 Calibration station 5"
+      - option "[SIM QC R5] US Precision Lab 02 / [SIM QC R5] 2026-02 Calibration station 2"
+      - option "[SIM QC R5] EU Precision Lab 04 / [SIM QC R5] 2026-02 Calibration station 4"
+      - option "[SIM QC R5] US Precision Lab 02 / [SIM QC R5] 2026-01 Calibration station 5"
+      - option "[SIM QC R5] US Precision Lab 11 / [SIM QC R5] 2026-01 Calibration station 2"
+      - option "[SIM QC R5] EU Precision Lab 10 / [SIM QC R5] 2026-01 Calibration station 1"
+      - option "[SIM QC R5] APAC Precision Lab 12 / [SIM QC R5] 2026-01 Calibration station 3"
+      - option "[SIM QC R5] APAC Precision Lab 03 / [SIM QC R5] 2026-01 Calibration station 6"
+      - option "[SIM QC R5] EU Precision Lab 01 / [SIM QC R5] 2026-01 Calibration station 4"
+      - option "[SIM QC R5] APAC Precision Lab 12 / [SIM QC R5] 2025-12 Calibration station 6"
+      - option "[SIM QC R5] EU Precision Lab 10 / [SIM QC R5] 2025-12 Calibration station 4"
+      - option "[SIM QC R5] US Precision Lab 08 / [SIM QC R5] 2025-12 Calibration station 2"
+      - option "[SIM QC R5] APAC Precision Lab 09 / [SIM QC R5] 2025-12 Calibration station 3"
+      - option "[SIM QC R5] US Precision Lab 11 / [SIM QC R5] 2025-12 Calibration station 5"
+      - option "[SIM QC R5] EU Precision Lab 07 / [SIM QC R5] 2025-12 Calibration station 1"
+      - option "[SIM QC R5] EU Precision Lab 07 / [SIM QC R5] 2025-11 Calibration station 4"
+      - option "[SIM QC R5] US Precision Lab 08 / [SIM QC R5] 2025-11 Calibration station 5"
+      - option "[SIM QC R5] US Precision Lab 05 / [SIM QC R5] 2025-11 Calibration station 2"
+      - option "[SIM QC R5] APAC Precision Lab 06 / [SIM QC R5] 2025-11 Calibration station 3"
+      - option "[SIM QC R5] EU Precision Lab 04 / [SIM QC R5] 2025-11 Calibration station 1"
+      - option "[SIM QC R5] APAC Precision Lab 09 / [SIM QC R5] 2025-11 Calibration station 6"
+      - option "[SIM QC R5] EU Precision Lab 04 / [SIM QC R5] 2025-10 Calibration station 4"
+      - option "[SIM QC R5] APAC Precision Lab 03 / [SIM QC R5] 2025-10 Calibration station 3"
+      - option "[SIM QC R5] US Precision Lab 02 / [SIM QC R5] 2025-10 Calibration station 2" [selected]
+      - option "[SIM QC R5] EU Precision Lab 01 / [SIM QC R5] 2025-10 Calibration station 1"
+      - option "[SIM QC R5] APAC Precision Lab 06 / [SIM QC R5] 2025-10 Calibration station 6"
+      - option "[SIM QC R5] US Precision Lab 05 / [SIM QC R5] 2025-10 Calibration station 5"
+    - text: Quote date
+    - textbox "Quote date": 2025-10-18
+    - text: Valid until
+    - textbox "Valid until": 2025-10-28
+    - heading "Commercial terms" [level=3]
+    - text: Amount
+    - spinbutton "Amount": "8250"
+    - text: Currency
+    - combobox "Currency":
+      - option "AED — UAE Dirham"
+      - option "AUD — Australian Dollar"
+      - option "CAD — Canadian Dollar"
+      - option "CHF — Swiss Franc"
+      - option "CNY — Chinese Yuan"
+      - option "EUR — Euro" [selected]
+      - option "GBP — British Pound"
+      - option "HKD — Hong Kong Dollar"
+      - option "IDR — Indonesian Rupiah"
+      - option "INR — Indian Rupee"
+      - option "JPY — Japanese Yen"
+      - option "KRW — South Korean Won"
+      - option "MYR — Malaysian Ringgit"
+      - option "NZD — New Zealand Dollar"
+      - option "PHP — Philippine Peso"
+      - option "SAR — Saudi Riyal"
+      - option "SGD — Singapore Dollar"
+      - option "THB — Thai Baht"
+      - option "TWD — New Taiwan Dollar"
+      - option "USD — US Dollar"
+      - option "VND — Vietnamese Dong"
+      - option "AFN — Afghan Afghani · needs a rate"
+      - option "ALL — Albanian Lek · needs a rate"
+      - option "AMD — Armenian Dram · needs a rate"
+      - option "ANG — Netherlands Antillean Guilder · needs a rate"
+      - option "AOA — Angolan Kwanza · needs a rate"
+      - option "ARS — Argentine Peso · needs a rate"
+      - option "AWG — Aruban Florin · needs a rate"
+      - option "AZN — Azerbaijani Manat · needs a rate"
+      - option "BAM — Bosnia-Herzegovina Convertible Mark · needs a rate"
+      - option "BBD — Barbadian Dollar · needs a rate"
+      - option "BDT — Bangladeshi Taka · needs a rate"
+      - option "BGN — Bulgarian Lev · needs a rate"
+      - option "BHD — Bahraini Dinar · needs a rate"
+      - option "BIF — Burundian Franc · needs a rate"
+      - option "BMD — Bermudan Dollar · needs a rate"
+      - option "BND — Brunei Dollar · needs a rate"
+      - option "BOB — Bolivian Boliviano · needs a rate"
+      - option "BRL — Brazilian Real · needs a rate"
+      - option "BSD — Bahamian Dollar · needs a rate"
+      - option "BTN — Bhutanese Ngultrum · needs a rate"
+      - option "BWP — Botswanan Pula · needs a rate"
+      - option "BYN — Belarusian Ruble · needs a rate"
+      - option "BZD — Belize Dollar · needs a rate"
+      - option "CDF — Congolese Franc · needs a rate"
+      - option "CLP — Chilean Peso · needs a rate"
+      - option "COP — Colombian Peso · needs a rate"
+      - option "CRC — Costa Rican Colón · needs a rate"
+      - option "CUC — Cuban Convertible Peso · needs a rate"
+      - option "CUP — Cuban Peso · needs a rate"
+      - option "CVE — Cape Verdean Escudo · needs a rate"
+      - option "CZK — Czech Koruna · needs a rate"
+      - option "DJF — Djiboutian Franc · needs a rate"
+      - option "DKK — Danish Krone · needs a rate"
+      - option "DOP — Dominican Peso · needs a rate"
+      - option "DZD — Algerian Dinar · needs a rate"
+      - option "EGP — Egyptian Pound · needs a rate"
+      - option "ERN — Eritrean Nakfa · needs a rate"
+      - option "ETB — Ethiopian Birr · needs a rate"
+      - option "FJD — Fijian Dollar · needs a rate"
+      - option "FKP — Falkland Islands Pound · needs a rate"
+      - option "GEL — Georgian Lari · needs a rate"
+      - option "GHS — Ghanaian Cedi · needs a rate"
+      - option "GIP — Gibraltar Pound · needs a rate"
+      - option "GMD — Gambian Dalasi · needs a rate"
+      - option "GNF — Guinean Franc · needs a rate"
+      - option "GTQ — Guatemalan Quetzal · needs a rate"
+      - option "GYD — Guyanaese Dollar · needs a rate"
+      - option "HNL — Honduran Lempira · needs a rate"
+      - option "HRK — Croatian Kuna · needs a rate"
+      - option "HTG — Haitian Gourde · needs a rate"
+      - option "HUF — Hungarian Forint · needs a rate"
+      - option "ILS — Israeli New Shekel · needs a rate"
+      - option "IQD — Iraqi Dinar · needs a rate"
+      - option "IRR — Iranian Rial · needs a rate"
+      - option "ISK — Icelandic Króna · needs a rate"
+      - option "JMD — Jamaican Dollar · needs a rate"
+      - option "JOD — Jordanian Dinar · needs a rate"
+      - option "KES — Kenyan Shilling · needs a rate"
+      - option "KGS — Kyrgyz Som · needs a rate"
+      - option "KHR — Cambodian Riel · needs a rate"
+      - option "KMF — Comorian Franc · needs a rate"
+      - option "KPW — North Korean Won · needs a rate"
+      - option "KWD — Kuwaiti Dinar · needs a rate"
+      - option "KYD — Cayman Islands Dollar · needs a rate"
+      - option "KZT — Kazakhstani Tenge · needs a rate"
+      - option "LAK — Laotian Kip · needs a rate"
+      - option "LBP — Lebanese Pound · needs a rate"
+      - option "LKR — Sri Lankan Rupee · needs a rate"
+      - option "LRD — Liberian Dollar · needs a rate"
+      - option "LSL — Lesotho Loti · needs a rate"
+      - option "LYD — Libyan Dinar · needs a rate"
+      - option "MAD — Moroccan Dirham · needs a rate"
+      - option "MDL — Moldovan Leu · needs a rate"
+      - option "MGA — Malagasy Ariary · needs a rate"
+      - option "MKD — Macedonian Denar · needs a rate"
+      - option "MMK — Myanmar Kyat · needs a rate"
+      - option "MNT — Mongolian Tugrik · needs a rate"
+      - option "MOP — Macanese Pataca · needs a rate"
+      - option "MRU — Mauritanian Ouguiya · needs a rate"
+      - option "MUR — Mauritian Rupee · needs a rate"
+      - option "MVR — Maldivian Rufiyaa · needs a rate"
+      - option "MWK — Malawian Kwacha · needs a rate"
+      - option "MXN — Mexican Peso · needs a rate"
+      - option "MZN — Mozambican Metical · needs a rate"
+      - option "NAD — Namibian Dollar · needs a rate"
+      - option "NGN — Nigerian Naira · needs a rate"
+      - option "NIO — Nicaraguan Córdoba · needs a rate"
+      - option "NOK — Norwegian Krone · needs a rate"
+      - option "NPR — Nepalese Rupee · needs a rate"
+      - option "OMR — Omani Rial · needs a rate"
+      - option "PAB — Panamanian Balboa · needs a rate"
+      - option "PEN — Peruvian Sol · needs a rate"
+      - option "PGK — Papua New Guinean Kina · needs a rate"
+      - option "PKR — Pakistani Rupee · needs a rate"
+      - option "PLN — Polish Zloty · needs a rate"
+      - option "PYG — Paraguayan Guarani · needs a rate"
+      - option "QAR — Qatari Riyal · needs a rate"
+      - option "RON — Romanian Leu · needs a rate"
+      - option "RSD — Serbian Dinar · needs a rate"
+      - option "RUB — Russian Ruble · needs a rate"
+      - option "RWF — Rwandan Franc · needs a rate"
+      - option "SBD — Solomon Islands Dollar · needs a rate"
+      - option "SCR — Seychellois Rupee · needs a rate"
+      - option "SDG — Sudanese Pound · needs a rate"
+      - option "SEK — Swedish Krona · needs a rate"
+      - option "SHP — St. Helena Pound · needs a rate"
+      - option "SLL — Sierra Leonean Leone (1964—2022) · needs a rate"
+      - option "SOS — Somali Shilling · needs a rate"
+      - option "SRD — Surinamese Dollar · needs a rate"
+      - option "SSP — South Sudanese Pound · needs a rate"
+      - option "STN — São Tomé & Príncipe Dobra · needs a rate"
+      - option "SVC — Salvadoran Colón · needs a rate"
+      - option "SYP — Syrian Pound · needs a rate"
+      - option "SZL — Swazi Lilangeni · needs a rate"
+      - option "TJS — Tajikistani Somoni · needs a rate"
+      - option "TMT — Turkmenistani Manat · needs a rate"
+      - option "TND — Tunisian Dinar · needs a rate"
+      - option "TOP — Tongan Paʻanga · needs a rate"
+      - option "TRY — Turkish Lira · needs a rate"
+      - option "TTD — Trinidad & Tobago Dollar · needs a rate"
+      - option "TZS — Tanzanian Shilling · needs a rate"
+      - option "UAH — Ukrainian Hryvnia · needs a rate"
+      - option "UGX — Ugandan Shilling · needs a rate"
+      - option "UYU — Uruguayan Peso · needs a rate"
+      - option "UZS — Uzbekistani Som · needs a rate"
+      - option "VES — Venezuelan Bolívar · needs a rate"
+      - option "VUV — Vanuatu Vatu · needs a rate"
+      - option "WST — Samoan Tala · needs a rate"
+      - option "XAF — Central African CFA Franc · needs a rate"
+      - option "XCD — East Caribbean Dollar · needs a rate"
+      - option "XDR — Special Drawing Rights · needs a rate"
+      - option "XOF — West African CFA Franc · needs a rate"
+      - option "XPF — CFP Franc · needs a rate"
+      - option "XSU — Sucre · needs a rate"
+      - option "YER — Yemeni Rial · needs a rate"
+      - option "ZAR — South African Rand · needs a rate"
+      - option "ZMW — Zambian Kwacha · needs a rate"
+      - option "ZWL — Zimbabwean Dollar (2009–2024) · needs a rate"
+    - text: Gross margin %
+    - spinbutton "Gross margin %"
+    - text: Discount %
+    - spinbutton "Discount %"
+    - text: Payment term
+    - textbox "Payment term":
+      - /placeholder: "Example: 30% deposit, 70% net 45"
+      - text: 100% on order
+    - paragraph: Read as
+    - list:
+      - listitem: • Deposit — 100% on order
+    - text: Status
+    - combobox "Status":
+      - option "Draft"
+      - option "Sent"
+      - option "Revised"
+      - option "Accepted" [selected]
+      - option "Rejected"
+      - option "Expired"
+    - heading "Follow-up" [level=3]
+    - text: Next action
+    - textbox "Next action":
+      - /placeholder: Follow up before expiry
+      - text: Check collection
+    - text: Notes
+    - textbox "Notes": Simulated revision. One accepted order per opportunity.
+    - button "Delete":
+      - text: Delete
+    - button "Save quote"

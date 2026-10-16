@@ -1,0 +1,265 @@
+- navigation:
+  - link "Memoire home":
+    - /url: /
+    - generic: Memoire
+  - link "Use Cases":
+    - /url: /use-cases
+  - link "Pricing":
+    - /url: /pricing
+  - link "Log in":
+    - /url: /login
+  - link "Talk to us":
+    - /url: /request-access
+  - link "Create Account":
+    - /url: /signup
+- main:
+  - paragraph: Use cases
+  - heading "Four jobs, one loop, and the same failure underneath." [level=1]:
+    - text: Four jobs, one loop,
+    - generic: and the same failure underneath.
+  - paragraph: These are not four industries. They are four shapes of follow-up — different cycle lengths, different numbers of people, different places the money gets stuck. What they share is that nothing ever fails loudly.
+  - link "Start free preview":
+    - /url: /signup
+    - text: Start free preview
+  - link "See pricing":
+    - /url: /pricing
+  - link "You carry the number B2B sellers who answer for their own pipeline":
+    - /url: "#quota-carrier"
+    - paragraph: You carry the number
+    - paragraph: B2B sellers who answer for their own pipeline
+  - link "You are also everything else Founder-led sellers, consultants and agency owners":
+    - /url: "#founder-led"
+    - paragraph: You are also everything else
+    - paragraph: Founder-led sellers, consultants and agency owners
+  - link "The sale is only half the job Trading, distribution and supply":
+    - /url: "#trading-supply"
+    - paragraph: The sale is only half the job
+    - paragraph: Trading, distribution and supply
+  - link "Nine months and six people Long-cycle sales with procurement and a committee":
+    - /url: "#complex-cycle"
+    - paragraph: Nine months and six people
+    - paragraph: Long-cycle sales with procurement and a committee
+  - paragraph:
+    - text: You carry the number
+  - heading "B2B sellers who answer for their own pipeline" [level=2]
+  - blockquote: "\"My CRM has the stage. It does not have why the deal actually slipped, and that is what gets asked.\""
+  - paragraph: The company system records outcomes. Nobody records the evidence - the objection somebody raised in March, the proof you promised, the person who went quiet. So every review is rebuilt from memory and a scroll back through email.
+  - list:
+    - paragraph: Capture — Paste the thread. The account, amount, objection and next action come out and get filed against the deal.
+    - paragraph: Today — Opens on the deals going silent and the promises you have not kept, ranked, with the reason attached.
+    - paragraph: Review — Opens on what changed since the last review - what moved, what slipped, what went quiet - with every line traced to a record.
+  - paragraph:
+    - text: Walk into the forecast review with the answer already written.
+  - paragraph:
+    - text: You are also everything else
+  - heading "Founder-led sellers, consultants and agency owners" [level=2]
+  - blockquote: "\"Selling is a third of my week. The other two thirds is why I forget to follow up.\""
+  - paragraph: There is no sales team, no ops person and no manager asking. Nothing goes wrong loudly - a proposal simply sits, a client stops replying, and by the time it surfaces the moment has passed.
+  - list:
+    - paragraph: Plan — One ledger of what is coming and what already happened, so the week has a shape you did not have to build.
+    - paragraph: Proactive nudges — Capped at five. The few things that could embarrass you, not a second inbox.
+    - paragraph: "Leads — The conversations that are not deals yet: who has never been contacted, who went quiet, who is ready to qualify, and who is parked until a date."
+  - paragraph:
+    - text: The follow-up happens on the weeks you are too busy to remember it.
+  - paragraph:
+    - text: The sale is only half the job
+  - heading "Trading, distribution and supply" [level=2]
+  - blockquote: "\"We won it in May, shipped in June, and I found out in August that nobody invoiced it.\""
+  - paragraph: Winning is where most tools stop. The money is downstream of the win - a deposit, a delivery, an invoice, a payment - and every one of those steps is somewhere a deal can quietly stall with your cash inside it.
+  - list:
+    - paragraph: Orders — Contract to cash in seven steps, with how many days each order has been standing still.
+    - paragraph: Cash Collection — Aging built from the payment terms already on the quote. Nothing re-entered.
+    - paragraph: Cost Analysis — Goods, freight and duty landed against the sale - in its own currency if you buy and sell in different ones.
+  - paragraph:
+    - text: Know which order is stuck, on which step, holding how much.
+  - figure "One quarter, quote to cash $338,000 never made it to the bank":
+    - generic: One quarter, quote to cash
+    - generic: $338,000 never made it to the bank
+    - generic: Quoted
+    - 'generic "Quoted: $412,000 (11 quotes)"'
+    - generic: $412,000
+    - generic: Ordered
+    - 'generic "Ordered: $255,000 (6 orders)"'
+    - generic: $255,000
+    - generic: Delivered
+    - 'generic "Delivered: $182,000 (4 orders)"'
+    - generic: $182,000
+    - generic: Invoiced
+    - 'generic "Invoiced: $136,000 (3 invoices)"'
+    - generic: $136,000
+    - generic: Paid
+    - 'generic "Paid: $74,000 (2 settled)"'
+    - generic: $74,000
+    - paragraph: The gap between Delivered and Invoiced is work you have already done and not yet billed for.
+    - table "Order to cash by stage":
+      - caption: Order to cash by stage
+      - rowgroup:
+        - row "Stage Value Count":
+          - columnheader "Stage"
+          - columnheader "Value"
+          - columnheader "Count"
+      - rowgroup:
+        - row "Quoted $412,000 11 quotes":
+          - rowheader "Quoted"
+          - cell "$412,000"
+          - cell "11 quotes"
+        - row "Ordered $255,000 6 orders":
+          - rowheader "Ordered"
+          - cell "$255,000"
+          - cell "6 orders"
+        - row "Delivered $182,000 4 orders":
+          - rowheader "Delivered"
+          - cell "$182,000"
+          - cell "4 orders"
+        - row "Invoiced $136,000 3 invoices":
+          - rowheader "Invoiced"
+          - cell "$136,000"
+          - cell "3 invoices"
+        - row "Paid $74,000 2 settled":
+          - rowheader "Paid"
+          - cell "$74,000"
+          - cell "2 settled"
+  - paragraph:
+    - text: Nine months and six people
+  - heading "Long-cycle sales with procurement and a committee" [level=2]
+  - blockquote: "\"The deal stalled at the last metre because nobody ever asked who signs.\""
+  - paragraph: A long cycle is not one conversation, it is thirty across a year, spread over people whose roles you half-know. The gaps are invisible until the deal is at the line and one of them turns out to be the gap that mattered.
+  - list:
+    - paragraph: Stakeholders — Who you know, where your champions are, and which accounts have nobody.
+    - paragraph: Business Vault — Ranks what you do not know by what the relationship is worth - starting with who signs.
+    - paragraph: Search & Insights — Answers what happened with an account last quarter, computed on your device.
+  - paragraph:
+    - text: Find the missing decision-maker in month two, not month nine.
+  - figure "Portfolio coverage 13 of 25 squares sold":
+    - generic: Portfolio coverage
+    - generic: 13 of 25 squares sold
+    - generic: Instruments
+    - generic: Consumables
+    - generic: Service
+    - generic: Training
+    - generic: Spares
+    - generic: Meridian Group
+    - 'generic "Meridian Group · Instruments: 3 of 3"'
+    - 'generic "Meridian Group · Consumables: 2 of 3"'
+    - 'generic "Meridian Group · Service: 1 of 3"'
+    - 'generic "Meridian Group · Training: never sold"'
+    - 'generic "Meridian Group · Spares: never sold"'
+    - generic: Caldera Systems
+    - 'generic "Caldera Systems · Instruments: 3 of 3"'
+    - 'generic "Caldera Systems · Consumables: 3 of 3"'
+    - 'generic "Caldera Systems · Service: 2 of 3"'
+    - 'generic "Caldera Systems · Training: 1 of 3"'
+    - 'generic "Caldera Systems · Spares: never sold"'
+    - generic: Halden Industrial
+    - 'generic "Halden Industrial · Instruments: 2 of 3"'
+    - 'generic "Halden Industrial · Consumables: 1 of 3"'
+    - 'generic "Halden Industrial · Service: never sold"'
+    - 'generic "Halden Industrial · Training: never sold"'
+    - 'generic "Halden Industrial · Spares: never sold"'
+    - generic: Northwind Trading
+    - 'generic "Northwind Trading · Instruments: 1 of 3"'
+    - 'generic "Northwind Trading · Consumables: 2 of 3"'
+    - 'generic "Northwind Trading · Service: never sold"'
+    - 'generic "Northwind Trading · Training: never sold"'
+    - 'generic "Northwind Trading · Spares: 1 of 3"'
+    - generic: Ardent Supply
+    - 'generic "Ardent Supply · Instruments: 2 of 3"'
+    - 'generic "Ardent Supply · Consumables: never sold"'
+    - 'generic "Ardent Supply · Service: never sold"'
+    - 'generic "Ardent Supply · Training: never sold"'
+    - 'generic "Ardent Supply · Spares: never sold"'
+    - generic: Never sold
+    - generic: Less to more
+    - table "Products sold into each account":
+      - caption: Products sold into each account
+      - rowgroup:
+        - row "Account Instruments Consumables Service Training Spares":
+          - columnheader "Account"
+          - columnheader "Instruments"
+          - columnheader "Consumables"
+          - columnheader "Service"
+          - columnheader "Training"
+          - columnheader "Spares"
+      - rowgroup:
+        - row "Meridian Group 3 of 3 2 of 3 1 of 3 Never sold Never sold":
+          - rowheader "Meridian Group"
+          - cell "3 of 3"
+          - cell "2 of 3"
+          - cell "1 of 3"
+          - cell "Never sold"
+          - cell "Never sold"
+        - row "Caldera Systems 3 of 3 3 of 3 2 of 3 1 of 3 Never sold":
+          - rowheader "Caldera Systems"
+          - cell "3 of 3"
+          - cell "3 of 3"
+          - cell "2 of 3"
+          - cell "1 of 3"
+          - cell "Never sold"
+        - row "Halden Industrial 2 of 3 1 of 3 Never sold Never sold Never sold":
+          - rowheader "Halden Industrial"
+          - cell "2 of 3"
+          - cell "1 of 3"
+          - cell "Never sold"
+          - cell "Never sold"
+          - cell "Never sold"
+        - row "Northwind Trading 1 of 3 2 of 3 Never sold Never sold 1 of 3":
+          - rowheader "Northwind Trading"
+          - cell "1 of 3"
+          - cell "2 of 3"
+          - cell "Never sold"
+          - cell "Never sold"
+          - cell "1 of 3"
+        - row "Ardent Supply 2 of 3 Never sold Never sold Never sold Never sold":
+          - rowheader "Ardent Supply"
+          - cell "2 of 3"
+          - cell "Never sold"
+          - cell "Never sold"
+          - cell "Never sold"
+          - cell "Never sold"
+  - heading "Not what Memoire is for" [level=2]
+  - paragraph: Being useful to everyone is how a tool ends up useful to nobody. If you are here, it is not for you.
+  - list:
+    - text: Ecommerce, marketplace or high-volume transactional selling
+    - text: Accounting, payroll or inventory management
+    - text: Enterprise teams needing SSO and an admin console today
+    - text: Anyone wanting a company system of record
+  - heading "Recognise your own week in any of those?" [level=2]
+  - paragraph: Use Memoire free during preview. No card and no trial countdown.
+  - link "Start free preview":
+    - /url: /signup
+    - text: Start free preview
+- contentinfo:
+  - link "Memoire home":
+    - /url: /
+    - generic: Memoire
+  - link "support@memoire-official.com":
+    - /url: mailto:support@memoire-official.com
+  - heading "Product" [level=4]
+  - list:
+    - link "Features":
+      - /url: /#features
+    - link "Use Cases":
+      - /url: /use-cases
+    - link "Pricing":
+      - /url: /pricing
+    - link "Talk to us":
+      - /url: /request-access
+    - link "Create Account":
+      - /url: /signup
+    - link "Log in":
+      - /url: /login
+  - heading "Guides" [level=4]
+  - list:
+    - link "Why deals go quiet":
+      - /url: /why-deals-go-quiet
+    - link "Quote to cash":
+      - /url: /quote-to-cash
+  - heading "Legal" [level=4]
+  - list:
+    - link "Privacy Policy":
+      - /url: /legal/privacy
+    - link "Terms of Service":
+      - /url: /legal/terms
+    - link "Product Boundaries":
+      - /url: /legal/boundaries
+  - generic: © 2026 Memoire. All rights reserved.

@@ -1,0 +1,465 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities":
+    - /url: /app/opportunities
+    - text: Opportunities
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: "[Q"
+  - generic "[SIMULATED QC R5] Orion Calibration Partners"
+  - generic: Personal workspace
+  - button "Account and settings for [SIMULATED QC R5] Orion Calibration Partners":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: Ctrl+K
+  - generic "Pipeline records, review packs, assets, and action outcomes sync to your account. Lightweight setup preferences may remain in this browser. Cloud records are available across devices. Browser preferences may reset when browser data is cleared.":
+    - generic: Cloud + browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Analysis
+  - heading "Reports" [level=1]
+  - generic: Ask a repeatable question, inspect the source records, then export the same result.
+  - button "Reload library"
+  - paragraph: Report library cloud sync completed.
+  - heading "Payments needing attention" [level=2]
+  - generic "How to read these numbers · scope, cash and exchange rates"
+  - paragraph: 12 matching records from 37 loaded source records · USD · run 2026-10-13T06:51:08.475Z
+  - paragraph: "One expected or confirmed qualified order per row; inspect order stage and date basis. Current workspace view. Catalog cloud sync completed. Source loaders may use browser copies; cloud/accounting completeness is not certified. Timezone: Asia/Saigon; planning FX 2026-08-01, workspace overrides captured."
+  - paragraph:
+    - text: Only quotes linked by ID are used; legacy name-only quotes are excluded. Open a row’s source deal or
+    - link "open Collections":
+      - /url: /app/revenue?view=collections
+    - text: to manage payments.
+  - paragraph: Records
+  - paragraph: "12"
+  - paragraph: Outstanding
+  - paragraph: 85,671.92
+  - paragraph: Confirmed overdue balance
+  - paragraph: 85,671.92
+  - paragraph: Recorded receipts
+  - paragraph: 85,674.23
+  - button "Export CSV pack"
+  - button "Print / save PDF"
+  - paragraph: Preview 1–12 of 12 records. Export uses the full filtered result.
+  - table:
+    - rowgroup:
+      - row "Account Order reference Order stage Outstanding Confirmed overdue balance Planning dates to confirm Recorded receipts Reporting currency Next payment due Missing context / blocker Next action Source":
+        - columnheader "Account"
+        - columnheader "Order reference"
+        - columnheader "Order stage"
+        - columnheader "Outstanding"
+        - columnheader "Confirmed overdue balance"
+        - columnheader "Planning dates to confirm"
+        - columnheader "Recorded receipts"
+        - columnheader "Reporting currency"
+        - columnheader "Next payment due"
+        - columnheader "Missing context / blocker"
+        - columnheader "Next action"
+        - columnheader "Source"
+    - rowgroup:
+      - row "[SIM QC R5] US Precision Lab 02 ACC-2025-10-2-R2 Deposit due 4,759.62 4,759.62 0 4,759.62 USD 2025-10-18 — Plan annual recalibration Open":
+        - cell "[SIM QC R5] US Precision Lab 02"
+        - cell "ACC-2025-10-2-R2"
+        - cell "Deposit due"
+        - cell "4,759.62"
+        - cell "4,759.62"
+        - cell "0"
+        - cell "4,759.62"
+        - cell "USD"
+        - cell "2025-10-18"
+        - cell "—"
+        - cell "Plan annual recalibration"
+        - cell "Open":
+          - link "Open":
+            - /url: /app/opportunities?opportunityId=5a931efe-86f9-45cb-8338-550f9e218939
+      - row "[SIM QC R5] US Precision Lab 05 ACC-2025-11-2-R2 Deposit due 5,192.31 5,192.31 0 5,192.31 USD 2025-11-18 — Plan annual recalibration Open":
+        - cell "[SIM QC R5] US Precision Lab 05"
+        - cell "ACC-2025-11-2-R2"
+        - cell "Deposit due"
+        - cell "5,192.31"
+        - cell "5,192.31"
+        - cell "0"
+        - cell "5,192.31"
+        - cell "USD"
+        - cell "2025-11-18"
+        - cell "—"
+        - cell "Plan annual recalibration"
+        - cell "Open":
+          - link "Open":
+            - /url: /app/opportunities?opportunityId=72e7a14c-41e2-4333-8d48-100c671d5724
+      - row "[SIM QC R5] US Precision Lab 08 ACC-2025-12-2-R2 Deposit due 5,625 5,625 0 5,625 USD 2025-12-18 — Plan annual recalibration Open":
+        - cell "[SIM QC R5] US Precision Lab 08"
+        - cell "ACC-2025-12-2-R2"
+        - cell "Deposit due"
+        - cell "5,625"
+        - cell "5,625"
+        - cell "0"
+        - cell "5,625"
+        - cell "USD"
+        - cell "2025-12-18"
+        - cell "—"
+        - cell "Plan annual recalibration"
+        - cell "Open":
+          - link "Open":
+            - /url: /app/opportunities?opportunityId=3a975ed5-9dd1-43db-88c6-3d73d04b79ee
+      - row "[SIM QC R5] US Precision Lab 11 ACC-2026-01-2-R2 Deposit due 6,057.69 6,057.69 0 6,057.69 USD 2026-01-18 — Plan annual recalibration Open":
+        - cell "[SIM QC R5] US Precision Lab 11"
+        - cell "ACC-2026-01-2-R2"
+        - cell "Deposit due"
+        - cell "6,057.69"
+        - cell "6,057.69"
+        - cell "0"
+        - cell "6,057.69"
+        - cell "USD"
+        - cell "2026-01-18"
+        - cell "—"
+        - cell "Plan annual recalibration"
+        - cell "Open":
+          - link "Open":
+            - /url: /app/opportunities?opportunityId=5b7c303c-528c-4973-86b4-8a3121c09d20
+      - row "[SIM QC R5] US Precision Lab 02 ACC-2026-02-2-R2 Deposit due 6,490.38 6,490.38 0 6,490.38 USD 2026-02-18 — Plan annual recalibration Open":
+        - cell "[SIM QC R5] US Precision Lab 02"
+        - cell "ACC-2026-02-2-R2"
+        - cell "Deposit due"
+        - cell "6,490.38"
+        - cell "6,490.38"
+        - cell "0"
+        - cell "6,490.38"
+        - cell "USD"
+        - cell "2026-02-18"
+        - cell "—"
+        - cell "Plan annual recalibration"
+        - cell "Open":
+          - link "Open":
+            - /url: /app/opportunities?opportunityId=df9b6170-7ade-4390-84ee-24e5d27b2723
+      - row "[SIM QC R5] US Precision Lab 05 ACC-2026-03-2-R2 Deposit due 6,923.08 6,923.08 0 6,923.08 USD 2026-03-18 — Plan annual recalibration Open":
+        - cell "[SIM QC R5] US Precision Lab 05"
+        - cell "ACC-2026-03-2-R2"
+        - cell "Deposit due"
+        - cell "6,923.08"
+        - cell "6,923.08"
+        - cell "0"
+        - cell "6,923.08"
+        - cell "USD"
+        - cell "2026-03-18"
+        - cell "—"
+        - cell "Plan annual recalibration"
+        - cell "Open":
+          - link "Open":
+            - /url: /app/opportunities?opportunityId=6a3802d1-bca0-422a-8cfc-6b730aa20af2
+      - row "[SIM QC R5] US Precision Lab 08 ACC-2026-04-2-R2 Deposit due 7,355.77 7,355.77 0 7,355.77 USD 2026-04-18 — Plan annual recalibration Open":
+        - cell "[SIM QC R5] US Precision Lab 08"
+        - cell "ACC-2026-04-2-R2"
+        - cell "Deposit due"
+        - cell "7,355.77"
+        - cell "7,355.77"
+        - cell "0"
+        - cell "7,355.77"
+        - cell "USD"
+        - cell "2026-04-18"
+        - cell "—"
+        - cell "Plan annual recalibration"
+        - cell "Open":
+          - link "Open":
+            - /url: /app/opportunities?opportunityId=423506a4-8afb-4b9d-8efc-ca69bf3061d7
+      - row "[SIM QC R5] US Precision Lab 11 ACC-2026-05-2-R2 Deposit due 7,788.46 7,788.46 0 7,788.46 USD 2026-05-18 — Plan annual recalibration Open":
+        - cell "[SIM QC R5] US Precision Lab 11"
+        - cell "ACC-2026-05-2-R2"
+        - cell "Deposit due"
+        - cell "7,788.46"
+        - cell "7,788.46"
+        - cell "0"
+        - cell "7,788.46"
+        - cell "USD"
+        - cell "2026-05-18"
+        - cell "—"
+        - cell "Plan annual recalibration"
+        - cell "Open":
+          - link "Open":
+            - /url: /app/opportunities?opportunityId=d800b398-d9fa-4a96-8a68-d2cb1f6d9f40
+      - row "[SIM QC R5] US Precision Lab 02 ACC-2026-06-2-R2 Deposit due 8,221.15 8,221.15 0 8,221.15 USD 2026-06-18 — Plan annual recalibration Open":
+        - cell "[SIM QC R5] US Precision Lab 02"
+        - cell "ACC-2026-06-2-R2"
+        - cell "Deposit due"
+        - cell "8,221.15"
+        - cell "8,221.15"
+        - cell "0"
+        - cell "8,221.15"
+        - cell "USD"
+        - cell "2026-06-18"
+        - cell "—"
+        - cell "Plan annual recalibration"
+        - cell "Open":
+          - link "Open":
+            - /url: /app/opportunities?opportunityId=dbfeac16-cd3c-4cf2-8b3b-1e6a400872be
+      - row "[SIM QC R5] US Precision Lab 05 ACC-2026-07-2-R2 Deposit due 8,653.85 8,653.85 0 8,653.85 USD 2026-07-18 — Plan annual recalibration Open":
+        - cell "[SIM QC R5] US Precision Lab 05"
+        - cell "ACC-2026-07-2-R2"
+        - cell "Deposit due"
+        - cell "8,653.85"
+        - cell "8,653.85"
+        - cell "0"
+        - cell "8,653.85"
+        - cell "USD"
+        - cell "2026-07-18"
+        - cell "—"
+        - cell "Plan annual recalibration"
+        - cell "Open":
+          - link "Open":
+            - /url: /app/opportunities?opportunityId=7e21eb45-67e3-4a3e-8ab2-4a12faa4d008
+      - row "[SIM QC R5] US Precision Lab 08 ACC-2026-08-2-R2 Deposit due 9,086.54 9,086.54 0 9,086.54 USD 2026-08-18 — Plan annual recalibration Open":
+        - cell "[SIM QC R5] US Precision Lab 08"
+        - cell "ACC-2026-08-2-R2"
+        - cell "Deposit due"
+        - cell "9,086.54"
+        - cell "9,086.54"
+        - cell "0"
+        - cell "9,086.54"
+        - cell "USD"
+        - cell "2026-08-18"
+        - cell "—"
+        - cell "Plan annual recalibration"
+        - cell "Open":
+          - link "Open":
+            - /url: /app/opportunities?opportunityId=b1b74b53-68cb-4f9f-83df-26707088533d
+      - row "[SIM QC R5] US Precision Lab 11 ACC-2026-09-2-R2 Deposit due 9,518.08 9,518.08 0 9,520.38 USD 2026-09-18 — Plan annual recalibration Open":
+        - cell "[SIM QC R5] US Precision Lab 11"
+        - cell "ACC-2026-09-2-R2"
+        - cell "Deposit due"
+        - cell "9,518.08"
+        - cell "9,518.08"
+        - cell "0"
+        - cell "9,520.38"
+        - cell "USD"
+        - cell "2026-09-18"
+        - cell "—"
+        - cell "Plan annual recalibration"
+        - cell "Open":
+          - link "Open":
+            - /url: /app/opportunities?opportunityId=372a0982-2fdb-4479-8c06-fa03314950f5
+  - button "Previous page" [disabled]
+  - button "Next page" [disabled]
+  - complementary:
+    - heading "Choose a business question" [level=2]
+    - button "How is each Brand performing?"
+    - button "Which deals need a next action?"
+    - button "Where are my Leads coming from?"
+    - button "Which payments need attention?"
+    - heading "Other templates" [level=3]
+    - button "Portfolio Performance"
+    - button "Collections & Blockers"
+    - heading "Saved reports" [level=2]
+    - checkbox "Archived reports only"
+    - text: Archived reports only
+    - list:
+      - button "[SIM QC R5] Orion collections (copy)"
+      - paragraph: collections · version 3
+      - button "Archive report"
+      - button "[SIM QC R5] Orion collections"
+      - paragraph: collections · version 2
+      - button "Archive report"
+      - button "[SIM QC R5] Orion portfolio"
+      - paragraph: opportunities · version 1
+      - button "Archive report"
+  - generic "Customize filters, columns and saved report"
+  - option "Qualified opportunities" [selected]
+  - option "Leads only"
+  - option "All opportunities"
+  - option "Details" [selected]
+  - option "Grouped summary"
+  - option "Source ID"
+  - option "Account"
+  - option "Deal / order"
+  - option "Business unit"
+  - option "Brand"
+  - option "Product group"
+  - option "Product / solution"
+  - option "Deal stage"
+  - option "Deal status"
+  - option "Original brand"
+  - option "Original product"
+  - option "Original value"
+  - option "Original currency"
+  - option "Value in reporting currency"
+  - option "Reporting currency"
+  - option "Next action"
+  - option "Next action date"
+  - option "Closed on"
+  - option "Missing context / blocker"
+  - option "Open objections"
+  - option "Channel"
+  - option "Opportunity type"
+  - option "Order reference"
+  - option "Order stage"
+  - option "Order anchor date"
+  - option "Next payment due" [selected]
+  - option "Recorded receipts"
+  - option "Outstanding"
+  - option "Planning dates to confirm"
+  - option "Confirmed overdue balance"
+  - option "Overpayment"
+  - option "Payment schedule confidence"
+  - option "Money data incomplete"
+  - option "All conditions (AND)"
+  - option "Any condition (OR)" [selected]
+  - option "Source ID"
+  - option "Account"
+  - option "Deal / order"
+  - option "Business unit"
+  - option "Brand"
+  - option "Product group"
+  - option "Product / solution"
+  - option "Deal stage"
+  - option "Deal status"
+  - option "Original brand"
+  - option "Original product"
+  - option "Original value"
+  - option "Original currency"
+  - option "Value in reporting currency"
+  - option "Reporting currency"
+  - option "Next action"
+  - option "Next action date"
+  - option "Closed on"
+  - option "Missing context / blocker"
+  - option "Open objections"
+  - option "Channel"
+  - option "Opportunity type"
+  - option "Order reference"
+  - option "Order stage"
+  - option "Order anchor date"
+  - option "Next payment due"
+  - option "Recorded receipts"
+  - option "Outstanding" [selected]
+  - option "Planning dates to confirm"
+  - option "Confirmed overdue balance"
+  - option "Overpayment"
+  - option "Payment schedule confidence"
+  - option "Money data incomplete"
+  - option "Equals"
+  - option "At least / on or after" [selected]
+  - option "At most / on or before"
+  - option "Missing / unassigned"
+  - option "Present / assigned"
+  - option "Source ID"
+  - option "Account"
+  - option "Deal / order"
+  - option "Business unit"
+  - option "Brand"
+  - option "Product group"
+  - option "Product / solution"
+  - option "Deal stage"
+  - option "Deal status"
+  - option "Original brand"
+  - option "Original product"
+  - option "Original value"
+  - option "Original currency"
+  - option "Value in reporting currency"
+  - option "Reporting currency"
+  - option "Next action"
+  - option "Next action date"
+  - option "Closed on"
+  - option "Missing context / blocker"
+  - option "Open objections"
+  - option "Channel"
+  - option "Opportunity type"
+  - option "Order reference"
+  - option "Order stage"
+  - option "Order anchor date"
+  - option "Next payment due"
+  - option "Recorded receipts"
+  - option "Outstanding"
+  - option "Planning dates to confirm"
+  - option "Confirmed overdue balance"
+  - option "Overpayment"
+  - option "Payment schedule confidence"
+  - option "Money data incomplete" [selected]
+  - option "Equals" [selected]
+  - option "Missing / unassigned"
+  - option "Present / assigned"
+  - option "Choose"
+  - option "True" [selected]
+  - option "False"
+  - option "No grouping"
+  - option "Source ID"
+  - option "Account"
+  - option "Deal / order"
+  - option "Business unit" [selected]
+  - option "Brand"
+  - option "Product group"
+  - option "Product / solution"
+  - option "Deal stage"
+  - option "Deal status"
+  - option "Original brand"
+  - option "Original product"
+  - option "Original currency"
+  - option "Reporting currency"
+  - option "Next action"
+  - option "Next action date"
+  - option "Closed on"
+  - option "Missing context / blocker"
+  - option "Open objections"
+  - option "Channel"
+  - option "Opportunity type"
+  - option "Order reference"
+  - option "Order stage"
+  - option "Order anchor date"
+  - option "Next payment due"
+  - option "Payment schedule confidence"
+  - option "Money data incomplete"
+  - option "No grouping" [selected]
+  - option "Source ID"
+  - option "Account"
+  - option "Deal / order"
+  - option "Business unit"
+  - option "Brand"
+  - option "Product group"
+  - option "Product / solution"
+  - option "Deal stage"
+  - option "Deal status"
+  - option "Original brand"
+  - option "Original product"
+  - option "Original currency"
+  - option "Reporting currency"
+  - option "Next action"
+  - option "Next action date"
+  - option "Closed on"
+  - option "Missing context / blocker"
+  - option "Open objections"
+  - option "Channel"
+  - option "Opportunity type"
+  - option "Order reference"
+  - option "Order stage"
+  - option "Order anchor date"
+  - option "Next payment due"
+  - option "Payment schedule confidence"
+  - option "Money data incomplete"

@@ -677,7 +677,7 @@ export function AccountsPage() {
   };
 
   return (
-    <PageContainer>
+    <PageContainer density="compact">
       {/* Accounts opened on a title, a paragraph, a quiet-customers card, a
           toolbar, an import banner and a seven-metric summary - the book of
           customers itself started below two screens. The founder's read is
@@ -689,6 +689,7 @@ export function AccountsPage() {
           duplicates, unlinked candidates - moves below it, where you go
           looking for work rather than tripping over it. */}
       <PageHeader
+        size="compact"
         title="Accounts"
         meta={
           loading
@@ -812,10 +813,10 @@ export function AccountsPage() {
           </button>
           <button
             type="button"
-            aria-pressed={quickFilter === 'keyAccounts'}
-            onClick={() => setQuickFilter(quickFilter === 'keyAccounts' ? 'all' : 'keyAccounts')}
+            aria-pressed={hygieneFilter === 'Strategic'}
+            onClick={() => { setHygieneFilter(hygieneFilter === 'Strategic' ? 'Active work' : 'Strategic'); setQuickFilter('all'); }}
             className={`rounded-full border px-3 py-1.5 text-xs font-bold transition ${
-              quickFilter === 'keyAccounts'
+              hygieneFilter === 'Strategic'
                 ? 'border-brand-blue bg-blue-50 text-brand-blue'
                 : 'border-line bg-white text-gray-600 hover:border-brand-blue hover:text-brand-blue'
             }`}
@@ -1083,9 +1084,9 @@ function AccountMemorySummary({ summary }: { summary: ReturnType<typeof buildAcc
   ];
 
   return (
-    <section className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-7" aria-label="Account book summary">
+    <section className="flex gap-2 overflow-x-auto pb-1 xl:grid xl:grid-cols-7" aria-label="Account book summary" tabIndex={0}>
       {stats.map((stat) => (
-        <div key={stat.label} className="rounded-lg border border-line bg-white px-3 py-2 shadow-sm">
+        <div key={stat.label} className="min-w-[128px] shrink-0 rounded-lg border border-line bg-white px-3 py-2 shadow-sm xl:min-w-0">
           <p className="truncate text-[10px] font-bold uppercase tracking-wide text-gray-400" title={stat.label}>{stat.label}</p>
           <p className={`text-lg font-bold leading-tight ${
             stat.tone === 'green' ? 'text-emerald-700' : stat.tone === 'amber' ? 'text-amber-700' : 'text-ink'
@@ -1537,6 +1538,8 @@ function AccountDetailPanel({
       {/* What matters about this customer now, before any detail: the state of
           the relationship in a few facts and at most three sentences. Everything
           below it is the evidence. */}
+      {selectedMemory && <Link to={`/app/ask?mode=ai&scope=account&accountId=${encodeURIComponent(selectedMemory.account.id)}`} className="mt-4 inline-flex min-h-10 items-center rounded-full border border-blue-100 bg-blue-50 px-4 py-2 text-xs font-bold text-brand-blue">Ask AI about this account</Link>}
+
       {selectedMemory && hygieneStatus !== 'Imported only' && hygieneStatus !== 'Archived' && (
         <AccountGlancePanel
           glance={buildAccountGlance({

@@ -142,7 +142,7 @@ async function cardHtml() {
     <div class="foot">
       <span>memoire-official.com</span>
       <span class="dot"></span>
-      <span class="quiet">No AI service &middot; No CRM writeback &middot; Export anytime</span>
+      <span class="quiet">Local insights &middot; Optional AI chat &middot; Export anytime</span>
     </div>
   </div>
 </body></html>`;

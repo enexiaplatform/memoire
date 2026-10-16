@@ -1,0 +1,31 @@
+- link "Memoire home":
+  - /url: /
+  - generic: Memoire
+- heading "Create your account" [level=1]
+- paragraph: Start building your personal sales memory
+- button "Continue with Google"
+- generic: or
+- generic: Full name
+- textbox "Full name":
+  - /placeholder: Your name
+- generic: Email address
+- textbox "Email address":
+  - /placeholder: you@company.com
+- generic: Password
+- textbox "Password":
+  - /placeholder: Create a strong password
+- paragraph: Use 12+ characters with uppercase, lowercase, a number, and a symbol.
+- button "Show password"
+- button "Create account"
+- paragraph:
+  - text: Read our
+  - link "Privacy policy":
+    - /url: /privacy
+  - text: and
+  - link "Terms":
+    - /url: /terms
+  - text: before creating your account.
+- paragraph:
+  - text: Already have an account?
+  - link "Log in":
+    - /url: /login

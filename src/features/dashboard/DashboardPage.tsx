@@ -883,9 +883,9 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
   const firstMove = pictureReady ? todayCenter.topActions[0] : undefined;
 
   return (
-    <PageContainer onClickCapture={handleTodayLinkCapture}>
+    <PageContainer density="compact" onClickCapture={handleTodayLinkCapture}>
       <PageHeader
-        size="hero"
+        size="compact"
         eyebrow={new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long' }).format(new Date())}
         // Daylight opens Today on the person and the day rather than on the
         // product's promise. The name is only ever one they gave: a greeting
@@ -898,7 +898,6 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
         // The brief is the hero's sentence, and only once there is a workspace to
         // brief on: drawn mid-load it would announce "no deals are at risk" about
         // records that have not arrived yet.
-        description={pictureReady ? <MorningBriefCard brief={morningBrief} /> : undefined}
         actions={
           /*
            * One quiet control, and a message only when there is one.
@@ -943,6 +942,8 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
           </>
         }
       />
+
+      {pictureReady && <MorningBriefCard brief={morningBrief} />}
 
       {loadError ? (
         /* An honest failure, not an empty page. Drawing the command tower with

@@ -1,0 +1,40 @@
+{
+  "id": "dpl_2UHqc75juQSNYpGrsKGKUjGRH9ZD",
+  "name": "memoire",
+  "url": "memoire-k2tv65cip-enexiaplatforms-projects.vercel.app",
+  "type": "LAMBDAS",
+  "state": "READY",
+  "createdAt": 1791873837590,
+  "creator": {
+    "uid": "scLiCrp91aVnEhq5s51gbxzy",
+    "username": "enexiaplatform"
+  },
+  "project": {
+    "id": "prj_IG0RdVVsY9KzEuSFHdTez5T5nQNH",
+    "name": "memoire",
+    "framework": "vite"
+  },
+  "meta": {
+    "githubCommitRef": "master",
+    "githubCommitSha": "33bf06b56c7fe9356523e205c61f29d148304abd",
+    "githubCommitMessage": "Merge pull request #4 from enexiaplatform/codex/full-app-upgrade-round2\n\nFix Brand durability and cross-app money, review and capture consistency",
+    "githubRepo": "memoire",
+    "githubOrg": "enexiaplatform"
+  },
+  "alias": [
+    "www.memoire-official.com",
+    "memoire-blush-eta.vercel.app",
+    "memoire-official.com",
+    "memoire-enexiaplatforms-projects.vercel.app",
+    "memoire-git-master-enexiaplatforms-projects.vercel.app"
+  ],
+  "target": "production",
+  "regions": [
+    "iad1"
+  ],
+  "buildingAt": 1791873838985,
+  "ready": 1791873897074,
+  "readyState": "READY",
+  "source": "git",
+  "aliasError": null
+}

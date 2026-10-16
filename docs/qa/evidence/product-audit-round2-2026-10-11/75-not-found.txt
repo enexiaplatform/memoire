@@ -1,0 +1,13 @@
+- main:
+  - link "Memoire home":
+    - /url: /
+    - generic: Memoire
+  - paragraph: "404"
+  - heading "This page could not be found." [level=1]
+  - paragraph: The link may be outdated, or the page may have moved.
+  - link "Return home":
+    - /url: /
+    - text: Return home
+  - link "Start free":
+    - /url: /signup
+    - text: Start free

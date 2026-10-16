@@ -1,0 +1,120 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 5 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "5 open": "5"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 5 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - generic: Settings · changes save as you go
+  - button "Export & Delete":
+    - text: Export & Delete
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace":
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Workspace
+  - heading "Your rules, your data" [level=1]
+  - heading "Settings" [level=2]
+  - paragraph: Five tabs, each owning one decision about your workspace.
+  - tablist "Settings":
+    - tab "Workspace Money, notifications, storage":
+      - generic: Workspace
+      - generic: Money, notifications, storage
+    - tab "Account Your name and sign-in":
+      - generic: Account
+      - generic: Your name and sign-in
+    - tab "Plan & Billing What you pay for":
+      - generic: Plan & Billing
+      - generic: What you pay for
+    - tab "Data & Privacy What Memoire is, and is not" [active] [selected]:
+      - generic: Data & Privacy
+      - generic: What Memoire is, and is not
+    - tab "Export & Delete Take it out, or remove it":
+      - generic: Export & Delete
+      - generic: Take it out, or remove it
+  - heading "Data and Product Boundaries" [level=2]
+  - paragraph: Understand what Memoire stores, what remains local, and where human review is required.
+  - heading "Memoire is not" [level=3]
+  - paragraph: Said as plainly here as it is on the landing page.
+  - list:
+    - generic: "No"
+    - generic: A professional certification, hiring score, or credit signal
+    - generic: "No"
+    - generic: A replacement for your company CRM or system of record
+    - generic: "No"
+    - generic: An automated sender of customer communication
+    - generic: "No"
+    - generic: An invoicing, inventory, ecommerce, marketplace, or project-delivery management system
+  - heading "Your controls" [level=3]
+  - list:
+    - generic: "Yes"
+    - generic: Export available cloud and browser workspace data from Export & Delete.
+    - generic: "Yes"
+    - generic: Delete your signed-in account and clear Memoire data stored in this browser.
+    - generic: "Yes"
+    - generic: Use local mode without signing in, with the limitations of browser-only storage.
+    - generic: "Yes"
+    - generic: Review the evidence behind rule-based risk and opportunity-quality signals.
+  - link "View full product boundaries":
+    - /url: /legal/boundaries
+    - text: View full product boundaries
+  - heading "Current product boundaries" [level=3]
+  - paragraph: Nothing you write is sent to an AI service. There is no AI provider, key or endpoint in Memoire; capture parses on this device and Search & Insights computes from your own records.
+  - list:
+    - text: No CRM writeback, enterprise SSO, team administration, or manager scoring is available today.
+    - text: Local browser data can be lost when browser storage is cleared. Keep exports of business-critical information.
+  - heading "Storage" [level=3]
+  - generic: Cloud + browser
+  - generic: Sign in to keep records on your account as well
+  - generic: Browser only
+  - generic: The demo sandbox lives only in this browser
+  - generic: Active
+  - region "Danger zone":
+    - heading "Danger zone" [level=3]
+    - paragraph: Deleting your account clears Memoire data stored in this browser and your signed-in cloud workspace. Export first - this cannot be undone.
+    - button "Export, then delete":
+      - text: Export, then delete

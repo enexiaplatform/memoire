@@ -198,7 +198,7 @@ export function QuoteToCashPage() {
           {
             to: '/legal/boundaries',
             title: 'What Memoire deliberately refuses to do',
-            blurb: 'No CRM writeback, no AI service, no accounting, no manager scoreboard — and why each line is drawn there.',
+            blurb: 'No CRM writeback, no accounting, no manager scoreboard — and the sharing boundary for optional AI chat.',
           },
         ]}
       />

@@ -1,0 +1,1681 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-11T15:08:03.732Z",
+  "sha": "545b27b779260d7425729820334ef486cca33a4f",
+  "purpose": "Round2 product audit; no source fix or deployment",
+  "mainDestinations": 10,
+  "sourceInventoryFiles": 149,
+  "captures": 76,
+  "acceptedScreenshots": 73,
+  "tests": {
+    "core": 162,
+    "supporting": 87,
+    "total": 249,
+    "failures": 0
+  },
+  "priorities": {
+    "P1": 4,
+    "P2": 12,
+    "P3": 8
+  },
+  "findings": [
+    {
+      "id": "R2-01",
+      "priority": "P1",
+      "kind": "Lỗi đã tái hiện",
+      "title": "Quote có thể ghi Paid khi chưa có tiền thu",
+      "steps": [
+        3,
+        5,
+        7,
+        9
+      ],
+      "observed": "Đổi Payment của quote Summit sang Paid và lưu thành công. Collections vẫn cho thấy 650 triệu VND chưa thu. Sau khi phục hồi Due và ghi khoản thu thử 100 triệu VND, còn 550 triệu VND. Đây là hai định nghĩa Paid cùng tồn tại.",
+      "impact": "Người dùng có thể ngừng đòi tiền vì tin nhãn Paid trên quote, trong khi sổ khoản thu chưa có bằng chứng.",
+      "change": "Lấy trạng thái thu tiền từ receipt ledger. Nếu cần xác nhận thủ công ngoài sổ, ghi thành bằng chứng đối soát có số tiền, ngày và nguồn; đừng dùng một lựa chọn Paid độc lập.",
+      "acceptance": "Không receipt: mọi màn hình đều chưa thu. Thu một phần: mọi màn hình cùng số dư. Thu đủ hoặc hoàn tiền: quote, Orders, Collections, Today và Reports cùng trạng thái; không tạo receipt ngầm khi chỉ sửa quote.",
+      "sources": [
+        "src/utils/commercialFulfillment.ts:23",
+        "src/utils/revenueView.ts:157",
+        "src/features/quotes/QuotesPage.tsx:500"
+      ]
+    },
+    {
+      "id": "R2-02",
+      "priority": "P1",
+      "kind": "Lỗi đã tái hiện",
+      "title": "Ask tính tiền chưa thu bằng giá trị gốc, bỏ qua thu một phần",
+      "steps": [
+        9,
+        29,
+        30,
+        41
+      ],
+      "observed": "Sau receipt 100 triệu VND, Collections và CSV báo 55.769,23 USD còn phải thu; Ask vẫn nói 59,6K USD committed, not collected. Chênh lệch 3.846,15 USD chính là receipt đã ghi. In motion và Pending payment dùng số dư đúng, nên câu trả lời còn tự mâu thuẫn.",
+      "impact": "Một câu hỏi về tiền trả lại số dư lớn hơn thực tế và làm mất niềm tin vào các màn hình đã tính đúng.",
+      "change": "Dùng totalOutstandingBase từ cùng receivables engine cho câu hỏi khoản phải thu. Nếu vẫn cần gross order value, đặt tên riêng và hiển thị bên cạnh received/outstanding.",
+      "acceptance": "Receipt 100 triệu VND làm mọi câu trả lời về outstanding giảm đúng 3.846,15 USD. Kiểm tra receipt nhiều loại tiền, thiếu FX và receipt trùng; số thiếu phải giữ unavailable.",
+      "sources": [
+        "src/utils/orderToCash.ts:430",
+        "src/features/v31/askMemoireInsightAnswers.ts:188",
+        "src/features/v31/askMemoireInsightAnswers.ts:663"
+      ]
+    },
+    {
+      "id": "R2-03",
+      "priority": "P1",
+      "kind": "Lỗi đã tái hiện",
+      "title": "Capture tiếng Việt hiểu sai phủ định PO và gắn nhầm hạn của hai việc",
+      "steps": [
+        37
+      ],
+      "observed": "Ghi chú nói chưa duyệt ngân sách, chưa xác nhận PO, chưa nhận hàng. Preview vẫn có Purchase order signal. Câu gửi báo giá vào thứ ba tuần sau, gọi lại ngày 20/10/2026 chỉ sinh một việc gửi báo giá, hạn 20/10; mất cuộc gọi lại. Với ngày ghi 11/10, thứ ba tuần sau là 13/10.",
+      "impact": "Tín hiệu mua hàng trở nên lạc quan và Plan có thể nhắc sai ngày. Lỗi xảy ra trước lưu, dù người dùng vẫn được quyền sửa preview.",
+      "change": "Xử lý phủ định trong từng mệnh đề tiếng Việt; tách các hành động qua dấu phẩy/liên từ và gắn ngày ở phạm vi hành động. Nhãn signal cần phân biệt PO được nhắc tới với PO đã xác nhận.",
+      "acceptance": "Ca ghi chú giữ PO chưa xác nhận; đề xuất riêng gửi báo giá 13/10 và gọi lại 20/10. Thử thêm không, chưa, hủy, có thể, nếu, tuần sau, ngày tháng và hai khách trong một ghi chú. Không tự nâng stage hay xác nhận bằng chứng.",
+      "sources": [
+        "src/utils/salesActivityClassifier.ts:575",
+        "src/utils/salesActivityClassifier.ts:723",
+        "src/utils/salesActivityClassifier.ts:680"
+      ]
+    },
+    {
+      "id": "R2-04",
+      "priority": "P1",
+      "kind": "Lỗi đã tái hiện",
+      "title": "Scoreboard bỏ currency của mục tiêu doanh số",
+      "steps": [
+        51,
+        56
+      ],
+      "observed": "Export thật của demo lưu Q4 2,5 tỷ VND và năm 10 tỷ VND. Scoreboard ở reporting USD hiển thị 2,5B USD và 10B USD. Mục tiêu Q4 đúng theo FX hiện tại là 96.153,85 USD; vì vậy mức đạt khoảng 52% bị báo 0%.",
+      "impact": "Gap, tỷ lệ đạt, run-rate và câu dự báo đều sai theo tỷ lệ 26.000 lần trong ca VND sang USD.",
+      "change": "Chuyển từng target.amount bằng target.currency trước khi cộng. Giữ currency trong kiểu đầu vào Scoreboard; chặn tỷ lệ đạt nếu thiếu FX.",
+      "acceptance": "VND, USD, SGD và mục tiêu pha nhiều currency quy đổi nhất quán với Money/forecast. Chuyển reporting currency không đổi mức đạt thực chất. Mục tiêu thiếu currency/rate báo chưa tính được, không thành 0%.",
+      "sources": [
+        "src/utils/outcomeScoreboard.ts:143",
+        "src/utils/outcomeScoreboard.ts:290",
+        "src/services/commercialKernel/targetStore.ts:11"
+      ]
+    },
+    {
+      "id": "R2-05",
+      "priority": "P2",
+      "kind": "Lỗi ý nghĩa đã tái hiện và đối chiếu nguồn",
+      "title": "Coverage suy diễn quá mức từ các deal đã ghi",
+      "steps": [
+        24,
+        25
+      ],
+      "observed": "Coverage nói 5/8 customers buy, dù có khách chỉ có deal Active hoặc Lead. Ô không có record được gọi chưa từng chào bán. Others xuất hiện như một dòng hàng để upsell. Mã nguồn tạo cột từ brand có trên deal, nên catalog Brand chưa có deal không xuất hiện.",
+      "impact": "Người dùng nhận khuyến nghị bán chéo trên một giả định không được dữ liệu chứng minh, trong khi dòng hàng chưa bán cho ai lại bị bỏ sót.",
+      "change": "Lấy hàng từ Accounts và cột từ catalog Brand đang hoạt động. Tách Won, quoted, active, Lead và chưa có record. Ghi chưa có giao dịch được ghi nhận, không suy ra chưa từng chào bán. Others là vùng cần chuẩn hóa; chỉ dùng cho bán chéo khi người dùng chọn một dòng cụ thể.",
+      "acceptance": "Brand mới không có deal vẫn có cột. Lead không được tính đã mua. Khách có deal nhưng chưa quote không được tính đã chào. Unknown/Others không tự thành mục tiêu upsell; giữ các tên manual để phân loại.",
+      "sources": [
+        "src/utils/coverageMatrix.ts:84",
+        "src/utils/coverageMatrix.ts:157",
+        "src/features/coverage/PortfolioCoveragePage.tsx"
+      ]
+    },
+    {
+      "id": "R2-06",
+      "priority": "P2",
+      "kind": "Mâu thuẫn phạm vi đã tái hiện",
+      "title": "Review có hai kết quả thắng khác nhau cho cùng tuần",
+      "steps": [
+        33,
+        36,
+        56
+      ],
+      "observed": "Oct 5–11: Changes/Business review báo 1 win và 18,5K USD; Scoreboard báo 2 wins và 43,5K USD. Scoreboard kết hợp retro với Won/Lost không có retro; Business review chỉ đọc outcomes. Vì vậy chưa thể nói một số đúng và số kia sai nếu chưa thống nhất phạm vi và nguồn ngày.",
+      "impact": "Người dùng không biết lấy số nào để báo cáo tuần. Nguồn suy ra từ updatedAt còn có thể đưa deal thiếu ngày đóng vào tuần sửa record.",
+      "change": "Một tập closed outcomes dùng chung cho summary, scoreboard và brief; hiển thị nguồn ngày đóng, tách ngày xác nhận với ngày suy ra và không âm thầm xem ngày sửa record là ngày thắng.",
+      "acceptance": "Cùng kỳ/cùng phạm vi có cùng count/value ở cả ba nơi. Deal không có ngày đóng được đưa vào nhóm chưa biết ngày; chỉnh ghi chú không làm đổi tuần thắng. Retro bổ sung sau không nhân đôi deal.",
+      "sources": [
+        "src/features/reviews/ReviewScoreboardPanel.tsx:97",
+        "src/utils/weeklyBusinessReview.ts:105",
+        "src/utils/outcomeScoreboard.ts:166"
+      ]
+    },
+    {
+      "id": "R2-07",
+      "priority": "P2",
+      "kind": "Lỗi đã tái hiện",
+      "title": "Form Opportunity nói đã link Account dù Account chưa tồn tại",
+      "steps": [
+        18,
+        19,
+        21
+      ],
+      "observed": "Lead Atlas thử nghiệm được qualify, giữ đúng ID và Others. Overview nói chưa có Account record, nhưng thông báo ở form lại xanh: Linked to a customer you already have. knownAccountNames có cả tên gõ trên opportunity nên tự xác nhận chính record vừa tạo.",
+      "impact": "Thông báo khiến người dùng tưởng đã giải quyết dữ liệu khách trôi nổi.",
+      "change": "Typeahead có thể dùng tên từ cả book; thông báo đã liên kết chỉ dùng Account record/ID thực. Đưa hành động tạo hoặc gộp Account ngay tại cảnh báo thiếu link.",
+      "acceptance": "Tên chỉ tồn tại trên lead/deal không được ghi đã link. Sau create/merge Account, Overview, form và Accounts đồng ý về một identity. Không tự tạo account trùng chỉ vì qualify lead.",
+      "sources": [
+        "src/features/opportunities/OpportunitiesPage.tsx:346",
+        "src/features/opportunities/OpportunitiesPage.tsx:3192",
+        "src/features/opportunities/OpportunitiesPage.tsx:5390"
+      ]
+    },
+    {
+      "id": "R2-08",
+      "priority": "P2",
+      "kind": "Lỗi đã tái hiện",
+      "title": "Một số đường điều hướng làm mất khách hoặc deal đang xử lý",
+      "steps": [
+        20,
+        22,
+        24,
+        39
+      ],
+      "observed": "/app/deals/:id trở về danh sách mà không mở deal. Coverage nhận accountName=Apex Labs nhưng hiển thị cả 8 khách. Account Open opportunities/Open revenue và Ask Open Accounts có đường đi quá chung, không giữ khách vừa hỏi.",
+      "impact": "Người dùng phải tìm lại context, dễ mở nhầm record giữa một danh sách lớn.",
+      "change": "Dùng các handoff có entity ID và filter được kiểm tra; giữ ID khi redirect đường cũ. Link từ account nên tới đúng account-scoped list/drawer; nếu filter không hỗ trợ thì đừng ghi ngầm trong URL.",
+      "acceptance": "Mở bookmark deal cũ vào đúng drawer; Account→Coverage/Money/Opportunities chỉ đúng khách. Back trở lại danh sách/filter trước; ID không hợp lệ báo thiếu record chứ không lặng lẽ mở tất cả.",
+      "sources": [
+        "src/App.tsx:269",
+        "src/features/coverage/PortfolioCoveragePage.tsx",
+        "src/features/accounts/AccountsPage.tsx"
+      ]
+    },
+    {
+      "id": "R2-09",
+      "priority": "P2",
+      "kind": "Cải tiến cách đọc số",
+      "title": "Số linked records của catalog và Records của report khác phạm vi",
+      "steps": [
+        1,
+        26,
+        27
+      ],
+      "observed": "PMM trong demo có 4 linked records, report qualified chỉ có 2 vì loại Leads. Production cũng có linked count lớn hơn số qualified. Hai số có thể đều đúng, nhưng nhãn trên catalog chưa cho biết population.",
+      "impact": "Đúng vấn đề người dùng nêu từ đầu: cảm giác Brand chưa record, dù thật ra đang nhìn hai tập dữ liệu khác nhau.",
+      "change": "Catalog hiển thị số Leads, qualified active và closed riêng; link View performance report giải thích phạm vi mặc định. Cho bộ lọc All/Leads/Qualified bằng cùng định nghĩa ở Reports.",
+      "acceptance": "4 links của PMM giải thích được thành 2 Leads + 2 qualified records; đổi population của report khớp count tương ứng. Dữ liệu Others manual vẫn giữ tên gốc và assignment ID.",
+      "sources": [
+        "src/features/portfolio/PortfolioPage.tsx:142",
+        "src/features/reports/ReportsPage.tsx"
+      ]
+    },
+    {
+      "id": "R2-10",
+      "priority": "P2",
+      "kind": "Lỗi phạm vi đã tái hiện",
+      "title": "Playbook áp thiếu sót MEDDIC của deal cho Leads",
+      "steps": [
+        49
+      ],
+      "observed": "Business impact not measurable 8x bao gồm 5 qualified active và 3 Leads. Source chỉ lọc status Active, không loại stage Lead. Chính Leads đã có bộ bằng chứng Fit/Contact/Need/Engagement/Next move khác.",
+      "impact": "Cảnh báo cấp High bị phình to vì đánh giá cuộc nói chuyện ban đầu như deal cần bảo vệ forecast.",
+      "change": "Tách pattern cho Leads với pattern cho qualified pipeline; chỉ chấm các tiêu chí phù hợp stage. Giữ threshold tối thiểu và tránh chữ often khi chỉ có một quan sát.",
+      "acceptance": "Ba Leads không cộng vào MEDDIC deal gap. Lead được đánh giá bằng qualification evidence; frequency và các khách liên quan giải thích được, có bộ lọc scope.",
+      "sources": [
+        "src/utils/salesPlaybook.ts:81",
+        "src/utils/salesPlaybook.ts:300"
+      ]
+    },
+    {
+      "id": "R2-11",
+      "priority": "P2",
+      "kind": "Cải tiến ý nghĩa vai trò",
+      "title": "Vai trò chưa xác nhận vẫn được trình bày như Champion",
+      "steps": [
+        23,
+        43
+      ],
+      "observed": "Dr. Avery có nhãn Champion trên account/map trong khi Role confirmed chưa được tick. MEDDIC giữ đúng việc chưa tính đây là bằng chứng Strong.",
+      "impact": "Phần nhìn nhanh mạnh hơn bằng chứng thật, nhất là khi người đọc chỉ xem map hoặc account.",
+      "change": "Dùng Proposed/Tentative Champion cho vai trò chưa xác nhận; phân biệt job title với quyền quyết định đã kiểm chứng; cho biết nguồn và lần xác nhận.",
+      "acceptance": "Bỏ tick confirmed làm các badge/map chuyển sang tentative; phân loại và MEDDIC không mâu thuẫn. Không suy ra Economic Buyer chỉ từ tên chức danh.",
+      "sources": [
+        "src/features/stakeholders/StakeholdersPage.tsx",
+        "src/features/accounts/AccountsPage.tsx",
+        "src/utils/meddicLite.ts"
+      ]
+    },
+    {
+      "id": "R2-12",
+      "priority": "P2",
+      "kind": "Cải tiến preset",
+      "title": "Preset Which payments need attention còn đưa đơn đã thu đủ",
+      "steps": [
+        28,
+        29,
+        30
+      ],
+      "observed": "Preset trả 4 orders, trong đó 2 đã collected. Số tiền tổng và CSV đúng. Đây là sự lệch giữa câu hỏi chọn và population trả về, không phải sai phép cộng.",
+      "impact": "Danh sách công việc thu tiền lẫn lịch sử đã hoàn tất.",
+      "change": "Mặc định outstanding>0 hoặc thiếu evidence cần xử lý; có lựa chọn Include collected để xem toàn bộ lịch sử. Giữ unknown amount/date cần attention, không loại sạch bằng filter số.",
+      "acceptance": "Ca demo chỉ còn Summit và Orion trong attention; đơn thu đủ nằm trong history. Missing value/rate hoặc ngày chưa xác nhận vẫn có đường xem rõ.",
+      "sources": [
+        "src/features/reports/ReportsPage.tsx",
+        "src/domain/reports/reportQuestions.ts:6"
+      ]
+    },
+    {
+      "id": "R2-13",
+      "priority": "P2",
+      "kind": "Lỗi đã đối chiếu DOM và nguồn",
+      "title": "Nudge biến giá trị chưa biết thành 0 USD",
+      "steps": [
+        18,
+        63
+      ],
+      "observed": "Atlas thử nghiệm không có amount/currency; main priority nói missing evidence nhưng nudge Weak pipeline ghi 0 USD. DOM lưu được ở bước63; ảnh63 chỉ hiển thị phần trên Today, không phải vị trí của nudge.",
+      "impact": "Dữ liệu thiếu bị trình bày như giá trị zero có thật.",
+      "change": "Giữ null xuyên suốt RevenueActionItem và nudge; hiển thị Amount not recorded hoặc không in số. Nếu phải sắp xếp, dùng độ rủi ro/tuổi và không diễn giải giá trị unknown là 0.",
+      "acceptance": "Amount trống không render 0; amount zero thực vẫn render 0 và được phân biệt. Missing FX không biến thành cash zero hoặc mất record.",
+      "sources": [
+        "src/utils/revenueView.ts:231",
+        "src/utils/proactiveNudges.ts:219",
+        "src/utils/proactiveNudges.ts:210"
+      ]
+    },
+    {
+      "id": "R2-14",
+      "priority": "P2",
+      "kind": "Lỗi handoff và giới hạn ngôn ngữ đã tái hiện",
+      "title": "Vault gửi sang câu hỏi Ask không hỗ trợ",
+      "steps": [
+        38,
+        40,
+        41,
+        47
+      ],
+      "observed": "Vault tạo Who signs at Northstar Foods? nhưng Ask trả unsupported. Câu tiếng Việt Khách nào còn nợ tiền? cũng chưa hỗ trợ; English Where is money stuck? có đáp án. Unsupported lại gợi ý việc chung Send revised quote và missing decision maker không gắn đúng câu hỏi.",
+      "impact": "App tự gợi một đường không đi được, và hướng người dùng sang một việc có vẻ liên quan nhưng thiếu căn cứ.",
+      "change": "Dùng chung intent registry cho gợi ý của Vault và parser của Ask. Hỗ trợ cách hỏi tiếng Việt phổ biến, hoặc hiện rõ các câu có hỗ trợ. Unsupported phải trung tính và gợi câu gần nghĩa, không phát sinh business advice toàn workspace.",
+      "acceptance": "Mọi suggested question của Today/Vault đều có handler. Who signs trả đúng stakeholder/unknown của khách. Câu tiếng Việt về nợ dẫn tới receivables; unsupported không tự gợi gửi quote cho khách khác.",
+      "sources": [
+        "src/features/vault/BusinessVaultPage.tsx",
+        "src/features/v31/AskMemoirePage.tsx",
+        "src/features/v31/askMemoireInsightAnswers.ts"
+      ]
+    },
+    {
+      "id": "R2-15",
+      "priority": "P3",
+      "kind": "Cải tiến bố cục và đầu ra",
+      "title": "Reports mặc định quá nhiều cột để in và khó đọc trên desktop",
+      "steps": [
+        28,
+        29,
+        61
+      ],
+      "observed": "Collections preset có 11 cột; Print/save PDF giới hạn8 nên nút mặc định bị tắt. Trên desktop1280, text bị xuống dòng rất hẹp. Chọn preset khi đang ở cuối trang cũng khiến kết quả nằm ngoài vùng nhìn.",
+      "impact": "Một chức năng xuất hiện ngay cạnh kết quả nhưng không dùng được ở cấu hình mặc định; người dùng phải tự đoán cách giảm cột.",
+      "change": "Có layout PDF riêng với tối đa8 cột hoặc landscape/pagination; chọn các cột cần hành động trước và giữ horizontal table scroll thay vì ép chữ. Sau đổi câu hỏi, báo results updated và đưa focus về heading kết quả.",
+      "acceptance": "Mỗi preset mặc định có đầu ra PDF dùng được; CSV giữ đủ cột và tất cả records. Preview được đọc ở1280 và390px; đổi template nhận được thông báo và focus rõ.",
+      "sources": [
+        "src/features/reports/ReportsPage.tsx"
+      ]
+    },
+    {
+      "id": "R2-16",
+      "priority": "P3",
+      "kind": "Cải tiến mặc định lịch",
+      "title": "Plan mặc định giấu ngày hôm nay khi hôm nay là Chủ nhật",
+      "steps": [
+        13
+      ],
+      "observed": "Audit diễn ra Chủ nhật11/10; week board mặc định Monday–Friday, phải Show weekend mới thấy hôm nay. Cách chia dated work và weekly commitments đã rõ hơn vòng1.",
+      "impact": "Người dùng mở Plan hôm nay nhưng không thấy cột của ngày đang làm việc.",
+      "change": "Tự hiện current day nếu là weekend; ghi rõ Monday–Friday view và nhớ lựa chọn lịch theo workspace.",
+      "acceptance": "Mở Plan thứ bảy/chủ nhật có hôm nay hoặc lời nhắc rõ; không tạo thêm task hay thay đổi ngày của task.",
+      "sources": [
+        "src/features/plan/WeeklyPlanPage.tsx:182",
+        "src/features/timeline/TimelinePage.tsx"
+      ]
+    },
+    {
+      "id": "R2-17",
+      "priority": "P3",
+      "kind": "Cải tiến form chi phí",
+      "title": "Nhập landed cost làm tên đơn khuất ở desktop",
+      "steps": [
+        11,
+        12
+      ],
+      "observed": "Cost form rộng phải cuộn ngang khi focus các trường bên phải; tên order phía trái khuất ở viewport1280. Goods và Extras cho phép currency khác nhau, đúng nhu cầu nhưng dễ nhập nhầm. Phép tính650m−400m−10m=240m VND và36,9% đạt.",
+      "impact": "Người nhập mất dấu đơn đang sửa trong một tác vụ có nhiều số tiền.",
+      "change": "Đặt cost editor trong drawer hoặc giữ Order identity sticky; ưu tiên cùng currency cho extras khi chưa có lựa chọn, nhưng cho đổi riêng khi cần.",
+      "acceptance": "Tên khách/order và currency luôn thấy khi sửa; không ép mọi currency giống nhau. Kết quả multi-currency và missing cost vẫn đúng.",
+      "sources": [
+        "src/features/revenue/CostAnalysisPage.tsx"
+      ]
+    },
+    {
+      "id": "R2-18",
+      "priority": "P3",
+      "kind": "Cải tiến quản lý catalog",
+      "title": "Catalog phẳng thiếu tìm kiếm và bộ lọc khi danh mục lớn",
+      "steps": [
+        1,
+        26
+      ],
+      "observed": "Demo17 entries hiện trong một danh sách gồm Business unit/Brand/Product group/Product. Duplicate Tailin được chặn. Chưa có tìm tên/kind/status ngay ở catalog list; Find a deal chỉ phục vụ assignment.",
+      "impact": "Đội có nhiều principal và hàng trăm sản phẩm khó tìm record để sửa alias, parent hoặc retire.",
+      "change": "Thêm search, kind/status/parent filters và paging cho catalog; giữ direct assignment semantics và không roll up child totals nếu chưa có quy tắc phân bổ bundle.",
+      "acceptance": "Tìm đúng entry theo tên/alias/code; retired dễ xem nhưng không dùng cho intake mới. Rename/alias không đổi stableID hay nhân đôi linked records.",
+      "sources": [
+        "src/features/portfolio/PortfolioPage.tsx"
+      ]
+    },
+    {
+      "id": "R2-19",
+      "priority": "P3",
+      "kind": "Cải tiến chữ và nhãn",
+      "title": "Một số nhãn lộ mã nội bộ hoặc nói sai nơi mở",
+      "steps": [
+        3,
+        31,
+        57
+      ],
+      "observed": "Quote mở từ Today vẫn ghi Opened from Orders. Dashboard filter hiển thị tên kèm đuôi ID. Search header dùng ⌘K trên Windows. Các nhãn nhỏ này không làm hỏng record nhưng làm người dùng bối rối.",
+      "impact": "Thông tin về đường đi và cách dùng không khớp với thao tác thật.",
+      "change": "Dùng tên surface thật hoặc bỏ eyebrow cố định; giấu ID trừ trường hợp cần phân biệt tên trùng; chọn Ctrl/Command theo nền tảng.",
+      "acceptance": "Today/Orders/Account vào quote có nhãn đúng; filter dùng tên thân thiện với tooltip ID khi cần; phím gợi ý khớp hệ điều hành.",
+      "sources": [
+        "src/features/quotes/QuotesPage.tsx:264",
+        "src/features/dashboards/DashboardsPage.tsx",
+        "src/components/layout/TopNav.tsx"
+      ]
+    },
+    {
+      "id": "R2-20",
+      "priority": "P2",
+      "kind": "Lỗi trạng thái đã tái hiện",
+      "title": "Verify-email báo đã gửi dù không có recipient context",
+      "steps": [
+        69
+      ],
+      "observed": "Mở trực tiếp /verify-email, không đăng ký hay gửi email, trang vẫn nói We have sent a verification link. Nút resend chỉ có khi location.state.email còn tồn tại, nên refresh/deep link không có đường gửi lại.",
+      "impact": "Người dùng chờ một email không được xác nhận bởi hành động vừa thực hiện và không biết sửa thiếu context thế nào.",
+      "change": "Phân biệt signup/resend accepted với trạng thái không có email; cho nhập lại email hoặc quay lại signup/login bằng lời giải thích rõ. Chỉ nói request accepted, không suy ra email đã đến inbox.",
+      "acceptance": "Truy cập trực tiếp/refresh không báo sent. Người vừa signup thấy email đã che bớt và resend có phản hồi thật. Kiểm thử delivery/expiry riêng bằng tài khoản test khi có sender.",
+      "sources": [
+        "src/features/auth/VerifyEmailPage.tsx:14",
+        "src/features/auth/VerifyEmailPage.tsx:45"
+      ]
+    },
+    {
+      "id": "R2-21",
+      "priority": "P3",
+      "kind": "Cải tiến ý nghĩa minh họa",
+      "title": "Marketing gọi chênh Quoted−Paid là tiền không về ngân hàng",
+      "steps": [
+        71,
+        72
+      ],
+      "observed": "Minh họa Quoted412K, Ordered255K, Paid74K được gọi338K never made it to the bank. Trong đó157K mới là báo giá chưa thành order; chưa thể coi toàn bộ338K là tiền đã kiếm được hoặc khoản phải thu.",
+      "impact": "Thông điệp quảng bá mạnh hơn ý nghĩa dữ liệu mà sản phẩm đã cố phân biệt Won và cash.",
+      "change": "Gọi đây là quoted-to-cash gap và tách phần chưa được đặt hàng, committed unpaid, delivered not invoiced và overdue confirmed. Khớp tên Money/Orders/Collections đang dùng.",
+      "acceptance": "Minh họa không gọi báo giá chưa nhận là nợ hay cash đã kiếm. Chú giải rõ funnel stock/cohort và đơn vị; không cần thay con số demo.",
+      "sources": [
+        "src/components/marketing/charts.tsx",
+        "src/features/useCases/UseCasesPage.tsx",
+        "src/features/guides/QuoteToCashPage.tsx"
+      ]
+    },
+    {
+      "id": "R2-22",
+      "priority": "P3",
+      "kind": "Cải tiến đăng ký và đăng nhập",
+      "title": "Thông tin trước đăng ký và hỗ trợ nhập mật khẩu còn mỏng",
+      "steps": [
+        66,
+        68,
+        74
+      ],
+      "observed": "Signup có policy12+ ký tự và autocomplete; chưa có liên kết Privacy/Terms tại form, không có show-password. Form liên hệ lại có purpose và Privacy link rõ. Thông báo cloud unconfigured ở localhost là cấu hình audit chủ ý, không phải lỗi production.",
+      "impact": "Người dùng đăng ký khó kiểm tra mật khẩu dài và phải quay về footer để hiểu cách dùng dữ liệu.",
+      "change": "Đưa Privacy/Terms/Product boundaries phù hợp cạnh form; thêm show/hide password có tên, trạng thái và hoạt động bằng keyboard. Không yêu cầu thêm bước nếu không cần.",
+      "acceptance": "Links mở được; show/hide không thay nội dung, focus hay password-manager autocomplete. Không đưa technical setup text cho end-user trên deployment đã cấu hình.",
+      "sources": [
+        "src/features/auth/SignupPage.tsx",
+        "src/features/auth/LoginPage.tsx"
+      ]
+    },
+    {
+      "id": "R2-23",
+      "priority": "P3",
+      "kind": "Cải tiến cách giải thích nguồn",
+      "title": "Dashboard gọi record zero là contributing Outstanding",
+      "steps": [
+        31,
+        32
+      ],
+      "observed": "Only records contributing to Outstanding trả4/4, gồm2 đơn outstanding0. Zero là giá trị hợp lệ trong phép tổng nên không phải lỗi tổng tiền; từ contributing khiến người dùng kỳ vọng chỉ còn đơn có số dư.",
+      "impact": "Drilldown số tiền đang mắc kẹt vẫn chứa record không mắc kẹt.",
+      "change": "Đổi nhãn Valid values included in this measure hoặc thêm Only non-zero. Giữ tùy chọn xem toàn population để đối soát missing/excluded.",
+      "acceptance": "Valid4, non-zero2 trong ca này; unknown không được đưa vào nhóm valid. Count, total và excluded reasons giải thích được từ captured report run.",
+      "sources": [
+        "src/features/dashboards/DashboardsPage.tsx"
+      ]
+    },
+    {
+      "id": "R2-24",
+      "priority": "P2",
+      "kind": "Nội dung cũ đã đối chiếu nguồn",
+      "title": "Privacy còn mô tả cơ chế shared brief đã nghỉ",
+      "steps": [
+        73
+      ],
+      "observed": "Privacy mô tả brief nằm trong URL fragment, không uploaded, ai có link đều đọc và không expiry. App hiện redirect /share/brief về home, trong khi SharedWorkspacesPanel dùng cấu hình và invitation/account sync. Không có share nào được thực hiện trong audit.",
+      "impact": "Người đọc không có lời giải thích đúng cho chức năng sharing đang tồn tại.",
+      "change": "Đối chiếu từng tuyên bố privacy/boundaries với các cơ chế hiện tại; mô tả rõ link retired, permission-based shared workspace và dữ liệu được sync. Đây là review tính chính xác nội dung sản phẩm, không kết luận pháp lý.",
+      "acceptance": "Tài liệu mô tả đúng đường đang dùng; old link được giải thích đã nghỉ. Hành vi quyền, invite accept/decline và revoke được kiểm chứng bằng hai account test trước khi tuyên bố về access.",
+      "sources": [
+        "src/features/legal/LegalPage.tsx:80",
+        "src/App.tsx:113",
+        "src/features/reviews/SharedWorkspacesPanel.tsx"
+      ]
+    }
+  ],
+  "coverage": [
+    [
+      "Today",
+      "Picture, ranked3 moves, Watch-list, nudges, lead prompts, Start the day",
+      "2,3,9,42,63,64",
+      "Runtime demo + production anchor",
+      "R2-01, R2-13, R2-19",
+      "Snooze/Done không được thử lại vòng2; không xem dismiss là đã giải quyết commercial risk."
+    ],
+    [
+      "Plan",
+      "Week board, commitments, customer composer, history, dated work vs weekly priorities",
+      "13–15",
+      "Runtime demo + source",
+      "R2-16, R2-08",
+      "Paste/import và xác nhận cùng work được đọc nguồn; không import dữ liệu thật."
+    ],
+    [
+      "Leads",
+      "Queue/filter/search, create, Brand/Others validation, qualify sameID, nurture/disqualify surfaces, mobile",
+      "16–19,59,60",
+      "Runtime demo + source",
+      "R2-07, R2-10",
+      "Đã tạo và qualify Lead hư cấu; disqualify/nurture không commit vòng2."
+    ],
+    [
+      "Accounts",
+      "Book, orphan repair hints, customer overview, people, link to coverage/revenue/opportunities",
+      "21–25",
+      "Runtime demo + source",
+      "R2-07, R2-08, R2-11",
+      "CSV/contact import và merge đọc nguồn; chưa thực hiện merge hoặc import production."
+    ],
+    [
+      "Opportunities",
+      "Qualified detail, original fields/classification, identity, MEDDIC, forecast evidence, legacy links",
+      "18–20,25,37",
+      "Runtime demo + source",
+      "R2-03, R2-07, R2-08",
+      "Close-out/delete và foreign-account cloud write không thực hiện; What-if/pricing đọc nguồn và unit checks."
+    ],
+    [
+      "Money / Orders",
+      "Quote editor, manual payment, fulfillment, Collections trigger/date basis, partial receipts, costs and margin",
+      "3–12,29–32,41,56",
+      "Runtime demo + pure probes",
+      "R2-01, R2-02, R2-04, R2-17",
+      "P&L/expenses/supplier commitments/targets được đối chiếu nguồn đã triển khai; không tạo expense/supplier transaction mới."
+    ],
+    [
+      "Review",
+      "Changes, Scoreboard, Business Review, commitments, analytics, lead conversion, next-week priorities",
+      "33–36,56",
+      "Runtime demo + source",
+      "R2-06, R2-10",
+      "Weekly scope đã đối chiếu; không gửi brief, shared invitation hay canonical exchange."
+    ],
+    [
+      "Products & Brands",
+      "Catalog, stable identity, alias/retire controls, duplicate validation, current classification, report handoff",
+      "1,17,26,27",
+      "Production đọc-only + demo + unit checks",
+      "R2-05, R2-09, R2-18",
+      "Rename/retire/bulk legacy promotion đọc nguồn; chưa thực hiện cloud mutation vòng2."
+    ],
+    [
+      "Reports",
+      "Population, presets, filters/columns, details/grouping, captured metadata, CSV export, save, dashboard handoff",
+      "27–30,61",
+      "Runtime demo + ZIP inspection + unit checks",
+      "R2-09, R2-12, R2-15",
+      "CSV totals khớp; PDF preset11 cột bị disable, chưa xuất PDF thực tế. Archive/restore definition chưa thực hiện."
+    ],
+    [
+      "Dashboards",
+      "Create from report, save, widget total, sources, contributors, captured-run identity",
+      "31,32",
+      "Runtime demo + source",
+      "R2-19, R2-23",
+      "Save/drilldown dùng report snapshot; nhiều-widget scale và cloud save chưa nghiệm thu vòng2."
+    ],
+    [
+      "Capture / Ask / Search",
+      "VN note, multi-action dates, buying signals, supported/unsupported intents, account scope guard, global search/Escape",
+      "37–42,47,57",
+      "Runtime demo + pure probes",
+      "R2-02, R2-03, R2-08, R2-14",
+      "Ghi chú VN lỗi chỉ preview rồi discard; không gửi follow-up. Không khẳng định hỗ trợ mọi cách nói/ngôn ngữ."
+    ],
+    [
+      "People / Objections",
+      "Role confirmation, MEDDIC contradiction check, objection status/evidence/owner form",
+      "23,43–45",
+      "Runtime demo + source + unit checks",
+      "R2-11",
+      "Form objection chỉ preview; không đổi role hoặc resolution trên production."
+    ],
+    [
+      "Vault / Playbook / Assets",
+      "Graph and text alternative, gap ranking→Ask, learned patterns, reusable asset library",
+      "46–50",
+      "Runtime demo + source + pure probes",
+      "R2-10, R2-14",
+      "Không import/share asset; không có nghiệm thu full graph keyboard navigation."
+    ],
+    [
+      "Operating priorities",
+      "Must-win list, initiative hypothesis/decision/activity linkage/value currency",
+      "48,62",
+      "Runtime demo + source",
+      "C3 (đã loại như một lỗi)",
+      "FormSGD của record cũ có payload currency; tạo mới dùng reporting currency. Không coi label này là lỗi tiền."
+    ],
+    [
+      "Settings / data recovery",
+      "5 categories, currency/FX/pricing assumptions, sync status, exportZIP, restore boundary, reset/exit demo",
+      "51–55,64,76",
+      "Demo runtime + production đọc-only + unit checks",
+      "C1, C2, D1",
+      "Production sender chưa cấu hình; real restore/undo/profile save/billing/delete chưa thực hiện."
+    ],
+    [
+      "Public / onboarding / auth",
+      "Landing, signup/login, forgot/verify, pricing, use cases/guide/privacy/contact/404; first-run source",
+      "65–75",
+      "Public local runtime + source",
+      "R2-20, R2-21, R2-22, R2-24",
+      "Không tạo account hoặc gửi email/contact request. Verify delivery, reset token, OAuth và merchant checkout chưa kiểm chứng."
+    ],
+    [
+      "Internal / administrative gates",
+      "Founder import review redirect; admin/validation-feedback entitlement and source routes",
+      "63",
+      "Runtime gate + source inventory",
+      "Không kết luận defect chỉ vì gate",
+      "Không có thao tác admin, production import hoặc security penetration test."
+    ]
+  ],
+  "followups": [
+    {
+      "id": "C1",
+      "title": "FX override là browser-local",
+      "text": "WorkspaceSettings ghi rõ rate override ở browser. Cần hai thiết bị của cùng owner để xác nhận một report có cùng FX basis. Nếu chưa đồng bộ, nên có per-account FX version hoặc banner về thiết bị đang dùng; chưa xác nhận một production discrepancy."
+    },
+    {
+      "id": "C2",
+      "title": "Opportunity và Brand assignment vẫn là hai lần ghi",
+      "text": "opportunityStore.ts:246–261 ghi deal trước, link Brand sau; catch trả warning repair, không transaction. Cần fault injection để nghiệm thu không có dữ liệu trôi nổi khi link thất bại; đề xuất durable pending repair hoặc atomic write. Happy path liên kết catalog/Others đã đạt."
+    },
+    {
+      "id": "C3",
+      "title": "InitiativeSGD không phải lỗi khi payload nóiSGD",
+      "text": "OperatingSystemPage.tsx:107 tạo mới với reporting currency; dòng304/387 giữ currency của record cũ. Không đổi currency của số đã nhập chỉ vì đổi reporting currency. Loại giả thuyết labelSGD sai khỏi danh sách defect."
+    },
+    {
+      "id": "D1",
+      "title": "Email digest chưa hoạt động trên deployment hiện tại",
+      "text": "Production Settings ở bước76 nói sender/scheduled delivery chưa được cấu hình. Lưu preference không làm email tới inbox. Cần cấu hình và nghiệm thu sender, cron, unsubscribe, owner isolation trước khi xem là feature hoàn tất."
+    },
+    {
+      "id": "D2",
+      "title": "Cảnh báo sync ở tab cũ tự hồi phục",
+      "text": "Khi quay lại tab production cũ có Sync issue bên cạnh Catalog cloud sync completed. Mở Settings đã trở về Cloud available/None known unsynced, không bấm Retry và không console error. Ghi nhận incident, chưa kết luận mất dữ liệu hay lỗi sync kéo dài."
+    }
+  ],
+  "steps": [
+    {
+      "step": 1,
+      "slug": "production-brands",
+      "url": "https://www.memoire-official.com/app/products",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/01-production-brands.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/01-production-brands.txt",
+      "notes": "Production authenticated simulated QC R5 account. Catalog linked counts include Lead-stage records, while performance excludes Leads; inspect whether difference is explained. No cloud writes.",
+      "capturedAt": "2026-10-11T10:28:29.425Z",
+      "label": "Brand trên production",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-09",
+        "R2-18"
+      ]
+    },
+    {
+      "step": 2,
+      "slug": "today",
+      "url": "http://127.0.0.1:5184/app/today",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/02-today.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/02-today.txt",
+      "notes": "Local sample scope. Compare priority moves and overdue figure with Collections; assess action link specificity.",
+      "capturedAt": "2026-10-11T10:29:00.365Z",
+      "label": "Today",
+      "health": "Ổn trong ca thử",
+      "findingIds": []
+    },
+    {
+      "step": 3,
+      "slug": "today-to-quote",
+      "url": "http://127.0.0.1:5184/app/quotes",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/03-today-to-quote.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/03-today-to-quote.txt",
+      "notes": "Start the day from Today opened Quotes with selected overdue quote editor. Context says Opened from Orders although origin was Today. Compare action named Check collection with destination/edit form.",
+      "capturedAt": "2026-10-11T10:29:23.072Z",
+      "label": "Today mở quote",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-01",
+        "R2-19"
+      ]
+    },
+    {
+      "step": 4,
+      "slug": "quote-paid",
+      "url": "http://127.0.0.1:5184/app/quotes",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/04-quote-paid.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/04-quote-paid.txt",
+      "notes": "Changed sample Summit quote Payment to Paid and saved successfully; no payment receipt entered. Compare Collections for same opportunity ID.",
+      "capturedAt": "2026-10-11T10:30:26.246Z",
+      "label": "Lưu Paid thử nghiệm",
+      "health": "Cần sửa",
+      "findingIds": []
+    },
+    {
+      "step": 5,
+      "slug": "quote-paid-status",
+      "url": "http://127.0.0.1:5184/app/quotes",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/05-quote-paid-status.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/05-quote-paid-status.txt",
+      "notes": "Sample quote Q-DEMO-SUMMIT-01 persisted Payment Paid without recording receipt. Screenshot displays status, DOM shows Quote updated.",
+      "capturedAt": "2026-10-11T10:30:50.934Z",
+      "label": "Quote giữ Paid",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-01"
+      ]
+    },
+    {
+      "step": 6,
+      "slug": "collections-after-quote-paid",
+      "url": "http://127.0.0.1:5184/app/revenue?view=collections",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/06-collections-after-quote-paid.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/06-collections-after-quote-paid.txt",
+      "notes": "Same Summit order still has confirmed overdue 25000 USD, although its Quote is manually Paid. No receipt recorded. Contradictory paid-vs-overdue statuses, while receipt amount remains correct.",
+      "capturedAt": "2026-10-11T10:31:02.888Z",
+      "accepted": false,
+      "rejection": "Screenshot captured transition/previous Orders view, while DOM had changed to Collections; replaced with next capture.",
+      "label": "Ảnh chuyển trang",
+      "health": "Loại ảnh",
+      "findingIds": []
+    },
+    {
+      "step": 7,
+      "slug": "collections-paid-conflict",
+      "url": "http://127.0.0.1:5184/app/revenue?view=collections",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/07-collections-paid-conflict.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/07-collections-paid-conflict.txt",
+      "notes": "Accepted Collections view. Same Summit quote manually Paid remains 25000 USD confirmed overdue in receipts ledger; cash calculation does not invent a receipt.",
+      "capturedAt": "2026-10-11T10:31:27.329Z",
+      "label": "Collections đối chiếu Paid",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-01"
+      ]
+    },
+    {
+      "step": 8,
+      "slug": "collection-expanded",
+      "url": "http://127.0.0.1:5184/app/revenue?view=collections",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/08-collection-expanded.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/08-collection-expanded.txt",
+      "notes": "Expanded Summit: 25000 USD amount, Received 0 USD, outstanding 25000 USD. Amount input explicitly VND, received-on/how recorded. Delivery date input blank while trigger comes from recorded milestones; explain inherited date near field.",
+      "capturedAt": "2026-10-11T10:32:24.813Z",
+      "label": "Lịch thu mở rộng",
+      "health": "Cải tiến",
+      "findingIds": []
+    },
+    {
+      "step": 9,
+      "slug": "partial-receipt",
+      "url": "http://127.0.0.1:5184/app/revenue?view=collections",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/09-partial-receipt.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/09-partial-receipt.txt",
+      "notes": "Recorded fictional receipt 100000000 VND on current date. Remaining Summit balance became 21153.85 USD, from 25000. Receipt listed exactly once; remove control present, no accounting export or bank sync implied.",
+      "capturedAt": "2026-10-11T10:33:24.850Z",
+      "label": "Ghi receipt một phần",
+      "health": "Ổn trong ca thử",
+      "findingIds": [
+        "R2-01",
+        "R2-02"
+      ]
+    },
+    {
+      "step": 10,
+      "slug": "margin",
+      "url": "http://127.0.0.1:5184/app/revenue?view=margin",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/10-margin.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/10-margin.txt",
+      "notes": "Local sample currently has no recorded order costs; inspect missing-cost disclosure and guided input. New partial receipt only changes cash, not sale value or landed cost.",
+      "capturedAt": "2026-10-11T10:33:54.814Z",
+      "label": "Margin thiếu cost",
+      "health": "Ổn trong ca thử",
+      "findingIds": []
+    },
+    {
+      "step": 11,
+      "slug": "margin-cost-form",
+      "url": "http://127.0.0.1:5184/app/revenue?view=margin",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/11-margin-cost-form.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/11-margin-cost-form.txt",
+      "notes": "Cost recording on a local sample order; assess blank cost, FX and margin basis.",
+      "capturedAt": "2026-10-11T10:37:39.497Z",
+      "label": "Form cost",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-17"
+      ]
+    },
+    {
+      "step": 12,
+      "slug": "margin-calculated",
+      "url": "http://127.0.0.1:5184/app/revenue?view=margin",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/12-margin-calculated.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/12-margin-calculated.txt",
+      "notes": "650m sold, 400m goods plus 10m freight VND => 240m gross/650m =36.923%; UI 9.2K USD/37%. Missing costs excluded.",
+      "capturedAt": "2026-10-11T10:37:54.534Z",
+      "label": "Margin đã tính",
+      "health": "Ổn trong ca thử",
+      "findingIds": [
+        "R2-17"
+      ]
+    },
+    {
+      "step": 13,
+      "slug": "plan-week",
+      "url": "http://127.0.0.1:5184/app/timeline",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/13-plan-week.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/13-plan-week.txt",
+      "notes": "Frozen weekly priorities distinguished from dated execution; Sunday hidden by default despite selected current day; backlog label zero carried vs visible overdue current-week bill.",
+      "capturedAt": "2026-10-11T10:38:03.865Z",
+      "label": "Plan tuần",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-16"
+      ]
+    },
+    {
+      "step": 14,
+      "slug": "commitment-customer",
+      "url": "http://127.0.0.1:5184/app/timeline",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/14-commitment-customer.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/14-commitment-customer.txt",
+      "notes": "Customer search Northstar has no suggestion in seeded local demo; no opportunity selector. Typed customer allowed, assess lineage in source.",
+      "capturedAt": "2026-10-11T10:38:22.233Z",
+      "label": "Composer cam kết",
+      "health": "Cải tiến",
+      "findingIds": []
+    },
+    {
+      "step": 15,
+      "slug": "history",
+      "url": "http://127.0.0.1:5184/app/timeline?view=history",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/15-history.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/15-history.txt",
+      "notes": "Captured original text vs accepted linked deal is explicit, but source/hash/internal tags dominate visible cards.",
+      "capturedAt": "2026-10-11T10:38:38.266Z",
+      "label": "Plan lịch sử",
+      "health": "Ổn trong ca thử",
+      "findingIds": []
+    },
+    {
+      "step": 16,
+      "slug": "leads-queue",
+      "url": "http://127.0.0.1:5184/app/leads",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/16-leads-queue.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/16-leads-queue.txt",
+      "notes": "Three local leads separated from qualified pipeline; evidence and scheduled nurture visible.",
+      "capturedAt": "2026-10-11T10:38:49.500Z",
+      "label": "Leads queue",
+      "health": "Ổn trong ca thử",
+      "findingIds": []
+    },
+    {
+      "step": 17,
+      "slug": "lead-others-validation",
+      "url": "http://127.0.0.1:5184/app/leads",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/17-lead-others-validation.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/17-lead-others-validation.txt",
+      "notes": "Others selected with blank manual name: native required validation prevents creation.",
+      "capturedAt": "2026-10-11T10:39:09.804Z",
+      "label": "Others cần tên manual",
+      "health": "Ổn trong ca thử",
+      "findingIds": []
+    },
+    {
+      "step": 18,
+      "slug": "qualified-opportunity",
+      "url": "http://127.0.0.1:5184/app/opportunities?opportunityId=a2cb6052-49e0-4819-9c0c-b6faa99e952d",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/18-qualified-opportunity.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/18-qualified-opportunity.txt",
+      "notes": "Same newly created lead becomes Discovery, Others manual brand retained, contact retained in stakeholder option. Account warning says no account record, while details hint claims already-linked existing customer.",
+      "capturedAt": "2026-10-11T10:39:48.178Z",
+      "label": "Qualify Lead",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-07",
+        "R2-13"
+      ]
+    },
+    {
+      "step": 19,
+      "slug": "account-link-hint",
+      "url": "http://127.0.0.1:5184/app/opportunities?opportunityId=a2cb6052-49e0-4819-9c0c-b6faa99e952d",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/19-account-link-hint.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/19-account-link-hint.txt",
+      "notes": "Details claims linked to an existing customer although overview reports no matching Account record. Recommendation base hint on verified account ID.",
+      "capturedAt": "2026-10-11T10:39:55.667Z",
+      "label": "Thông báo Account link",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-07"
+      ]
+    },
+    {
+      "step": 20,
+      "slug": "legacy-deal-link",
+      "url": "http://127.0.0.1:5184/app/opportunities",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/20-legacy-deal-link.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/20-legacy-deal-link.txt",
+      "notes": "Known legacy App.tsx deal-ID route redirects to generic opportunity list, loses specific deal query/drawer.",
+      "capturedAt": "2026-10-11T10:40:07.002Z",
+      "label": "Đường deal cũ",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-08"
+      ]
+    },
+    {
+      "step": 21,
+      "slug": "accounts-book",
+      "url": "http://127.0.0.1:5184/app/accounts",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/21-accounts-book.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/21-accounts-book.txt",
+      "notes": "Account exposure displays qualified active pipeline, not receivables; sample Summit has 0 active deals despite overdue cash. Orphan account repair visible.",
+      "capturedAt": "2026-10-11T10:40:18.886Z",
+      "label": "Accounts book",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-07"
+      ]
+    },
+    {
+      "step": 22,
+      "slug": "account-overview",
+      "url": "http://127.0.0.1:5184/app/accounts?accountId=demo-account-apex",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/22-account-overview.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/22-account-overview.txt",
+      "notes": "Account detail connects quotes, qualified deals, contact count and dated history. Some Open revenue/opportunities actions lose current account scope.",
+      "capturedAt": "2026-10-11T10:40:36.131Z",
+      "label": "Account overview",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-08"
+      ]
+    },
+    {
+      "step": 23,
+      "slug": "account-people",
+      "url": "http://127.0.0.1:5184/app/accounts?accountId=demo-account-apex",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/23-account-people.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/23-account-people.txt",
+      "notes": "Imported contact names are context, no authority assumed; recorded account-wide role badge lacks per-opportunity confirmation context.",
+      "capturedAt": "2026-10-11T10:40:44.433Z",
+      "label": "Account people",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-11"
+      ]
+    },
+    {
+      "step": 24,
+      "slug": "coverage",
+      "url": "http://127.0.0.1:5184/app/portfolio-coverage?accountName=Apex%20Labs",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/24-coverage.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/24-coverage.txt",
+      "notes": "Account filter retained from detail; statuses explicit first-touch/proposed/won vs opportunity stage. Inspect hierarchy and no invented gaps.",
+      "capturedAt": "2026-10-11T10:40:55.358Z",
+      "label": "Coverage",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-05",
+        "R2-08"
+      ]
+    },
+    {
+      "step": 25,
+      "slug": "coverage-new-opportunity",
+      "url": "http://127.0.0.1:5184/app/opportunities",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/25-coverage-new-opportunity.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/25-coverage-new-opportunity.txt",
+      "notes": "Empty matrix cell prefilled customer and Scitek catalog Brand in new Opportunity drawer. No save performed.",
+      "capturedAt": "2026-10-11T10:41:16.450Z",
+      "label": "Coverage mở deal mới",
+      "health": "Ổn trong ca thử",
+      "findingIds": [
+        "R2-05"
+      ]
+    },
+    {
+      "step": 26,
+      "slug": "catalog-duplicate",
+      "url": "http://127.0.0.1:5184/app/products",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/26-catalog-duplicate.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/26-catalog-duplicate.txt",
+      "notes": "Duplicate normalized Brand name is rejected. Catalog is a long flat list, no search/kind filter visible at 17 entries.",
+      "capturedAt": "2026-10-11T10:42:06.385Z",
+      "label": "Catalog chặn trùng",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-09",
+        "R2-18"
+      ]
+    },
+    {
+      "step": 27,
+      "slug": "reports-performance",
+      "url": "http://127.0.0.1:5184/app/reports",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/27-reports-performance.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/27-reports-performance.txt",
+      "notes": "Results first, qualified scope, missing money preserved; catalog PMM 4 linked versus report 2 explained by Leads exclusion, but no easy lead segmentation on catalog.",
+      "capturedAt": "2026-10-11T10:42:18.811Z",
+      "label": "Report Brand",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-09"
+      ]
+    },
+    {
+      "step": 28,
+      "slug": "reports-collections",
+      "url": "http://127.0.0.1:5184/app/reports?report=new",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/28-reports-collections.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/28-reports-collections.txt",
+      "notes": "Collections preset auto-runs; inspect actual received amount, confirmed overdue and due basis after local partial receipt.",
+      "capturedAt": "2026-10-11T10:42:25.668Z",
+      "label": "Preset khoản thu",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-12",
+        "R2-15"
+      ]
+    },
+    {
+      "step": 29,
+      "slug": "report-cash-result",
+      "url": "http://127.0.0.1:5184/app/reports?report=new",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/29-report-cash-result.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/29-report-cash-result.txt",
+      "notes": "Actual ledger aligns with Collections 55,769.23 outstanding,21,153.85 confirmed overdue,29,230.77 receipts. Payments attention preset includes 2 fully collected rows.",
+      "capturedAt": "2026-10-11T10:42:35.086Z",
+      "label": "Kết quả khoản thu",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-02",
+        "R2-12",
+        "R2-15"
+      ]
+    },
+    {
+      "step": 30,
+      "slug": "report-exported",
+      "url": "http://127.0.0.1:5184/app/reports?report=report-ac486440-6b1d-49a9-b9a9-484a3b059dea",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/30-report-exported.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/30-report-exported.txt",
+      "notes": "Local saved report re-run then CSV pack downloaded; includes full filtered rows, summary, run metadata; first pre-run attempt was audit automation timeout, not product export defect.",
+      "capturedAt": "2026-10-11T10:43:48.707Z",
+      "label": "Report CSV pack",
+      "health": "Ổn trong ca thử",
+      "findingIds": [
+        "R2-02",
+        "R2-12"
+      ]
+    },
+    {
+      "step": 31,
+      "slug": "dashboard-from-report",
+      "url": "http://127.0.0.1:5184/app/dashboards?dashboard=new&report=report-ac486440-6b1d-49a9-b9a9-484a3b059dea",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/31-dashboard-from-report.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/31-dashboard-from-report.txt",
+      "notes": "Saved report generates auto-run unsaved dashboard. Filters expose raw ID suffixes even unique labels. Snapshot time/source coverage explicit.",
+      "capturedAt": "2026-10-11T10:44:13.036Z",
+      "label": "Dashboard từ report",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-19",
+        "R2-23"
+      ]
+    },
+    {
+      "step": 32,
+      "slug": "dashboard-source",
+      "url": "http://127.0.0.1:5184/app/dashboards?dashboard=new&report=report-ac486440-6b1d-49a9-b9a9-484a3b059dea&widget=widget-db59a03b-7d8a-45e7-8009-f45201efe74a&group=%5B%22demo-unit-laboratory%22%5D",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/32-dashboard-source.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/32-dashboard-source.txt",
+      "notes": "Source inspect preserves captured run; checkbox includes zero outstanding rows as contributing. Define contributing versus in-scope wording.",
+      "capturedAt": "2026-10-11T10:44:25.453Z",
+      "label": "Dashboard source records",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-23"
+      ]
+    },
+    {
+      "step": 33,
+      "slug": "review-weekly",
+      "url": "http://127.0.0.1:5184/app/reviews",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/33-review-weekly.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/33-review-weekly.txt",
+      "notes": "Weekly scoreboard: 2 won/43.5K USD; Business review same Oct5–11 says 1 won/18.5K USD. Changes uses close-out ledger while scoreboard infers stage Won. Targets seed 10B USD with demo base USD: unrealistic.",
+      "capturedAt": "2026-10-11T10:44:54.468Z",
+      "label": "Review thay đổi",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-06"
+      ]
+    },
+    {
+      "step": 34,
+      "slug": "review-analytics",
+      "url": "http://127.0.0.1:5184/app/reviews?view=analytics",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/34-review-analytics.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/34-review-analytics.txt",
+      "notes": "Analytic scopes include outcome history versus present book; low sample warning exists but advice says big deals are failing from only 6 outcomes. Need more cautious language and source links.",
+      "capturedAt": "2026-10-11T10:45:15.688Z",
+      "label": "Review analytics",
+      "health": "Cải tiến",
+      "findingIds": []
+    },
+    {
+      "step": 35,
+      "slug": "review-scoreboard",
+      "url": "http://127.0.0.1:5184/app/reviews",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/35-review-scoreboard.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/35-review-scoreboard.txt",
+      "notes": "Same-week scoreboard shows 2 won 43,461.54 USD; target values 2.5B/10B USD visually dominate progress.",
+      "capturedAt": "2026-10-11T10:45:18.823Z",
+      "accepted": false,
+      "rejection": "Focused scoreboard control but screenshot still showed previous top position; recapture required.",
+      "label": "Ảnh cuộn chưa tới bảng",
+      "health": "Loại ảnh",
+      "findingIds": []
+    },
+    {
+      "step": 36,
+      "slug": "review-business-outcomes",
+      "url": "http://127.0.0.1:5184/app/reviews",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/36-review-business-outcomes.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/36-review-business-outcomes.txt",
+      "notes": "Same-week business review includes only Northstar480m VND,18.5K USD (closeout-based), requiring explicit source basis/union dedupe for consistency.",
+      "capturedAt": "2026-10-11T10:45:18.918Z",
+      "label": "Business review",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-06"
+      ]
+    },
+    {
+      "step": 37,
+      "slug": "capture-vietnamese-negation",
+      "url": "http://127.0.0.1:5184/app/capture",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/37-capture-vietnamese-negation.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/37-capture-vietnamese-negation.txt",
+      "notes": "Vietnamese note: chưa xác nhận PO becomes Purchase order signal; gửi báo giá thứ ba tuần sau incorrectly gets Oct20 belonging to second callback clause. Nothing saved.",
+      "capturedAt": "2026-10-11T10:45:56.552Z",
+      "label": "Capture tiếng Việt",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-03"
+      ]
+    },
+    {
+      "step": 38,
+      "slug": "ask-money-vietnamese",
+      "url": "http://127.0.0.1:5184/app/ask",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/38-ask-money-vietnamese.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/38-ask-money-vietnamese.txt",
+      "notes": "Asked common Vietnamese cash phrase Khách nào còn nợ tiền?; DOM response unsupported, screenshot still initial ask state. Use follow-up capture for answer evidence.",
+      "capturedAt": "2026-10-11T10:46:35.454Z",
+      "label": "Ask câu tiếng Việt",
+      "health": "Giới hạn",
+      "findingIds": [
+        "R2-14"
+      ]
+    },
+    {
+      "step": 39,
+      "slug": "ask-account-answer",
+      "url": "http://127.0.0.1:5184/app/ask",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/39-ask-account-answer.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/39-ask-account-answer.txt",
+      "notes": "Account lookup lists two qualified opportunities; Open Accounts action generic loses account scope.",
+      "capturedAt": "2026-10-11T10:46:50.021Z",
+      "label": "Ask về Apex",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-08"
+      ]
+    },
+    {
+      "step": 40,
+      "slug": "ask-unsupported-money",
+      "url": "http://127.0.0.1:5184/app/ask",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/40-ask-unsupported-money.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/40-ask-unsupported-money.txt",
+      "notes": "Common Vietnamese cash phrasing is unsupported; generic suggested next action Send revised quote appears unrelated to question. Support phrase or show close supported cash preset without unrelated advice.",
+      "capturedAt": "2026-10-11T10:46:56.591Z",
+      "label": "Ask không hỗ trợ",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-14"
+      ]
+    },
+    {
+      "step": 41,
+      "slug": "ask-supported-cash",
+      "url": "http://127.0.0.1:5184/app/ask",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/41-ask-supported-cash.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/41-ask-supported-cash.txt",
+      "notes": "Supported preset shows money from same ledger with recorded due basis; compare unsupported Vietnamese phrase.",
+      "capturedAt": "2026-10-11T10:47:03.318Z",
+      "label": "Ask về tiền",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-02",
+        "R2-14"
+      ]
+    },
+    {
+      "step": 42,
+      "slug": "ask-followup-context",
+      "url": "http://127.0.0.1:5184/app/ask",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/42-ask-followup-context.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/42-ask-followup-context.txt",
+      "notes": "Global draft refuses multiple accounts and requests explicit account; good guard.",
+      "capturedAt": "2026-10-11T10:47:13.328Z",
+      "label": "Ask guard khi thiếu khách",
+      "health": "Ổn trong ca thử",
+      "findingIds": []
+    },
+    {
+      "step": 43,
+      "slug": "stakeholder-confirmation",
+      "url": "http://127.0.0.1:5184/app/stakeholders?accountName=Apex%20Labs",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/43-stakeholder-confirmation.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/43-stakeholder-confirmation.txt",
+      "notes": "Dr Avery labeled Champion in account map, but Role confirmed by evidence unchecked; MEDDIC correctly refuses strong champion. Surface tentative/confirmed on same map.",
+      "capturedAt": "2026-10-11T10:47:36.749Z",
+      "label": "Stakeholder chưa xác nhận",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-11"
+      ]
+    },
+    {
+      "step": 44,
+      "slug": "objections",
+      "url": "http://127.0.0.1:5184/app/objections",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/44-objections.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/44-objections.txt",
+      "notes": "Status filters, proof needed and dates clear. At-stake amount includes won Summit25K, so state/scope label needed to distinguish sales blocker from delivery dispute.",
+      "capturedAt": "2026-10-11T10:47:52.637Z",
+      "label": "Objections ledger",
+      "health": "Cải tiến",
+      "findingIds": []
+    },
+    {
+      "step": 45,
+      "slug": "objection-form",
+      "url": "http://127.0.0.1:5184/app/objections",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/45-objection-form.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/45-objection-form.txt",
+      "notes": "Required objection text, IDs via scope resolution, separate response/proof/resolution fields. No save performed.",
+      "capturedAt": "2026-10-11T10:48:03.627Z",
+      "label": "Form objection",
+      "health": "Giới hạn",
+      "findingIds": []
+    },
+    {
+      "step": 46,
+      "slug": "vault-library",
+      "url": "http://127.0.0.1:5184/app/vault",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/46-vault-library.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/46-vault-library.txt",
+      "notes": "Vault provides map plus text list and explicit missing facts; relationship amount does not label inclusion of lost deal values. Gap actions send exact question to Ask.",
+      "capturedAt": "2026-10-11T10:48:20.777Z",
+      "label": "Vault map và text",
+      "health": "Cải tiến",
+      "findingIds": []
+    },
+    {
+      "step": 47,
+      "slug": "vault-to-ask-gap",
+      "url": "http://127.0.0.1:5184/app/ask?question=Who%20signs%20at%20Northstar%20Foods%3F",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/47-vault-to-ask-gap.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/47-vault-to-ask-gap.txt",
+      "notes": "System-generated Who signs at Northstar Foods question: verify meaningful fact answer versus name lookup shortcut.",
+      "capturedAt": "2026-10-11T10:48:28.044Z",
+      "label": "Vault chuyển Ask",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-14"
+      ]
+    },
+    {
+      "step": 48,
+      "slug": "initiative-editor",
+      "url": "http://127.0.0.1:5184/app/operating-system",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/48-initiative-editor.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/48-initiative-editor.txt",
+      "notes": "Initiative has objective/owner/next action/explicit activity links and hypothesis. Value field fixed SGD while app reports USD; status free text. No save.",
+      "capturedAt": "2026-10-11T10:48:53.511Z",
+      "label": "Initiative editor",
+      "health": "Cải tiến",
+      "findingIds": []
+    },
+    {
+      "step": 49,
+      "slug": "playbook",
+      "url": "http://127.0.0.1:5184/app/playbook",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/49-playbook.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/49-playbook.txt",
+      "notes": "Metrics gap counts all 8 active records, including 3 unqualified Leads. Low/medium sample badges exist, but single completed action labeled often unclear.",
+      "capturedAt": "2026-10-11T10:49:10.987Z",
+      "label": "Playbook",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-10"
+      ]
+    },
+    {
+      "step": 50,
+      "slug": "assets",
+      "url": "http://127.0.0.1:5184/app/assets",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/50-assets.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/50-assets.txt",
+      "notes": "Sales asset library supports draft/reuse status; no real sharing performed.",
+      "capturedAt": "2026-10-11T10:49:42.104Z",
+      "label": "Assets",
+      "health": "Giới hạn",
+      "findingIds": []
+    },
+    {
+      "step": 51,
+      "slug": "settings-workspace",
+      "url": "http://127.0.0.1:5184/app/settings",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/51-settings-workspace.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/51-settings-workspace.txt",
+      "notes": "Reporting currency USD; explicit planning FX date, separate financing assumptions; honest demo-local sync, disabled retry and backup recovery explanation. Read-only.",
+      "capturedAt": "2026-10-11T10:55:18.353Z",
+      "label": "Settings Workspace",
+      "health": "Ổn trong ca thử",
+      "findingIds": [
+        "R2-04"
+      ]
+    },
+    {
+      "step": 52,
+      "slug": "settings-account",
+      "url": "http://127.0.0.1:5184/app/settings?tab=profile",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/52-settings-account.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/52-settings-account.txt",
+      "notes": "Demo account has no real profile and explains sign-in requirement. Password, OAuth and profile cloud save not executed.",
+      "capturedAt": "2026-10-11T10:55:35.536Z",
+      "label": "Settings Account",
+      "health": "Giới hạn",
+      "findingIds": []
+    },
+    {
+      "step": 53,
+      "slug": "settings-billing",
+      "url": "http://127.0.0.1:5184/app/settings?tab=billing",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/53-settings-billing.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/53-settings-billing.txt",
+      "notes": "Demo plan clearly sample and cloud billing not configured. No checkout or financial action.",
+      "capturedAt": "2026-10-11T10:55:49.987Z",
+      "label": "Settings Billing",
+      "health": "Giới hạn",
+      "findingIds": []
+    },
+    {
+      "step": 54,
+      "slug": "settings-privacy",
+      "url": "http://127.0.0.1:5184/app/settings?tab=boundaries",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/54-settings-privacy.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/54-settings-privacy.txt",
+      "notes": "Data & Privacy gives explicit source boundaries and links terms/privacy; inspected copy, no disclosure or sharing action.",
+      "capturedAt": "2026-10-11T10:56:13.571Z",
+      "label": "Settings Privacy",
+      "health": "Cải tiến",
+      "findingIds": []
+    },
+    {
+      "step": 55,
+      "slug": "settings-export",
+      "url": "http://127.0.0.1:5184/app/settings?tab=export",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/55-settings-export.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/55-settings-export.txt",
+      "notes": "Demo ZIP downloaded successfully; restore disabled in demo, deletion control observed but not activated. Actual ZIP contents will be inspected offline.",
+      "capturedAt": "2026-10-11T10:56:36.697Z",
+      "label": "Settings Export",
+      "health": "Ổn trong ca thử",
+      "findingIds": []
+    },
+    {
+      "step": 56,
+      "slug": "review-scoreboard-confirmed",
+      "url": "http://127.0.0.1:5184/app/reviews",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/56-review-scoreboard-confirmed.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/56-review-scoreboard-confirmed.txt",
+      "notes": "Oct5–11 Scoreboard 2 wins / 43,461.54 USD, whereas Business review 1 win /18,461.54. Also displays Q4 2.5B USD and annual10B USD targets; verify stored target currency before treating as calculation defect.",
+      "capturedAt": "2026-10-11T10:57:02.980Z",
+      "label": "Scoreboard đối chiếu",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-04",
+        "R2-06"
+      ]
+    },
+    {
+      "step": 57,
+      "slug": "global-search",
+      "url": "http://127.0.0.1:5184/app/reviews",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/57-global-search.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/57-global-search.txt",
+      "notes": "Search Apex returns canonical account and two opportunities. Focus enters dialog; Escape dismissal checked separately. Header shortcut uses Command glyph in Windows environment: copy polish opportunity.",
+      "capturedAt": "2026-10-11T10:57:15.929Z",
+      "label": "Global Search",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-19"
+      ]
+    },
+    {
+      "step": 58,
+      "slug": "mobile-leads",
+      "url": "http://127.0.0.1:5184/app/reviews",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/58-mobile-leads.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/58-mobile-leads.txt",
+      "notes": "390x844 mobile: dedicated lead cards; inspect navigation and visible action accessibility.",
+      "capturedAt": "2026-10-11T10:57:30.776Z",
+      "accepted": false,
+      "rejection": "Viewport switch retained Review. This image is mobile Review, not Leads; replaced by verified route capture.",
+      "label": "Ảnh mobile chưa đúng trang",
+      "health": "Loại ảnh",
+      "findingIds": []
+    },
+    {
+      "step": 59,
+      "slug": "mobile-leads-confirmed",
+      "url": "http://127.0.0.1:5184/app/leads",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/59-mobile-leads-confirmed.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/59-mobile-leads-confirmed.txt",
+      "notes": "Verified /app/leads at390x844. Mobile lead cards and bottom navigation; no document-wide overflow observed via DOM check.",
+      "capturedAt": "2026-10-11T10:57:52.878Z",
+      "label": "Leads mobile",
+      "health": "Ổn trong ca thử",
+      "findingIds": []
+    },
+    {
+      "step": 60,
+      "slug": "mobile-lead-form",
+      "url": "http://127.0.0.1:5184/app/leads",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/60-mobile-lead-form.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/60-mobile-lead-form.txt",
+      "notes": "390x844 Lead drawer. BrandSelect catalog/options retained; form scrolls internally and footer actions visible; empty required Customer keeps save disabled. Cancel without save.",
+      "capturedAt": "2026-10-11T10:58:18.415Z",
+      "label": "Lead form mobile",
+      "health": "Ổn trong ca thử",
+      "findingIds": []
+    },
+    {
+      "step": 61,
+      "slug": "mobile-reports",
+      "url": "http://127.0.0.1:5184/app/reports",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/61-mobile-reports.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/61-mobile-reports.txt",
+      "notes": "390x844 Reports: results, preset choices and customization present in DOM; screenshot verifies top result layout only. No formal end-to-end screen-reader/mobile-device acceptance. Configuration is scroll-intensive.",
+      "capturedAt": "2026-10-11T10:58:32.928Z",
+      "label": "Reports mobile",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-15"
+      ]
+    },
+    {
+      "step": 62,
+      "slug": "operating-priorities",
+      "url": "http://127.0.0.1:5184/app/operating-system",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/62-operating-priorities.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/62-operating-priorities.txt",
+      "notes": "Supporting Must-win work keeps initiative separate from Today ranked queue, shows one explicit local sample priority and unrecorded value as Not set.",
+      "capturedAt": "2026-10-11T10:59:43.454Z",
+      "label": "Must-win priorities",
+      "health": "Ổn trong ca thử",
+      "findingIds": []
+    },
+    {
+      "step": 63,
+      "slug": "founder-import",
+      "url": "http://127.0.0.1:5184/app/today",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/63-founder-import.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/63-founder-import.txt",
+      "notes": "Founder import route is gated and redirected to Today in demo; no import file or cloud commit tested. Today nudge renders unknown-value Atlas deal as 0 USD, whereas main priority correctly says missing evidence. Source follow-up required.",
+      "capturedAt": "2026-10-11T11:00:00.719Z",
+      "label": "Founder import gate / Today",
+      "health": "Giới hạn",
+      "findingIds": [
+        "R2-13"
+      ]
+    },
+    {
+      "step": 64,
+      "slug": "demo-reset",
+      "url": "http://127.0.0.1:5184/app/today",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/64-demo-reset.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/64-demo-reset.txt",
+      "notes": "Reset through normal demo recovery restored4 open qualified deals and overdue25K USD, removing Atlas trial and100M receipt. Sample definition cleanup is covered by sampleData source; no production data changed. Demo then exited normally.",
+      "capturedAt": "2026-10-11T11:00:54.271Z",
+      "label": "Reset demo",
+      "health": "Ổn trong ca thử",
+      "findingIds": []
+    },
+    {
+      "step": 65,
+      "slug": "public-landing",
+      "url": "http://127.0.0.1:5184/",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/65-public-landing.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/65-public-landing.txt",
+      "notes": "Exited demo successfully to landing; no console errors. Value proposition, sample demo CTA, signup and pricing publicly discoverable. No form submission.",
+      "capturedAt": "2026-10-11T14:51:23.687Z",
+      "label": "Landing",
+      "health": "Cải tiến",
+      "findingIds": []
+    },
+    {
+      "step": 66,
+      "slug": "login",
+      "url": "http://127.0.0.1:5184/login",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/66-login.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/66-login.txt",
+      "notes": "Login has labelled email/password with appropriate input types and forgot-password link. Local cloud is intentionally unconfigured; no auth submission, OAuth or email delivery tested. Screenshot has no show-password control.",
+      "capturedAt": "2026-10-11T14:51:52.068Z",
+      "label": "Login",
+      "health": "Giới hạn",
+      "findingIds": [
+        "R2-22"
+      ]
+    },
+    {
+      "step": 67,
+      "slug": "forgot-password",
+      "url": "http://127.0.0.1:5184/forgot-password",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/67-forgot-password.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/67-forgot-password.txt",
+      "notes": "Recovery page labelled email and explicit return-to-login; no email submitted. Delivery, expiry and recovery link not exercised.",
+      "capturedAt": "2026-10-11T14:52:23.536Z",
+      "label": "Forgot password",
+      "health": "Giới hạn",
+      "findingIds": []
+    },
+    {
+      "step": 68,
+      "slug": "signup",
+      "url": "http://127.0.0.1:5184/signup",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/68-signup.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/68-signup.txt",
+      "notes": "Signup labels, name/email/autocomplete/password policy visible. No account created. Privacy/terms links absent from the signup surface; consider providing context before submission.",
+      "capturedAt": "2026-10-11T14:52:45.011Z",
+      "label": "Signup",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-22"
+      ]
+    },
+    {
+      "step": 69,
+      "slug": "verify-email-without-state",
+      "url": "http://127.0.0.1:5184/verify-email",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/69-verify-email-without-state.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/69-verify-email-without-state.txt",
+      "notes": "Direct /verify-email without signup/email state still says We have sent a verification link, but offers no resend action. No email was sent in this audit; refresh/deep link loses recipient context.",
+      "capturedAt": "2026-10-11T14:53:05.316Z",
+      "label": "Verify-email thiếu context",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-20"
+      ]
+    },
+    {
+      "step": 70,
+      "slug": "pricing",
+      "url": "http://127.0.0.1:5184/pricing",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/70-pricing.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/70-pricing.txt",
+      "notes": "Preview free without card or trial countdown; Personal10USD monthly after preview; Team marked Later and not sold. No purchase or checkout tested.",
+      "capturedAt": "2026-10-11T14:53:27.239Z",
+      "label": "Pricing",
+      "health": "Ổn trong ca thử",
+      "findingIds": []
+    },
+    {
+      "step": 71,
+      "slug": "public-use-cases",
+      "url": "http://127.0.0.1:5184/use-cases",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/71-public-use-cases.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/71-public-use-cases.txt",
+      "notes": "Use Cases public information read; customer scenarios and sample illustrations, no external form submission.",
+      "capturedAt": "2026-10-11T14:53:37.196Z",
+      "label": "Use Cases",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-21"
+      ]
+    },
+    {
+      "step": 72,
+      "slug": "guide-quote-to-cash",
+      "url": "http://127.0.0.1:5184/quote-to-cash",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/72-guide-quote-to-cash.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/72-guide-quote-to-cash.txt",
+      "notes": "Quote-to-cash guide publicly readable and ties milestones to commercial follow-up. No claim of invoice issuance or bank integration verified.",
+      "capturedAt": "2026-10-11T14:54:19.704Z",
+      "label": "Quote-to-cash guide",
+      "health": "Cải tiến",
+      "findingIds": [
+        "R2-21"
+      ]
+    },
+    {
+      "step": 73,
+      "slug": "public-privacy",
+      "url": "http://127.0.0.1:5184/legal/privacy",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/73-public-privacy.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/73-public-privacy.txt",
+      "notes": "Privacy document accessible from footer; audit checks discoverability and product description only, not legal compliance.",
+      "capturedAt": "2026-10-11T14:54:39.384Z",
+      "label": "Privacy public",
+      "health": "Cần sửa",
+      "findingIds": [
+        "R2-24"
+      ]
+    },
+    {
+      "step": 74,
+      "slug": "public-contact",
+      "url": "http://127.0.0.1:5184/request-access",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/74-public-contact.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/74-public-contact.txt",
+      "notes": "Contact request labels and purpose reviewed; no details entered and no request sent.",
+      "capturedAt": "2026-10-11T14:55:27.388Z",
+      "label": "Contact form",
+      "health": "Giới hạn",
+      "findingIds": [
+        "R2-22"
+      ]
+    },
+    {
+      "step": 75,
+      "slug": "not-found",
+      "url": "http://127.0.0.1:5184/__round2_missing_route__",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/75-not-found.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/75-not-found.txt",
+      "notes": "Unknown public route gives clear Page not found and recovery destinations instead of blank screen.",
+      "capturedAt": "2026-10-11T14:56:02.216Z",
+      "label": "404",
+      "health": "Ổn trong ca thử",
+      "findingIds": []
+    },
+    {
+      "step": 76,
+      "slug": "production-sync-recovery",
+      "url": "https://www.memoire-official.com/app/settings",
+      "image": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/76-production-sync-recovery.png",
+      "dom": "E:/Antigravity project/Memoire/docs/qa/evidence/product-audit-round2-2026-10-11/76-production-sync-recovery.txt",
+      "notes": "Read-only production Settings: cloud available, none known unsynced changes after page load. Old-tab Sync issue recovered during navigation, without clicking Retry. Notification panel explicitly states scheduled sender is not configured; preferences alone do not deliver email.",
+      "capturedAt": "2026-10-11T14:56:29.322Z",
+      "label": "Sync production",
+      "health": "Giới hạn",
+      "findingIds": []
+    }
+  ],
+  "limits": [
+    "Production chỉ đọc qua tài khoản QC hư cấu đang mở; local demo có seed riêng, cloud intentionally disabled. Lỗi chức năng được tái hiện trên local đúng source SHA545b27b; chưa tuyên bố đã tái hiện tất cả bằng production mutation.",
+    "76 lần chụp,73 ảnh nhận,3 ảnh loại vì sai transition/vị trí (6,35,58). Ảnh được đọc từ chính file đã lưu. DOM cùng bước chứa phần ngoài viewport; phát hiện dựa DOM được nói rõ.",
+    "249 kiểm tra tự động hiện tại đạt (162 core +87 supporting). Đây là bộ kiểm tra có sẵn, không chứng minh các lỗi mới đã sửa. Pure probes xác nhận hành vi lỗi hiện tại; không được dùng như một acceptance PASS.",
+    "Không chạy full check/build lại vì không thay app source. Không push/deploy, không migration, không đổi production record hoặc người nhận dữ liệu.",
+    "Restore/undo vào tài khoản thật, storage quota/offline failure, hai-owner race, invitation/revoke access, OAuth, password change, digest delivery, billing/checkout, admin và cloud import là named gaps. Có source review/unit coverage ở một số nhóm, chưa có runtime acceptance vòng2.",
+    "Mobile là viewport390x844 trong browser; không đại diện Safari/Android/installed PWA thật. Keyboard Search focus/Escape và required field đã thử; chưa đánh giá toàn bộ tab order, contrast, touch targets hay screen reader. Không tuyên bố đạt WCAG.",
+    "Đã reset và exit local demo sau thử nghiệm. Quote Paid đã phục hồi Due trước receipt test; Atlas lead, receipt100M, margin cost và saved demo report/dashboard được loại theo sample cleanup. Dữ liệu thật và cloud được giữ nguyên.",
+    "Không gọi các count khác population, zero hợp lệ trong contributor set, SGD có payload currency, native datalist hoặc gate founder là lỗi phép tính. Timeout do thao tác automation tìm nút export trước Run được loại; export đã tải thành công."
+  ],
+  "strengths": [
+    "Intake Brand có catalog ID và Others manual required; duplicate được chặn, qualify giữ identity và tên gốc. Những sửa này giải quyết phần lớn dữ liệu brand trôi nổi ở happy path.",
+    "Collections, Reports CSV và Dashboard cùng trả55.769,23USD outstanding sau receipt; margin240triệuVND/36,9% tính đúng. Confirmed date và planning date được phân biệt.",
+    "Leads là queue riêng, không lẫn qualified pipeline ở report mặc định; mobile lead cards và drawer có action footer rõ. MEDDIC không coi deal amount là business impact.",
+    "Reports/Dashboard giữ captured-run metadata, source drilldown và missing amount/rate. Không suy ra cash từ Won deal value.",
+    "Search vào dialog, có kết quả theo record và Escape đóng; empty Others bị chặn. Demo label, exportZIP, restore guard và normal reset/exit đều có đường phục hồi rõ.",
+    "Pricing phân biệt preview0USD, Personal10USD sau preview và Team chưa bán. Contact form nói rõ purpose và không cần account approval."
+  ]
+}

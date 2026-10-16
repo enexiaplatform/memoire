@@ -1,0 +1,11 @@
+{
+  "rows": 12,
+  "expectedRows": 12,
+  "outstanding": 85671.92307692308,
+  "metadataOutstanding": 85671.92307692308,
+  "withinCent": true,
+  "allRowsOpen": true,
+  "currency": "USD",
+  "planningFxAsOf": "2026-08-01",
+  "sourceCount": 37
+}

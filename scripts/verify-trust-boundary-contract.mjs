@@ -51,9 +51,10 @@ for (const marker of [
   'Privacy Policy',
   'Terms of Service',
   'Product and Data Boundaries',
-  'Memoire has no AI provider, no AI API key and no AI endpoint.',
-  'Nothing you write is sent to a language model',
-  'Memoire is not an AI product.',
+  'Capture and Local insights run on your device without AI.',
+  'Optional AI chat',
+  'Groq',
+  'page memory',
   // Was 'early-access product'. The early-access framing was retired on
   // 2026-08-11: the product charges $10 a month and anyone can sign up, so
   // terms describing an invite-only trial period described a programme that had
@@ -98,7 +99,7 @@ for (const marker of [
   // Was 'AI-assisted text may be sent to the configured provider only when you
   // explicitly use that feature.' - see the note above the legal-page markers.
   // This is the same false claim on the surface a paying operator reads.
-  'Nothing you write is sent to an AI service.',
+  'Optional AI chat shares only the previewed context and recent conversation with Groq',
   'View full product boundaries',
   'to="/legal/boundaries"',
 ]) {

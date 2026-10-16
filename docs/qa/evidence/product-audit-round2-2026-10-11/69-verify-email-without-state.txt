@@ -1,0 +1,8 @@
+- link "Memoire home":
+  - /url: /
+  - generic: Memoire
+- heading "Check your email" [level=1]
+- paragraph: We've sent you a verification link. Please check your email and click the link to verify your account.
+- link "Back to login":
+  - /url: /login
+  - button "Back to login"

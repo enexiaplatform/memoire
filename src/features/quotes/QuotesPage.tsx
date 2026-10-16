@@ -38,6 +38,7 @@ import { loadSalesWorkspaceData } from '../../services/workspaceData';
 import { withQuoteCollectionEvidence } from '../../utils/quoteCollectionEvidence';
 import type { OrderReceivableRecord } from '../../utils/receivables';
 import { hasLocalSampleData } from '../../utils/dataMode';
+import { quoteAmountError } from '../../utils/quoteValidation';
 import {
   formatBaseCurrencyAmount as formatBaseMoney,
   formatCurrencyAmount as formatMoney,
@@ -205,6 +206,8 @@ export function QuotesPage() {
   };
 
   const saveQuote = () => {
+    const amountError = quoteAmountError(form.amount);
+    if (amountError) { setSaveState('error'); setMessage(amountError); return; }
     if (!form.title.trim() || !form.accountName.trim()) {
       setSaveState('error');
       setMessage('Add a quote title and account.');
@@ -534,7 +537,7 @@ function QuotePanel({
           </FormSection>
 
           <FormSection title="Commercial terms">
-            <NumberInput label="Amount" value={form.amount} onChange={(value) => onChange('amount', value)} />
+            <NumberInput label="Amount" min={0} value={form.amount} onChange={(value) => onChange('amount', value)} />
             {/* Picked, not typed. As free text it accepted "usd" and "US$",
                 and a code the rate table does not know is dropped from every
                 total rather than converted - the quote is on screen and absent
@@ -696,11 +699,11 @@ function DateInput({ label, value, onChange }: { label: string; value: string; o
   );
 }
 
-function NumberInput({ label, value, onChange }: { label: string; value: number | null; onChange: (value: number | null) => void }) {
+function NumberInput({ label, value, min, onChange }: { label: string; value: number | null; min?: number; onChange: (value: number | null) => void }) {
   return (
     <label>
       <span className="text-sm font-bold text-ink">{label}</span>
-      <input type="number" value={value ?? ''} onChange={(event) => onChange(event.target.value ? Number(event.target.value) : null)} className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10" />
+      <input type="number" min={min} value={value ?? ''} onChange={(event) => onChange(event.target.value ? Number(event.target.value) : null)} className="mt-2 w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/10" />
     </label>
   );
 }

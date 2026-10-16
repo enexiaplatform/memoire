@@ -1,0 +1,127 @@
+{
+  "ok": true,
+  "service": "memoire",
+  "summary": {
+    "requiredPassed": 5,
+    "requiredFailed": 0,
+    "warnings": 0
+  },
+  "authRedirects": {
+    "appUrlConfigured": true,
+    "appUrlHost": "www.memoire-official.com",
+    "requestHost": "www.memoire-official.com",
+    "requiredPaths": [
+      "/login?verified=1",
+      "/reset-password",
+      "/app/today"
+    ],
+    "requiredUrls": [
+      "https://www.memoire-official.com/login?verified=1",
+      "https://www.memoire-official.com/reset-password",
+      "https://www.memoire-official.com/app/today"
+    ],
+    "supabaseChecklist": [
+      "Set Supabase Auth Site URL to VITE_APP_URL.",
+      "Allow email verification redirect to /login?verified=1.",
+      "Allow password recovery redirect to /reset-password.",
+      "Allow OAuth app return path to /app/today or the protected /app/* route under test."
+    ]
+  },
+  "checks": [
+    {
+      "name": "supabase_url",
+      "ok": true,
+      "severity": "required"
+    },
+    {
+      "name": "supabase_anon_key",
+      "ok": true,
+      "severity": "required"
+    },
+    {
+      "name": "supabase_service_role",
+      "ok": true,
+      "severity": "required"
+    },
+    {
+      "name": "app_url",
+      "ok": true,
+      "severity": "required"
+    },
+    {
+      "name": "app_url_valid",
+      "ok": true,
+      "severity": "required"
+    },
+    {
+      "name": "no_ai_provider_configured",
+      "ok": true,
+      "severity": "warning"
+    },
+    {
+      "name": "app_url_https",
+      "ok": true,
+      "severity": "warning"
+    },
+    {
+      "name": "app_url_not_localhost",
+      "ok": true,
+      "severity": "warning"
+    },
+    {
+      "name": "app_url_matches_request_host",
+      "ok": true,
+      "severity": "warning"
+    },
+    {
+      "name": "demo_mode_disabled",
+      "ok": true,
+      "severity": "warning"
+    },
+    {
+      "name": "founder_workspace_disabled",
+      "ok": true,
+      "severity": "warning"
+    },
+    {
+      "name": "digest_email_api_key",
+      "ok": false,
+      "severity": "optional"
+    },
+    {
+      "name": "digest_email_from",
+      "ok": false,
+      "severity": "optional"
+    },
+    {
+      "name": "digest_cron_secret",
+      "ok": false,
+      "severity": "optional"
+    },
+    {
+      "name": "lemonsqueezy_api_key",
+      "ok": true,
+      "severity": "optional"
+    },
+    {
+      "name": "lemonsqueezy_store",
+      "ok": true,
+      "severity": "optional"
+    },
+    {
+      "name": "lemonsqueezy_webhook_secret",
+      "ok": true,
+      "severity": "optional"
+    },
+    {
+      "name": "billing_checkout_disabled",
+      "ok": true,
+      "severity": "optional"
+    },
+    {
+      "name": "legal_entity_named",
+      "ok": false,
+      "severity": "optional"
+    }
+  ]
+}

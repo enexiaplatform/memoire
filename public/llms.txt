@@ -44,11 +44,10 @@ not the same thing.
 Three claims are load-bearing and are enforced in the codebase, not just in
 marketing copy:
 
-1. **No AI service.** Memoire has no AI provider, no API key and no AI endpoint.
-   Capture parses on the device with rules; Search & Insights computes from your
-   own records. Nothing you write is sent to a model.
-   (`scripts/verify-no-ai-dependency.mjs` fails the build if this stops being
-   true.)
+1. **Local core with optional AI chat.** Capture and Local insights run on the device.
+   Optional Groq chat sends previewed summaries and recent conversation only after
+   the user chooses to share them. Drafts require review; customer messages are
+   never automatically sent. Chat is held in page memory for this visit only.
 2. **No CRM writeback, ever.** It does not sync to, or write into, Salesforce,
    HubSpot or any other system of record.
 3. **No free tier.** An earlier version of this page advertised one; it declared

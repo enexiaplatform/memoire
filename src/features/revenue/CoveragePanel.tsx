@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import { ShieldAlert, Target as TargetIcon, TrendingDown } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { hasLocalSampleData } from '../../utils/dataMode';
-import { formatCompactBaseAmount, getReportingCurrency } from '../../utils/money';
+import { convertMoney, formatCompactBaseAmount, getReportingCurrency, type SupportedCurrency } from '../../utils/money';
+import { targetEditorChanges, targetEditorValues } from '../../utils/targetEditor';
 import { setCommercialTarget } from '../../domain/commercialKernel/commands';
 import { FORECAST_QUARTERS, type ForecastQuarter, type QuarterCoverage } from '../../domain/commercialKernel/forecast';
 import { useCoverage } from './useCoverage';
@@ -35,18 +36,21 @@ export function CoveragePanel() {
 
   const scope = { userId: sampleDataActive ? null : user?.id || null, sampleDataActive };
 
-  const saveTargets = (values: Record<ForecastQuarter, string>) => {
+  const editorTargets = targets.filter((target) => target.fiscalYear === fiscalYear && Boolean(target.isSample) === sampleDataActive);
+  const currency = getReportingCurrency();
+  const saveTargets = (values: Record<ForecastQuarter, string>, initial: Record<ForecastQuarter, string>) => {
+    const { changes, error } = targetEditorChanges(values, initial);
+    if (error) { setMessage(error); return; }
+    if (!changes.length) { setMessage('No target changes to save.'); setEditing(false); return; }
     let saved = 0;
-    for (const quarter of FORECAST_QUARTERS) {
-      const raw = values[quarter].trim();
-      if (!raw) continue;
-      const amount = Number(raw.replace(/[,\s]/g, ''));
-      if (!Number.isFinite(amount)) continue;
+    for (const { period: quarter, amount } of changes) {
+      const previous = editorTargets.find((target) => target.period === quarter);
 
       // Stamped with the currency the editor said it was asking for, so a
       // target keeps its unit if the operator later reports in a different one.
       const result = setCommercialTarget(scope, {
-        period: quarter, fiscalYear, amount, currency: getReportingCurrency(),
+        period: quarter, fiscalYear, amount, currency,
+        note: previous?.note || undefined,
       });
       if (result.ok) saved += 1;
       else setMessage(result.error);
@@ -105,10 +109,9 @@ export function CoveragePanel() {
       {editing && (
         <TargetEditor
           fiscalYear={fiscalYear}
-          initial={Object.fromEntries(FORECAST_QUARTERS.map((quarter) => [
-            quarter,
-            String(targets.find((target) => target.period === quarter)?.amount ?? ''),
-          ])) as Record<ForecastQuarter, string>}
+          currency={currency}
+          initial={targetEditorValues(editorTargets, currency)}
+          unavailable={editorTargets.filter((target) => convertMoney(target.amount, target.currency, currency) === null).map((target) => target.period)}
           onSave={saveTargets}
         />
       )}
@@ -263,14 +266,19 @@ function QuarterCard({ quarter }: { quarter: QuarterCoverage }) {
 
 function TargetEditor({
   fiscalYear,
+  currency,
   initial,
+  unavailable,
   onSave,
 }: {
   fiscalYear: number;
+  currency: SupportedCurrency;
   initial: Record<ForecastQuarter, string>;
-  onSave: (values: Record<ForecastQuarter, string>) => void;
+  unavailable: ForecastQuarter[];
+  onSave: (values: Record<ForecastQuarter, string>, initial: Record<ForecastQuarter, string>) => void;
 }) {
   const [values, setValues] = useState(initial);
+  const [original] = useState(initial);
 
   return (
     <div className="mt-3 rounded-lg border border-line bg-gray-50 p-3">
@@ -279,8 +287,9 @@ function TargetEditor({
           under one reporting currency and read under another is arithmetic on
           two units, which is exactly what this used to be. */}
       <p className="text-xs font-bold uppercase tracking-wide text-gray-500">
-        Targets for FY{fiscalYear} · in {getReportingCurrency()}
+        Targets for FY{fiscalYear} · in {currency}
       </p>
+      {unavailable.length > 0 && <p role="status" className="mt-2 text-xs text-amber-800">Add the missing exchange rate in Settings before editing {unavailable.join(', ')}. Those targets stay unchanged.</p>}
       <div className="mt-2 grid grid-cols-2 gap-2 lg:grid-cols-4">
         {FORECAST_QUARTERS.map((quarter) => (
           <label key={quarter} className="block">
@@ -289,6 +298,7 @@ function TargetEditor({
               type="text"
               inputMode="numeric"
               value={values[quarter]}
+              disabled={unavailable.includes(quarter)}
               onChange={(event) => setValues((current) => ({ ...current, [quarter]: event.target.value }))}
               placeholder="0"
               aria-label={`${quarter} target`}
@@ -299,13 +309,13 @@ function TargetEditor({
       </div>
       <button
         type="button"
-        onClick={() => onSave(values)}
+        onClick={() => onSave(values, original)}
         className="mt-3 rounded-full bg-navy px-4 py-1.5 text-xs font-bold text-white hover:bg-navy/90"
       >
         Save targets
       </button>
       <p className="mt-2 text-[11px] leading-4 text-gray-400">
-        Saved in {getReportingCurrency()}, the currency this page reports in. A target that moves is recorded as a
+        Saved in {currency}, the currency this page reports in. A target that moves is recorded as a
         change, not overwritten — so &quot;I was raised mid-quarter&quot; stays answerable later.
       </p>
     </div>

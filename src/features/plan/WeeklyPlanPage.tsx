@@ -488,7 +488,7 @@ export function WeeklyPlanPage({
       const result = await saveSalesActivity(log.activity, dataUserId, {
         source: workspaceTag.source,
         isSample: sampleDataActive,
-      });
+      }, log.link);
       setActivities((current) => [result.record, ...current]);
 
       if (!item.done) {

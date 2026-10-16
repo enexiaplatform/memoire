@@ -54,7 +54,7 @@ export function DashboardsPage() {
   const [definition, setDefinition] = useState<DashboardDefinition>(newDashboard), [editing, setEditing] = useState<{ id: string; version: number } | null>(null);
   const [run, setRun] = useState<DashboardRun | null>(null), [stale, setStale] = useState(false), [openEditor, setOpenEditor] = useState(false), [archived, setArchived] = useState(false);
   const [busy, setBusy] = useState(''), [error, setError] = useState(''), [message, setMessage] = useState(''), [reload, setReload] = useState(0), [detailPage, setDetailPage] = useState(0);
-  const [filtersOpen, setFiltersOpen] = useState(() => typeof window !== 'undefined' && window.matchMedia('(min-width: 640px)').matches);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [runRequest, setRunRequest] = useState<{definition: DashboardDefinition; scopeKey: string} | null>(null);
   const [contributorsOnly, setContributorsOnly] = useState(true);
   const [nonZeroOnly, setNonZeroOnly] = useState(false);
@@ -69,7 +69,6 @@ export function DashboardsPage() {
     return () => { cancelled = true; };
   }, [runRequest, scope, scopeKey]);
   const selectionKey = JSON.stringify([scopeKey, requested, requestedReport, reload]);
-  useEffect(() => { const media = window.matchMedia('(min-width: 640px)'), adapt = () => setFiltersOpen(media.matches); media.addEventListener('change', adapt); return () => media.removeEventListener('change', adapt); }, []);
   useEffect(() => {
     if (loading || handledSelection.current === selectionKey) return;
     let cancelled = false;
@@ -160,8 +159,8 @@ export function DashboardsPage() {
     if(selectedRun&&selectedWidget&&!invalidGroup){detailRef.current?.focus();detailRef.current?.scrollIntoView({block:'start'});}
   },[selectedRun,selectedWidget,invalidGroup,params]);
   const updateWidget = (index: number, widget: DashboardWidget) => change({ ...definition, widgets: definition.widgets.map((old, i) => i === index ? widget : old) });
-  return <div className="min-w-0 space-y-5" data-testid="dashboards-page">
-    <PageHeader eyebrow="Visualization" title="Dashboards" description="Compare saved report results, then inspect the records behind each number." actions={<button className={secondary} disabled={Boolean(busy)} onClick={() => setReload(value => value + 1)}>Reload library</button>} />
+  return <div className="min-w-0 space-y-3" data-testid="dashboards-page">
+    <PageHeader size="compact" descriptionDisclosure title="Dashboards" description="Compare saved report results, then inspect the records behind each number." actions={<button className={secondary} disabled={Boolean(busy)} onClick={() => setReload(value => value + 1)}>Reload library</button>} />
     {error && <p role="alert" className="rounded-lg bg-tint-red-bg p-3 text-sm text-tint-red-ink">{error}</p>}
     {message && <p role="status" className="rounded-lg bg-tint-blue-bg p-3 text-sm text-ink">{message}</p>}
     {filterParam && !effective && <p role="alert">Invalid dashboard filters in this link. <button className={secondary} onClick={() => { const next = new URLSearchParams(params); next.delete('dashboardFilters'); setParams(next); }}>Reset link filters</button></p>}

@@ -1,0 +1,289 @@
+- link "Skip to main content":
+  - /url: "#app-main-content"
+- navigation "Primary":
+  - generic: Memoire
+  - link "Today":
+    - /url: /app/today
+    - text: Today
+  - link "Plan":
+    - /url: /app/timeline
+    - text: Plan
+  - link "Leads":
+    - /url: /app/leads
+    - text: Leads
+  - link "Accounts":
+    - /url: /app/accounts
+    - text: Accounts
+  - link "Opportunities 4 open":
+    - /url: /app/opportunities
+    - text: Opportunities
+    - generic "4 open": "4"
+  - link "Money":
+    - /url: /app/revenue
+    - text: Money
+  - link "Review":
+    - /url: /app/reviews
+    - text: Review
+  - link "Products & Brands":
+    - /url: /app/products
+    - text: Products & Brands
+  - link "Reports":
+    - /url: /app/reports
+    - text: Reports
+  - link "Dashboards":
+    - /url: /app/dashboards
+    - text: Dashboards
+  - generic: Weekly review
+  - paragraph: 4 of 4 open deals sit at a stage their evidence does not reach yet.
+  - link "Open the review":
+    - /url: /app/reviews
+  - generic: D
+  - generic "Demo workspace"
+  - generic: Local sample data
+  - button "Account and settings for Demo workspace":
+- banner:
+  - button "Search Memoire":
+    - generic: Search accounts, deals, notes
+    - generic: ⌘K
+  - generic "Sample data is stored only in this browser. Sample data is local. Replace it with real activities when ready.":
+    - generic: Demo browser
+  - link "Capture":
+    - /url: /app/capture
+    - generic: Capture
+- main "Memoire workspace" [active]:
+  - paragraph: Demo mode active - sample data is local to this browser, is not synced to your account, and never writes back to CRM.
+  - link "Create account":
+    - /url: /signup
+  - button "Reset demo"
+  - button "Exit demo"
+  - paragraph: Sunday 11 October
+  - heading "Good evening." [level=1]
+  - generic "Morning brief":
+    - paragraph:
+      - strong: 5 priority flags need attention before anything else.
+      - text: "Blocker objection unresolved: Orion Pharma / Procurement review. You captured 3 customer touches yesterday."
+    - paragraph:
+      - generic: "Ask:"
+      - link "Which unresolved objections are blocking my pipeline right now?":
+        - /url: /app/ask?question=Which+unresolved+objections+are+blocking+my+pipeline+right+now%3F
+      - link "Where does Summit Diagnostics stand?":
+        - /url: /app/ask?question=Where+does+Summit+Diagnostics+stand%3F
+  - button "Reload from the records in this browser":
+  - link "Ask Memoire":
+    - /url: /app/ask
+    - text: Ask Memoire
+  - link "Start the day":
+    - /url: /app/quotes?quoteId=demo-quote-summit-qc
+    - text: Start the day
+  - region "The picture":
+    - 'link "Open pipeline 164.2KUSD Proposal: 37.3K USD, 2 deals; Negotiation: 92.3K USD, 1 deal; Procurement: 34.6K USD, 1 deal 4 deals · 164.2K USD at Proposal or later"':
+      - /url: /app/opportunities
+      - generic: Open pipeline
+      - generic: 164.2KUSD
+      - 'img "Proposal: 37.3K USD, 2 deals; Negotiation: 92.3K USD, 1 deal; Procurement: 34.6K USD, 1 deal"':
+        - generic "Proposal · 37.3K USD · 2 deals"
+        - generic "Negotiation · 92.3K USD · 1 deal"
+        - generic "Procurement · 34.6K USD · 1 deal"
+      - generic: 4 deals · 164.2K USD at Proposal or later
+    - 'link "Going silent 0 deals 7-13 days: 0; 14-20 days: 0; 21-29 days: 0; 30-59 days: 0; 60+ days: 0 Nothing quiet for 7+ days"':
+      - /url: /app/opportunities
+      - generic: Going silent
+      - generic: "0"
+      - generic: deals
+      - 'img "7-13 days: 0; 14-20 days: 0; 21-29 days: 0; 30-59 days: 0; 60+ days: 0"':
+        - generic "Quiet 7-13 days · 0 deals"
+        - generic "Quiet 14-20 days · 0 deals"
+        - generic "Quiet 21-29 days · 0 deals"
+        - generic "Quiet 30-59 days · 0 deals"
+        - generic "Quiet 60+ days · 0 deals"
+      - generic: Nothing quiet for 7+ days
+    - 'link "Overdue cash 25KUSD Not overdue / date to confirm: 34.6K USD; 1-30 days confirmed late: 25K USD; 31-60 days confirmed late: 0 USD; Over 60 days confirmed late: 0 USD 1 order late · oldest 2 days"':
+      - /url: /app/revenue?view=collections&orderId=demo-opp-summit-diagnostics-qc-workflow
+      - generic: Overdue cash
+      - generic: 25KUSD
+      - 'img "Not overdue / date to confirm: 34.6K USD; 1-30 days confirmed late: 25K USD; 31-60 days confirmed late: 0 USD; Over 60 days confirmed late: 0 USD"':
+        - generic "Not overdue / date to confirm · 34.6K USD"
+        - generic "1-30 days confirmed late · 25K USD"
+      - text: 1 order late · oldest
+      - generic: 2 days
+    - link "Planned tasks done 0 / 1 0% of this week's plan done 0% of this week done · 1 overdue incl. backlog":
+      - /url: /app/timeline?view=upcoming
+      - generic: Planned tasks done
+      - generic: "0"
+      - generic: / 1
+      - img "0% of this week's plan done"
+      - text: 0% of this week done ·
+      - generic: 1 overdue incl. backlog
+  - region "Your moves":
+    - heading "Your 3 moves" [level=2]
+    - paragraph: What Memoire would start with, ranked across money, deals, leads and capture
+    - link "See all 4 deals":
+      - /url: /app/opportunities
+    - list:
+      - generic "Summit Diagnostics / QC workflow delivery": Summit Diagnostics
+      - generic: Critical
+      - generic: Revenue
+      - paragraph: Confirm payment release date with finance.
+      - paragraph: "Why now: Payment overdue: Pending payment."
+      - generic "What this is based on"
+      - generic: 650,000,000 VND
+      - generic: 25,000 USD
+      - generic: Due Oct 9, 2026
+      - link "Open":
+        - /url: /app/quotes?quoteId=demo-quote-summit-qc
+        - text: Open
+      - generic "Orion Pharma / Procurement review": Orion Pharma
+      - generic: Critical
+      - generic: Opportunity
+      - paragraph: Schedule procurement clarification call before forecast review.
+      - paragraph: "Why now: High impact objection remains open."
+      - generic "What this is based on"
+      - generic: 900,000,000 VND
+      - generic: 34,615.38 USD
+      - generic: Due Oct 18, 2026
+      - link "Open":
+        - /url: /app/opportunities?opportunityId=demo-opp-orion-pharma-tender
+        - text: Open
+      - generic "Reagent distributor / Obligation": Reagent distributor
+      - generic: Critical
+      - generic: Obligation
+      - paragraph: Pay Supplier invoice (reagent distributor)
+      - paragraph: "Why now: Payment overdue — a missed deadline costs more than a cold deal."
+      - generic "What this is based on"
+      - generic: 1.8K USD
+      - generic: Due Oct 5, 2026
+      - link "Open":
+        - /url: /app/revenue
+        - text: Open
+  - region "Leads that need you":
+    - heading "Leads that need you" [level=2]
+    - link "Open Leads":
+      - /url: /app/leads
+    - list:
+      - 'link "Riverside Foods is due for its revisit on Oct 13, 2026 Revisit Riverside Foods: book a touch, qualify it, or park it again"':
+        - /url: /app/leads?state=needs-action
+        - generic: Riverside Foods is due for its revisit on Oct 13, 2026
+        - generic: "Revisit Riverside Foods: book a touch, qualify it, or park it again"
+      - link "Delta Nutrition has enough evidence to qualify Qualify Delta Nutrition into Discovery":
+        - /url: /app/leads?state=ready
+        - generic: Delta Nutrition has enough evidence to qualify
+        - generic: Qualify Delta Nutrition into Discovery
+      - link "1 new lead has never been contacted Make first contact with Harbor Diagnostics":
+        - /url: /app/leads?state=new
+        - generic: 1 new lead has never been contacted
+        - generic: Make first contact with Harbor Diagnostics
+  - generic "Context for the three moves · business questions and money"
+  - generic "How to read these numbers · scope, cash and exchange rates"
+  - generic "Data to complete · 1 issues affecting this workspace"
+  - region "Watch-list":
+    - paragraph: Proactive Nudges
+    - heading "The few things that could embarrass you in review." [level=2]
+    - generic: Capped at five · never changes CRM data
+    - article:
+      - heading "Summit Diagnostics" [level=3]
+      - paragraph: 1 thing to answer
+      - generic: Critical
+      - generic: revenue
+      - generic: Oct 9, 2026
+      - link "Payment overdue":
+        - /url: /app/quotes?quoteId=demo-quote-summit-qc
+      - paragraph: QC workflow delivery
+      - paragraph: "Payment overdue: Summit Diagnostics / QC workflow delivery"
+      - paragraph: Confirm payment release date with finance.650,000,000 VND · 25K USD
+      - button "Mark done"
+      - button "Dismiss"
+      - button "Snooze tomorrow"
+      - button "Snooze next week"
+    - article:
+      - heading "Apex Labs" [level=3]
+      - paragraph: 1 thing to answer
+      - generic: High
+      - generic: revenue
+      - generic: Oct 16, 2026
+      - link "Quote expiring soon":
+        - /url: /app/quotes?quoteId=demo-quote-apex-validation
+      - paragraph: Validation expansion revised quote
+      - paragraph: "Quote expiring: Apex Labs / Validation expansion revised quote"
+      - paragraph: Confirm revised quote approval before expiry.2,400,000,000 VND · 92.3K USD
+      - button "Mark done"
+      - button "Dismiss"
+      - button "Snooze tomorrow"
+      - button "Snooze next week"
+    - article:
+      - heading "Orion Pharma" [level=3]
+      - paragraph: 2 things to answer
+      - button "Open the deal"
+      - generic: High
+      - generic: objection
+      - generic: Oct 18, 2026
+      - link "Blocker objection unresolved":
+        - /url: /app/opportunities?opportunityId=demo-opp-orion-pharma-tender
+      - paragraph: Procurement review
+      - paragraph: "Orion Pharma procurement contact: Tender timeline and decision committee are still unclear."
+      - paragraph: Attach proof, owner, and next action for the blocker before review.900,000,000 VND · 34.6K USD
+      - button "Draft follow-up"
+      - button "Mark done"
+      - button "Dismiss"
+      - button "Snooze tomorrow"
+      - button "Snooze next week"
+      - generic: High
+      - generic: objection
+      - generic: Oct 18, 2026
+      - paragraph: Unresolved objection
+      - paragraph: Procurement review
+      - paragraph: Tender timeline and decision committee are still unclear.
+      - paragraph: Schedule procurement clarification call before forecast review.
+      - button "Mark done"
+      - button "Dismiss"
+      - button "Snooze tomorrow"
+      - button "Snooze next week"
+    - article:
+      - heading "Northstar Foods" [level=3]
+      - paragraph: 1 thing to answer
+      - button "Open the deal"
+      - generic: High
+      - generic: objection
+      - generic: Oct 18, 2026
+      - link "Blocker objection unresolved":
+        - /url: /app/opportunities?opportunityId=demo-opp-northstar-foods-lab
+      - paragraph: Lab workflow
+      - paragraph: "Mr. Taylor: Customer is concerned implementation lead time may not meet project timing."
+      - paragraph: Attach proof, owner, and next action for the blocker before review.450,000,000 VND · 17.3K USD
+      - button "Draft follow-up"
+      - button "Mark done"
+      - button "Dismiss"
+      - button "Snooze tomorrow"
+      - button "Snooze next week"
+    - button "Bring back the ones I dismissed"
+    - button "Reset every nudge on this device"
+  - paragraph: Demo Journey
+  - heading "5-minute path through a full week of the loop" [level=2]
+  - paragraph: Follow 4 focused steps to see the value before exploring the wider app.
+  - paragraph: Today - Capture - Plan - Review
+  - generic: 1 of 4 complete
+  - generic: 25%
+  - article:
+    - paragraph: Complete
+    - heading "Open Today" [level=3]
+    - link "Open Today":
+      - /url: /app/today
+      - text: Open Today
+  - article:
+    - paragraph: Step 2
+    - heading "Paste sales evidence" [level=3]
+    - link "Paste email/thread":
+      - /url: /app/capture?mode=email
+      - text: Paste email/thread
+  - article:
+    - paragraph: Step 3
+    - heading "Finish something on the Plan" [level=3]
+    - link "Open the Plan":
+      - /url: /app/timeline
+      - text: Open the Plan
+  - article:
+    - paragraph: Step 4
+    - heading "Close the week" [level=3]
+    - link "Open Review":
+      - /url: /app/reviews
+      - text: Open Review
+  - generic "Demo guidance"
