@@ -91,7 +91,11 @@ export async function sendAiChat(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({ consent: true, messages, context }),
-    signal,
+    signal: AbortSignal.any([signal, AbortSignal.timeout(35000)]),
+  }).catch((reason) => {
+    if (!signal.aborted && reason?.name === "TimeoutError")
+      throw new AiChatError("provider_timeout");
+    throw reason;
   });
   const result = await response.json().catch(() => ({}));
   if (!response.ok)

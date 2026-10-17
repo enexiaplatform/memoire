@@ -55,6 +55,8 @@ const handler = createAiChatHandler({
       });
     if (question.includes("TIMEOUT"))
       throw new DOMException("fixture", "TimeoutError");
+    if (question.includes("FORMAT_ERROR"))
+      return Response.json({error:{code:"tool_use_failed",failed_generation:"fixture-only nonexistent tool"}},{status:400});
     await new Promise((done) => setTimeout(done, question.includes('SLOW') ? 8000 : 1200));
     const short = /short|ngắn/i.test(question);
     const answer = {
@@ -68,7 +70,7 @@ const handler = createAiChatHandler({
       missingContext: ["Decision date is not recorded."],
       suggestedQuestions: ["Viết ngắn hơn.", "Which evidence is missing?"],
     };
-    if (/FIXTURE_ACTIONS|tạo 2 việc plan/i.test(question)) {
+    if (/FIXTURE_ACTIONS|tạo 2 việc plan|add into Plan with details information/i.test(question)) {
       Object.assign(answer,{
         answer:'Đề xuất tạo 2 việc Plan và sửa next action của cơ hội Analyzer (dữ liệu giả lập). Nhắn “thực hiện” để áp dụng hoặc “hủy”.',draft:'',suggestedAction:'',missingContext:[],suggestedQuestions:[],
         actions:[
@@ -78,6 +80,10 @@ const handler = createAiChatHandler({
         ],
       });
     }
+    if (/add into Plan with details information/i.test(question))
+      answer.actions = answer.actions.filter(action => action.kind === 'create_plan');
+    if (question.includes('FIXTURE_AGENDA'))
+      Object.assign(answer, {answer: 'Fictional weekly agenda. Not saved.\n\n' + 'Recorded context: the evaluation criteria are not confirmed, so review the checklist before contacting the customer. This is a suggestion, not a confirmed appointment.\n\n'.repeat(18) + '2026-10-20: Fixture: call about demo criteria. Channel Phone call.\n2026-10-21: Fixture: send evaluation checklist. Channel Email / message.',draft:'',suggestedAction:'',suggestedQuestions:[],missingContext:[],actions:[]});
     return new Response(
       JSON.stringify({
         choices: [

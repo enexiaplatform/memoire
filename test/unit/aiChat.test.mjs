@@ -129,6 +129,49 @@ describe('AI chat bounded requests and provider failure handling', () => {
       const res = await fixture.run(); assert.equal(res.code, 503); assert.deepEqual(res.payload, { error: 'provider_unavailable' });
     }
   });
+  test('a nonexistent tool call is repaired once as JSON on the same model and deadline', async () => {
+    const attempts=[];
+    const fixture=setup({fetcher:async (_url,options)=>{
+      attempts.push(options);
+      if(attempts.length===1) return Response.json({error:{code:'tool_use_failed',failed_generation:'private invented tool arguments'}},{status:400});
+      return Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify(modelReply())}}]});
+    }});
+    const res=await fixture.run();
+    assert.equal(res.code,200);
+    assert.equal(attempts.length,2);
+    assert.equal(attempts[0].signal,attempts[1].signal);
+    const initial=JSON.parse(attempts[0].body), repaired=JSON.parse(attempts[1].body);
+    assert.equal(initial.model,repaired.model);
+    assert.equal(repaired.temperature,0);
+    assert.equal(repaired.tools,undefined);
+    assert.deepEqual(initial.messages,repaired.messages);
+    assert.equal(attempts[1].body.includes('private invented tool arguments'),false);
+    assert.equal(JSON.stringify(res.payload).includes('private invented tool arguments'),false);
+  });
+  test('persistent tool errors stop after one repair; unrelated 400 errors are not retried',async()=>{
+    for(const code of ['tool_use_failed','invalid_request_error']) {
+      let calls=0;
+      const fixture=setup({fetcher:async()=>{calls++;return Response.json({error:{code,failed_generation:'private'}},{status:400});}});
+      const res=await fixture.run();
+      assert.equal(calls,code==='tool_use_failed'?2:1);
+      assert.equal(res.code,code==='tool_use_failed'?502:503);
+      assert.equal(JSON.stringify(res.payload).includes('private'),false);
+    }
+  });
+  test('add-into-Plan follow-up retains the draft as data and returns typed proposals', async()=>{
+    const actions=[{kind:'create_plan',targetKey:source.key,label:'Review technical criteria and prepare a checklist',date:'2026-10-20',channel:'Desk work',changes:[]}];
+    const fixture=setup({fetcher:async(_url,options)=>{
+      const sent=JSON.parse(options.body);
+      assert.match(sent.messages[0].content,/JSON proposal generator/);
+      assert.match(sent.messages[0].content,/Read the preceding assistant agenda as draft data/);
+      assert.equal(sent.messages.at(-1).content,'add into Plan with details information');
+      assert.match(sent.messages.at(-2).content,/2026-10-20/);
+      return Response.json({choices:[{finish_reason:'stop',message:{content:JSON.stringify({...modelReply(),actions})}}]});
+    }});
+    const request=body();request.messages=[{role:'user',content:'Suggest a weekly agenda.'},{role:'assistant',content:'2026-10-20: Review technical criteria and prepare a checklist.'},{role:'user',content:'add into Plan with details information'}];
+    const res=await fixture.run(request);
+    assert.equal(res.code,200);assert.deepEqual(res.payload.actions,actions);assert.match(res.payload.answer,/Chưa áp dụng/);
+  });
   test('timeout is distinguished from a malformed or fabricated model response', async () => {
     const fixture = setup({ fetcher: async () => { throw new DOMException('private detail', 'TimeoutError'); } });
     const res = await fixture.run(); assert.equal(res.code, 504); assert.equal(res.payload.error, 'provider_timeout');

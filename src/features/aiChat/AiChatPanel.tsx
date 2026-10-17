@@ -85,6 +85,7 @@ export function AiChatPanel({
   const flightRef = useRef(false);
   const revision = useRef(0);
   const output = useRef<HTMLDivElement>(null);
+  const composer = useRef<HTMLFormElement>(null);
   const actionDateInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -175,6 +176,10 @@ export function AiChatPanel({
     }
   }, [workspace, userId, scope, question, plan, messages]);
   const cooldown = Math.max(0, Math.ceil((retryAt - now) / 1000));
+  useEffect(() => {
+    if (error || preview.error)
+      composer.current?.scrollIntoView({ block: "end", behavior: "smooth" });
+  }, [error, preview.error]);
 
   function reset() {
     if (applyingRef.current) return;
@@ -514,25 +519,6 @@ export function AiChatPanel({
           Loading your context…
         </p>
       )}
-      {(error || preview.error) && (
-        <div
-          role="status"
-          className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-        >
-          <p>{error || preview.error}</p>
-          {cooldown > 0 && (
-            <p className="mt-1 text-xs">Try again in {cooldown}s.</p>
-          )}
-          <button
-            type="button"
-            onClick={onLocal}
-            className="mt-2 min-h-9 font-semibold underline"
-          >
-            Use Local insights
-          </button>
-        </div>
-      )}
-
       {preview.context && (
         <details
           className={`shrink-0 border border-line bg-white ${compact ? "max-h-52 overflow-y-auto rounded-none px-3 py-2" : "rounded-2xl px-4 py-3"}`}
@@ -780,12 +766,27 @@ export function AiChatPanel({
       </Panel>
 
       <form
+        ref={composer}
         onSubmit={(event) => {
           event.preventDefault();
           void send();
         }}
         className={`shrink-0 border border-line bg-white ${compact ? "rounded-none p-3 shadow-none" : "rounded-2xl p-4 shadow-panel"}`}
       >
+        {(error || preview.error) && (
+          <div
+            role="alert"
+            className="mb-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900"
+          >
+            <p>{error || preview.error}</p>
+            {cooldown > 0 && (
+              <p className="mt-1 text-xs">Thử lại sau {cooldown}s.</p>
+            )}
+            <button type="button" onClick={onLocal} className="mt-1 min-h-9 font-semibold underline">
+              Use Local insights
+            </button>
+          </div>
+        )}
         <label className="mb-3 flex items-start gap-2 text-xs leading-5 text-muted">
           <input
             type="checkbox"
