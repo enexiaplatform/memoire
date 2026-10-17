@@ -24,27 +24,26 @@ export function weeklyPlanDraft(
     .filter(item => !item.done && item.kind === "deal")
     .map(item => item.id.slice("deal-".length)));
   const candidates = active.filter(row =>
-    row.nextAction?.trim() &&
     (!isValidBusinessDate(row.nextActionDate) ||
       (row.nextActionDate < rangeStart && openIds.has(row.id))),
   ).sort((a, b) => (a.nextActionDate || "9999").localeCompare(b.nextActionDate || "9999") || a.id.localeCompare(b.id));
   const listed = candidates.slice(0, 5);
   const facts = [
-    `DRAFT PLANNING MODE: ${candidates.length} active opportunity/Lead next actions are eligible to propose for ${rangeStart} through ${rangeEnd}; ${listed.length} shown. These are NOT already scheduled in that future week. An empty future calendar does not mean there is no work to propose.`,
+    `DRAFT PLANNING MODE: ${candidates.length} active opportunity/Lead work candidates are eligible to propose for ${rangeStart} through ${rangeEnd}; ${listed.length} shown. These are NOT already scheduled in that future week. An empty future calendar does not mean there is no work to propose.`,
   ];
   for (const [index, row] of listed.entries()) {
     const date = new Date(`${rangeStart}T12:00:00`);
     date.setDate(date.getDate() + index);
     const suggestedDate = toLocalDateKey(date);
     facts.push(
-      `DRAFT CANDIDATE opportunity:${row.id}: ${row.accountName} · ${row.opportunityName}; task ${row.nextAction.slice(0, 450)}; original due ${row.nextActionDate || "not recorded"}; suggested date ${suggestedDate}; channel not recorded. Reason: ${isValidBusinessDate(row.nextActionDate) ? "unfinished current/backlog next action" : "recorded next action missing a due date"}. Proposed work date only, not a confirmed appointment.`,
+      `DRAFT CANDIDATE opportunity:${row.id}: ${row.accountName} · ${row.opportunityName}; task ${row.nextAction?.trim() ? row.nextAction.slice(0, 450) : "Rà soát cơ hội và xác nhận bước tiếp theo"}; original due ${row.nextActionDate || "not recorded"}; suggested date ${suggestedDate}; channel not recorded. Reason: ${!row.nextAction?.trim() ? "no recorded next action; propose a record review to clarify it, not an invented customer promise" : isValidBusinessDate(row.nextActionDate) ? "unfinished current/backlog next action" : "recorded next action missing a due date"}. Proposed work date only, not a confirmed appointment.`,
     );
   }
   return {
     facts,
     preferredIds: listed.map(row => row.id),
     limitations: [
-      "Draft candidates cover recorded next actions on active opportunities and working Leads, using current Plan completion/backlog rules. Personal Plan tasks are not automatically moved. Do not recreate work already scheduled next week. If candidates exist, provide a dated draft before asking for preferences; do not request the user to re-enter the supplied task details. If none exist, explain the missing actionable work rather than inventing customer commitments.",
+      "Draft candidates cover unfinished next actions and proposed record reviews where next actions are missing on active opportunities and working Leads, using current Plan completion/backlog rules. Personal Plan tasks are not automatically moved. Do not recreate work already scheduled next week. If candidates exist, provide a dated draft before asking for preferences; do not request the user to re-enter the supplied task details. If none exist, explain the missing actionable work rather than inventing customer commitments.",
     ],
   };
 }

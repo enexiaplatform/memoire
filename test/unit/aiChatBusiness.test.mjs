@@ -44,7 +44,7 @@ test('preparing an empty next week proposes unfinished work instead of asking fo
   const result = businessAnswer(data, 'Chuẩn bị plan tuần sau cho tôi', [], now);
   const facts = result.facts.join(' ');
   assert.match(facts, /0 open plan\/follow-up items/);
-  assert.match(facts, /3 active opportunity\/Lead next actions/);
+  assert.match(facts, /3 active opportunity\/Lead work candidates/);
   assert.match(facts, /opportunity:overdue:.*original due 2026-10-15; suggested date 2026-10-20/);
   assert.match(facts, /opportunity:lead:.*suggested date 2026-10-19/);
   assert.match(facts, /opportunity:undated:.*suggested date 2026-10-21/);
@@ -53,9 +53,9 @@ test('preparing an empty next week proposes unfinished work instead of asking fo
 });
 
 test('Plan preparation honors canonical completion and does not recreate already scheduled tasks', () => {
-  const data=workspace({opportunities:[deal('done'),deal('scheduled',{stage:'Lead',nextActionDate:'2026-10-21'}),deal('blank',{nextAction:''}),deal('held',{status:'On hold'})]});
+  const data=workspace({opportunities:[deal('done'),deal('scheduled',{stage:'Lead',nextActionDate:'2026-10-21'}),deal('blank',{nextAction:'',nextActionDate:'2026-11-01'}),deal('held',{status:'On hold'})]});
   const result=businessAnswer(data,'Prepare my plan for next week',[{id:'completion',derivedKey:'deal:done:2026-10-15',date:'2026-10-15',label:'Done',tag:'',done:true,createdAt:'2026-10-15',updatedAt:'2026-10-15'}],now);
-  assert.match(result.facts.join(' '),/0 active opportunity\/Lead next actions/);
+  assert.match(result.facts.join(' '),/0 active opportunity\/Lead work candidates/);
   assert.match(result.facts.join(' '),/1 open plan\/follow-up items/);
   assert.equal(result.facts.some(fact=>fact.startsWith('DRAFT CANDIDATE')),false);
 });
@@ -63,4 +63,14 @@ test('Plan preparation honors canonical completion and does not recreate already
 test('a question about existing next-week work stays a calendar query', () => {
   const result=businessAnswer(workspace(),'Tuần sau có việc gì đã lên lịch?',[],now);
   assert.equal(result.facts.some(fact=>fact.startsWith('DRAFT PLANNING MODE:')),false);
+});
+
+
+test('missing next actions become explicit review proposals without inventing customer promises',()=>{
+  const result=businessAnswer(workspace({opportunities:[deal('needs-step',{nextAction:'',nextActionDate:''})]}),'Chuẩn bị plan tuần sau cho tôi',[],now);
+  assert.match(result.facts.join(' '),/1 active opportunity\/Lead work candidates/);
+  assert.match(result.facts.join(' '),/Rà soát cơ hội và xác nhận bước tiếp theo/);
+  assert.match(result.facts.join(' '),/no recorded next action/);
+  assert.match(result.facts.join(' '),/suggested date 2026-10-19/);
+  assert.deepEqual(result.preferredIds,['needs-step']);
 });

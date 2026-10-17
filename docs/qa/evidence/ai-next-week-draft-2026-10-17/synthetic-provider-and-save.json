@@ -75,5 +75,11 @@
       }
     ]
   },
-  "boundary": "Real Groq calls with fictional data and mocked owner checks; execution used only in-memory writers, no business database writes."
+  "boundary": "Real Groq calls with fictional data and mocked owner checks; execution used only in-memory writers, no business database writes.",
+  "missingNextActions": {
+    "status": 200,
+    "passed": true,
+    "assertionNote": "Accepted dd/MM/YYYY as well as ISO proposal dates; no provider rerun or answer alteration.",
+    "answer": "Dưới đây là bản đề xuất kế hoạch cho tuần tới (19/10/2026 – 25/10/2026):\n\n1. **Rà soát cơ hội và xác nhận bước tiếp theo – Lead**\n   - **Ngày đề xuất**: 19/10/2026\n   - **Kênh**: (chưa ghi) – đề xuất là một cuộc rà soát nội bộ, không phải cuộc hẹn đã xác nhận.\n   - **Mô tả**: Xem lại hồ sơ lead “Fictional Acme · lead” để xác định hành động tiếp theo.\n\n2. **Rà soát cơ hội và xác nhận bước tiếp theo – Deal**\n   - **Ngày đề xuất**: 20/10/2026\n   - **Kênh**: (chưa ghi) – đề xuất là một cuộc rà soát nội bộ, không phải cuộc hẹn đã xác nhận.\n   - **Mô tả**: Xem lại hồ sơ deal “Fictional Acme · deal” để xác định hành động tiếp theo.\n\nĐây là bản đề xuất; chưa có bất kỳ cuộc hẹn nào đã được xác nhận. Nếu bạn đồng ý, hãy cho biết để chuyển sang tạo công việc thực tế.\n"
+  }
 }
