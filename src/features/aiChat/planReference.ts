@@ -1,6 +1,13 @@
 import type { ChatContext, ChatMessage } from './types';
 import type { ChatAction } from '../../../shared/aiChatActions.js';
 
+const identityText = (value: string) => value.normalize('NFD').replace(/\p{M}/gu, '').replace(/[đĐ]/g, 'd').toLowerCase()
+  .replace(/[·–—‑]/g, '-').replace(/[^\S\r\n]+/g, ' ').trim();
+function namesExactSource(content: string, title: string) {
+  const escaped = identityText(title).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return new RegExp(`(^|[^\\p{L}\\p{N}])${escaped}(?=\\s*(?:[\\r\\n"“”*.,;:!?()]|$))`, 'u').test(identityText(content));
+}
+
 /** A request to transfer the preceding draft must not run a new record search. */
 export function planReferenceContext(question: string, messages: ChatMessage[]): ChatContext | null {
   const text = question.normalize('NFD').replace(/\p{M}/gu, '').replace(/[đĐ]/g, 'd').toLowerCase();
@@ -10,7 +17,11 @@ export function planReferenceContext(question: string, messages: ChatMessage[]):
   const previous = messages.findLast(message => message.role === 'assistant' && message.context && message.reply);
   if (!previous?.context || !previous.reply) return null;
   const cited = new Set(previous.reply.sourceKeys);
-  const sources = previous.context.sources.filter(source => cited.has(source.key));
+  // Some model drafts cite only the weekly analysis. Recover an omitted
+  // citation only by its complete displayed identity from the same snapshot;
+  // never by product/brand fragments or a new workspace search.
+  const sources = previous.context.sources.filter(source => cited.has(source.key) ||
+    (['account','opportunity'].includes(source.kind) && namesExactSource(previous.content, source.title)));
   return {
     ...previous.context,
     sources,

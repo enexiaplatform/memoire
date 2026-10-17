@@ -39,3 +39,16 @@ test('personal drafts keep unlinked work personal; conversion does not update op
   assert.throws(()=>assertPlanReferenceTargets([plan(swab.key)],locked));
   assert.throws(()=>assertPlanReferenceTargets([{...plan(swab.key),kind:'update_opportunity'}],context));
 });
+test('weekly-analysis-only citations recover the exact full opportunity named in the draft',()=>{
+  const previous={...messages[1],content:'Draft for "Fictional Samil – Swab / PMM".\n2026-10-20: Call.',reply:{...reply,sourceKeys:[]}};
+  const locked=planReferenceContext('add it into the Plan for next week',[messages[0],previous]);
+  assert.deepEqual(locked.sources,[swab]);
+  assert.throws(()=>assertPlanReferenceTargets([plan(endotoxin.key)],locked));
+  assert.doesNotThrow(()=>assertPlanReferenceTargets([plan(swab.key)],locked));
+});
+test('identity recovery refuses product fragments and longer lookalike names',()=>{
+  for(const content of ['Draft for Swab / PMM.','Draft for "Fictional Samil · Swab / PMM Pro".']) {
+    const locked=planReferenceContext('add it into Plan',[{...messages[1],content,reply:{...reply,sourceKeys:[]}}]);
+    assert.deepEqual(locked.sources,[]);
+  }
+});
