@@ -11,6 +11,8 @@ export async function loadSalesWorkspaceData() {
     const saved=localStorage.getItem('memoire.fixture.ai-actions.opportunities');
     if(saved) fixtureWorkspace.opportunities=JSON.parse(saved);
   }
+  if(!fixtureWorkspace.opportunities.some(row=>row.id==='fixture-decoy'))
+    fixtureWorkspace.opportunities.push({...fixtureWorkspace.opportunities[0],id:'fixture-decoy',opportunityName:'Endotoxin / BOKANG (fictional decoy)',nextAction:'Unrelated decoy task',nextActionDate:'2026-10-01'});
   return fixtureWorkspace;
 }
 export async function loadPlanItemsForUser() { return []; }

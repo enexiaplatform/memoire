@@ -38,6 +38,7 @@ export type ChatMessage = {
   role: "user" | "assistant";
   content: string;
   reply?: ChatReply;
+  context?: ChatContext;
 };
 export type ChatScope = {
   kind: "all" | "account" | "opportunity";

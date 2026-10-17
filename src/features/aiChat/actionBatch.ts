@@ -95,7 +95,7 @@ export function prepareActionBatch(
         action,
         plan,
         title:
-          opportunity?.opportunityName ||
+          (opportunity && `${opportunity.accountName} · ${opportunity.opportunityName}`) ||
           account?.accountName ||
           "Plan cá nhân",
         preview: `Thêm Plan ${action.date}: ${action.label}${action.channel ? ` · ${action.channel}` : " · chưa ghi kênh"}`,

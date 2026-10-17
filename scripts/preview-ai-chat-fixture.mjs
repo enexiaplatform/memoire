@@ -9,6 +9,7 @@ import {
 // Local-only verification harness. Its URL, fictional banner and isolated port
 // make the evidence boundary visible. It is never imported by production code.
 const root = process.cwd();
+const fixturePort = Number(process.env.FIXTURE_PORT || 5188);
 const ids = new Set(
   [
     ...fixtureWorkspace.accounts,
@@ -16,6 +17,7 @@ const ids = new Set(
     ...fixtureWorkspace.activities,
   ].map((row) => row.id),
 );
+ids.add('fixture-decoy');
 const handler = createAiChatHandler({
   env: {
     AI_CHAT_ENABLED: "true",
@@ -70,7 +72,7 @@ const handler = createAiChatHandler({
       missingContext: ["Decision date is not recorded."],
       suggestedQuestions: ["Viết ngắn hơn.", "Which evidence is missing?"],
     };
-    if (/FIXTURE_ACTIONS|tạo 2 việc plan|add into Plan with details information/i.test(question)) {
+    if (/FIXTURE_ACTIONS|tạo 2 việc plan|add into Plan with details information|add it into the Plan for next week/i.test(question)) {
       Object.assign(answer,{
         answer:'Đề xuất tạo 2 việc Plan và sửa next action của cơ hội Analyzer (dữ liệu giả lập). Nhắn “thực hiện” để áp dụng hoặc “hủy”.',draft:'',suggestedAction:'',missingContext:[],suggestedQuestions:[],
         actions:[
@@ -80,8 +82,18 @@ const handler = createAiChatHandler({
         ],
       });
     }
-    if (/add into Plan with details information/i.test(question))
+    if (/add into Plan with details information|add it into the Plan for next week/i.test(question)) {
       answer.actions = answer.actions.filter(action => action.kind === 'create_plan');
+      // Reproduces the wrong-record trap: fresh retrieval can include the
+      // decoy; draft conversion must remove it before this provider call.
+      if(sent.messages.some(message=>message.content.includes('FIXTURE_REFERENCE'))) {
+        const keys=sent.response_format.json_schema.schema.properties.actions.items.properties.targetKey.enum;
+        const target=keys.includes('opportunity:fixture-decoy')?'opportunity:fixture-decoy':'opportunity:fixture-deal';
+        answer.actions=answer.actions.map(action=>({...action,targetKey:target}));
+      }
+    }
+    if(question.includes('FIXTURE_REFERENCE'))
+      Object.assign(answer,{answer:'Draft for Northstar Research (fictional) · Analyzer evaluation (fictional):\n2026-10-20: call about demo criteria, Phone call.\n2026-10-21: send evaluation checklist, Email / message. Nothing saved.',draft:'',suggestedAction:'',missingContext:[],suggestedQuestions:[],actions:[]});
     if (question.includes('FIXTURE_AGENDA'))
       Object.assign(answer, {answer: 'Fictional weekly agenda. Not saved.\n\n' + 'Recorded context: the evaluation criteria are not confirmed, so review the checklist before contacting the customer. This is a suggestion, not a confirmed appointment.\n\n'.repeat(18) + '2026-10-20: Fixture: call about demo criteria. Channel Phone call.\n2026-10-21: Fixture: send evaluation checklist. Channel Email / message.',draft:'',suggestedAction:'',suggestedQuestions:[],missingContext:[],actions:[]});
     return new Response(
@@ -159,10 +171,10 @@ const fixturePlugin = {
 };
 const server = await createServer({
   plugins: [fixturePlugin],
-  server: { host: "127.0.0.1", port: 5188, strictPort: true },
+  server: { host: "127.0.0.1", port: fixturePort, strictPort: true },
   cacheDir: "node_modules/.vite-ai-chat-fixture",
 });
 await server.listen();
 console.log(
-  "Fictional AI chat fixture: http://127.0.0.1:5188/test/fixtures/aiChat/index.html",
+  `Fictional AI chat fixture: http://127.0.0.1:${fixturePort}/test/fixtures/aiChat/index.html`,
 );

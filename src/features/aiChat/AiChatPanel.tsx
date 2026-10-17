@@ -39,6 +39,7 @@ import type { ChatMessage, ChatScope } from "./types";
 import type { PlanRecord } from "../../utils/weeklyPlan";
 import { prepareActionBatch, type ActionBatch } from "./actionBatch";
 import { executeChatActions } from "../../services/aiChatActions";
+import { planReferenceContext, assertPlanReferenceTargets } from "./planReference";
 
 type Props = {
   userId: string;
@@ -147,6 +148,8 @@ export function AiChatPanel({
 
   const preview = useMemo(() => {
     if (!workspace) return { context: null, error: "" };
+    const reference = planReferenceContext(question, messages);
+    if (reference) return { context: reference, error: "" };
     const topic =
       /brand|thuong hieu|thuong hiệu|nhan hang|nhãn hàng|forecast|forcast|du bao|dự báo|\bq[1-4]\b|quy\s*[1-4]|quý\s*[1-4]|tuan|tuần|week|gap|gặp|visit|follow.?up/i;
     const previous =
@@ -275,6 +278,7 @@ export function AiChatPanel({
       return;
     const controller = new AbortController();
     const currentRevision = revision.current;
+    const sentContext = preview.context;
     const ownsWorkspace = captureLocalWorkspaceScope();
     requestRef.current = controller;
     flightRef.current = true;
@@ -303,6 +307,8 @@ export function AiChatPanel({
         .filter(Boolean)
         .join("\n\n")
         .slice(0, 6000);
+      const reference = planReferenceContext(value, messages);
+      if (reference) assertPlanReferenceTargets(reply.actions || [], reference);
       const batch =
         reply.actions?.length && workspace
           ? prepareActionBatch(
@@ -317,7 +323,7 @@ export function AiChatPanel({
       setMessages((previous) => [
         ...previous,
         { role: "user", content: value },
-        { role: "assistant", content, reply },
+        { role: "assistant", content, reply, context: sentContext },
       ]);
       setQuestion((current) => (current.trim() === value ? "" : current));
     } catch (reason) {
