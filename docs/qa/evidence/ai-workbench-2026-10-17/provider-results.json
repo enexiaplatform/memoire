@@ -1,0 +1,63 @@
+{
+  "boundary": "Actual Groq API; fictional records and mocked owner verification; no executor or database writes.",
+  "cases": [
+    {
+      "name": "reschedule existing Plan",
+      "status": 200,
+      "actionKinds": [
+        "update_plan"
+      ],
+      "targets": [
+        "plan:fictional-plan"
+      ],
+      "sourceKeys": [
+        "plan:fictional-plan"
+      ],
+      "passed": true
+    },
+    {
+      "name": "update account strategy",
+      "status": 200,
+      "actionKinds": [
+        "update_account"
+      ],
+      "targets": [
+        "account:fictional-account"
+      ],
+      "sourceKeys": [
+        "account:fictional-account"
+      ],
+      "passed": true
+    },
+    {
+      "name": "read stakeholder and objection",
+      "status": 200,
+      "actionKinds": [],
+      "targets": [],
+      "sourceKeys": [
+        "stakeholder:fictional-person",
+        "objection:fictional-objection"
+      ],
+      "passed": true
+    }
+  ],
+  "largeScope": {
+    "status": 200,
+    "contextBytes": 7579,
+    "sourceCount": 13,
+    "sourceKeys": [
+      "analysis:deal-coaching",
+      "opportunity:d0",
+      "opportunity:d1",
+      "opportunity:d2",
+      "opportunity:d3",
+      "opportunity:d4"
+    ],
+    "actionCount": 0,
+    "passed": true
+  },
+  "limitations": [
+    "One repeat Plan response was rejected as invalid_model_response without execution; a subsequent request passed.",
+    "Rapid repeated requests reached the free-provider TPM quota; spaced requests passed. Model responses are not guaranteed deterministic."
+  ]
+}

@@ -9,14 +9,21 @@ import { useEscapeToClose } from "../../hooks/useEscapeToClose";
 const ChatPanel = lazy(() =>
   import("./AiChatPanel").then((module) => ({ default: module.AiChatPanel })),
 );
+import { viewedRecordScope } from "./workflows";
+import type { ChatScope } from "./types";
 const ALL = { kind: "all" as const };
 
 /** Shell-level conversation survives page navigation; no transcript is persisted. */
-export function MemoireChat() {
+export function MemoireChat({
+  initiallyOpen = false,
+}: { initiallyOpen?: boolean } = {}) {
   const { user } = useAuth();
-  const { pathname } = useLocation();
-  const [open, setOpen] = useState(false);
-  const [started, setStarted] = useState(false);
+  const { pathname, search } = useLocation();
+  const viewed = viewedRecordScope(search);
+  const [chatScope, setChatScope] = useState<ChatScope>(ALL);
+  const [chatBusy, setChatBusy] = useState(false);
+  const [open, setOpen] = useState(initiallyOpen);
+  const [started, setStarted] = useState(initiallyOpen);
   const launcher = useRef<HTMLButtonElement>(null);
   const windowRef = useRef<HTMLElement>(null);
   const close = () => {
@@ -58,13 +65,17 @@ export function MemoireChat() {
             <div>
               <p className="text-sm font-bold text-ink">Memoire AI</p>
               <p className="text-[11px] text-muted">
-                Hỏi về khách hàng, forecast và brands
+                Phân tích, chuẩn bị và thao tác trên dữ liệu Memoire
               </p>
             </div>
             <div className="flex items-center gap-1">
               <Link
                 to="/app/ask?mode=ai"
                 aria-label="Open full chat page"
+                aria-disabled={chatBusy}
+                onClick={(event) => {
+                  if (chatBusy) event.preventDefault();
+                }}
                 className="p-2 text-muted"
               >
                 <Maximize2 className="h-4 w-4" />
@@ -82,14 +93,41 @@ export function MemoireChat() {
                 onClick={() => {
                   close();
                   setStarted(false);
+                  setChatScope(ALL);
                 }}
                 aria-label="Close and clear chat"
+                disabled={chatBusy}
                 className="p-2 text-muted"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
           </header>
+          {(viewed || chatScope.kind !== "all") && (
+            <div className="flex shrink-0 flex-wrap gap-2 border-b border-line bg-white px-3 py-2 text-xs">
+              {viewed && (
+                <button
+                  type="button"
+                  disabled={chatBusy}
+                  onClick={() => setChatScope(viewed)}
+                  className="min-h-10 font-bold text-brand-blue"
+                >
+                  Dùng {viewed.kind === "account" ? "khách hàng" : "cơ hội"}{" "}
+                  đang xem · bắt đầu chat mới
+                </button>
+              )}
+              {chatScope.kind !== "all" && (
+                <button
+                  type="button"
+                  disabled={chatBusy}
+                  onClick={() => setChatScope(ALL)}
+                  className="min-h-10 font-semibold text-muted"
+                >
+                  Toàn workspace · bắt đầu chat mới
+                </button>
+              )}
+            </div>
+          )}
           <div className="min-h-0 flex-1 overflow-hidden">
             {user && user.id !== DEMO_USER_ID && !hasLocalSampleData() ? (
               <Suspense
@@ -100,11 +138,13 @@ export function MemoireChat() {
                 }
               >
                 <ChatPanel
-                  key={user.id}
+                  key={`${user.id}:${chatScope.kind}:${chatScope.id || ""}`}
                   userId={user.id}
-                  scope={ALL}
+                  scope={chatScope}
                   compact
-                dataRefreshKey={pathname}
+                  dataRefreshKey={pathname}
+                  surface={pathname}
+                  onBusyChange={setChatBusy}
                   onLocal={close}
                 />
               </Suspense>

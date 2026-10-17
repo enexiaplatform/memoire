@@ -23,6 +23,7 @@ import {
   toLocalDateKey,
 } from "../../utils/safeDate.ts";
 import type { ChatSource } from "./types";
+import { workbenchAnswer } from "./workbenchAnswers.ts";
 
 export type BusinessAnswer = {
   source: ChatSource;
@@ -44,6 +45,8 @@ export function businessAnswer(
   plan: PlanRecord[] = [],
   reference = new Date(),
 ): BusinessAnswer | null {
+  const specialist = workbenchAnswer(workspace, question, reference, plan);
+  if (specialist) return specialist;
   const q = normalized(question),
     today = todayDateKey(reference),
     currency = getReportingCurrency();
@@ -93,7 +96,8 @@ export function businessAnswer(
     for (const row of rows) {
       const key = row.brandId || "__unassigned";
       const group = groups.get(key);
-      if (group) group.push(row); else groups.set(key, [row]);
+      if (group) group.push(row);
+      else groups.set(key, [row]);
     }
     facts.push(
       `Computed across all ${opportunities.length} qualified opportunities in the selected workspace scope. Brand identity uses confirmed catalog assignment IDs. Reporting currency ${currency}.`,
@@ -225,10 +229,13 @@ export function businessAnswer(
     )
   ) {
     id = "weekly-actions";
-    title = "This week · full scoped Plan and follow-ups";
+    const nextWeek = /next week|tuan sau|tuan toi/.test(q);
+    const anchor = new Date(reference);
+    if (nextWeek) anchor.setDate(anchor.getDate() + 7);
+    title = `${nextWeek ? "Next week" : "This week"} · full scoped Plan and follow-ups`;
     const board = buildPlanBoard({
       periodType: "week",
-      anchorDate: reference,
+      anchorDate: anchor,
       opportunities,
       obligations: [],
       activities: workspace.activities,
@@ -239,7 +246,7 @@ export function businessAnswer(
       .flatMap((day) => day.items)
       .filter((item) => !item.done);
     facts.push(
-      `Full current-week scope ${board.rangeStart} through ${board.rangeEnd}: ${items.length} open plan/follow-up items, including carried overdue work. Built using Memoire's existing Plan engine from the full scoped opportunity, activity and personal-plan records.`,
+      `Full ${nextWeek ? "next-week" : "current-week"} scope ${board.rangeStart} through ${board.rangeEnd}: ${items.length} open plan/follow-up items, including carried overdue work. Built using Memoire's existing Plan engine from the full scoped opportunity, activity and personal-plan records.`,
     );
     const listed = [...items]
       .sort(
@@ -247,8 +254,9 @@ export function businessAnswer(
           Number(b.overdue) - Number(a.overdue) || a.date.localeCompare(b.date),
       )
       .slice(0, 10);
-    const visits = items.filter((item) =>
-      item.channel === "On-site visit" || item.channel === "Hosted visit",
+    const visits = items.filter(
+      (item) =>
+        item.channel === "On-site visit" || item.channel === "Hosted visit",
     );
     facts.push(
       `Explicitly recorded in-person visit channels in this week: ${visits.length}. ${items.filter((item) => !item.channel).length} items have no recorded channel. When channel is absent, describe a task or proposed visit, never a confirmed meeting. Dates before ${board.rangeStart} are old backlog, not appointments scheduled this week.`,
@@ -257,7 +265,8 @@ export function businessAnswer(
       facts.push(
         `${item.date}${item.carriedFrom ? ` (originally ${item.carriedFrom}, overdue)` : ""}: ${item.tag || "No account tag"} · ${item.label}; channel ${item.channel || "not recorded"}; ${item.overdue ? "overdue" : "scheduled"}.`,
       );
-      const linkedId = item.linkedOpportunityId ||
+      const linkedId =
+        item.linkedOpportunityId ||
         (item.kind === "deal" ? item.id.slice("deal-".length) : "");
       if (linkedId) preferredIds.push(linkedId);
     }
@@ -267,11 +276,23 @@ export function businessAnswer(
   } else {
     id = "workspace-overview";
     title = "Workspace overview · full scoped records";
-    const money = capturePortfolioMoneyBasis(opportunities.map(row => row.currency));
-    const rows = buildPortfolioFacts({ opportunities, outcomes, records: workspace.portfolioRecords || [], money, sample: false });
+    const money = capturePortfolioMoneyBasis(
+      opportunities.map((row) => row.currency),
+    );
+    const rows = buildPortfolioFacts({
+      opportunities,
+      outcomes,
+      records: workspace.portfolioRecords || [],
+      money,
+      sample: false,
+    });
     const summary = summarizePortfolio(rows);
-    facts.push(`Full scoped workspace: ${summary.count} qualified opportunities; ${summary.activeCount} active; recorded active pipeline ${summary.pipeline ?? 'unavailable'} ${currency}; ${summary.pipelineMissing} active values/FX missing; ${summary.wonCount} Won, ${summary.lostCount} Lost; recorded Won estimated value ${summary.won ?? 'unavailable'} ${currency}, ${summary.wonMissing} missing. Estimates are not collected cash.`);
-    limitations.push("This overview is calculated across the full scope. Detailed snippets are a retrieved subset. A question that requires unavailable history or another metric must be answered with that limitation.");
+    facts.push(
+      `Full scoped workspace: ${summary.count} qualified opportunities; ${summary.activeCount} active; recorded active pipeline ${summary.pipeline ?? "unavailable"} ${currency}; ${summary.pipelineMissing} active values/FX missing; ${summary.wonCount} Won, ${summary.lostCount} Lost; recorded Won estimated value ${summary.won ?? "unavailable"} ${currency}, ${summary.wonMissing} missing. Estimates are not collected cash.`,
+    );
+    limitations.push(
+      "This overview is calculated across the full scope. Detailed snippets are a retrieved subset. A question that requires unavailable history or another metric must be answered with that limitation.",
+    );
   }
   return {
     source: {

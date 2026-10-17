@@ -1,0 +1,26 @@
+[
+  {
+    "label": "desktop",
+    "height": 900,
+    "scrollWidth": 1425,
+    "width": 1440,
+    "composer": {
+      "bottom": 738,
+      "left": 899,
+      "right": 1335,
+      "top": 674
+    }
+  },
+  {
+    "label": "mobile",
+    "height": 900,
+    "scrollWidth": 380,
+    "width": 390,
+    "composer": {
+      "bottom": 834,
+      "left": 14,
+      "right": 305,
+      "top": 770
+    }
+  }
+]

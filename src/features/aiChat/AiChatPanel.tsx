@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   ArrowUp,
@@ -37,6 +37,7 @@ import {
   planReferenceContext,
   assertPlanReferenceTargets,
 } from "./planReference";
+import { AiWorkflowPicker } from "./AiWorkflowPicker";
 import { requestsPlanWrite, canAutoSavePlan } from "./planWriteIntent";
 
 type Props = {
@@ -45,12 +46,9 @@ type Props = {
   onLocal: () => void;
   compact?: boolean;
   dataRefreshKey?: string;
+  surface?: string;
+  onBusyChange?: (busy: boolean) => void;
 };
-const prompts = [
-  "Tuần này cần đi gặp khách hàng nào?",
-  "Deal nào nằm trong forecast Q4?",
-  "Brand nào đang tăng hoặc giảm?",
-];
 
 export function AiChatPanel({
   userId,
@@ -58,6 +56,8 @@ export function AiChatPanel({
   onLocal,
   compact = false,
   dataRefreshKey = "",
+  surface,
+  onBusyChange,
 }: Props) {
   const [workspace, setWorkspace] = useState<SalesWorkspaceData | null>(null);
   const [plan, setPlan] = useState<PlanRecord[]>([]);
@@ -65,6 +65,8 @@ export function AiChatPanel({
   const [checking, setChecking] = useState(true);
   const [reload, setReload] = useState(0);
   const [question, setQuestion] = useState("");
+  const contextQuestion = useDeferredValue(question);
+  const contextPreparing = contextQuestion !== question;
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [consent, setConsent] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -80,6 +82,11 @@ export function AiChatPanel({
   const revision = useRef(0);
   const output = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    onBusyChange?.(busy || applying);
+    return () => onBusyChange?.(false);
+  }, [busy, applying, onBusyChange]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -140,18 +147,18 @@ export function AiChatPanel({
 
   const preview = useMemo(() => {
     if (!workspace) return { context: null, error: "" };
-    const reference = planReferenceContext(question, messages);
+    const reference = planReferenceContext(contextQuestion, messages);
     if (reference) return { context: reference, error: "" };
     const topic =
-      /brand|thuong hieu|thuong hiệu|nhan hang|nhãn hàng|forecast|forcast|du bao|dự báo|\bq[1-4]\b|quy\s*[1-4]|quý\s*[1-4]|tuan|tuần|week|gap|gặp|visit|follow.?up/i;
+      /brand|thuong hieu|thuong hiệu|nhan hang|nhãn hàng|forecast|forcast|du bao|dự báo|\bq[1-4]\b|quy\s*[1-4]|quý\s*[1-4]|tuan|tuần|week|gap|gặp|visit|follow.?up|plan|lead|qualif|brief|coaching|risk|rescue|downgrade|ưu tiên|uu tien|priorit|collections|công nợ|cong no|thanh toán|learning|win.?loss|bài học|hygiene|dữ liệu|ghi chú|strategy|chiến lược|cập nhật|update|sửa/i;
     const previous =
       [...messages]
         .reverse()
         .find((item) => item.role === "user" && topic.test(item.content))
         ?.content || "";
-    const contextualQuestion = topic.test(question)
-      ? question
-      : `${question}\n${previous}`;
+    const contextualQuestion = topic.test(contextQuestion)
+      ? contextQuestion
+      : `${contextQuestion}\n${previous}`;
     try {
       return {
         context: buildChatContext(
@@ -169,7 +176,7 @@ export function AiChatPanel({
         error: reason instanceof Error ? reason.message : "Choose a context.",
       };
     }
-  }, [workspace, userId, scope, question, plan, messages]);
+  }, [workspace, userId, scope, contextQuestion, plan, messages]);
   const cooldown = Math.max(0, Math.ceil((retryAt - now) / 1000));
   useEffect(() => {
     if (error || preview.error)
@@ -258,6 +265,7 @@ export function AiChatPanel({
       return;
     }
     if (
+      contextPreparing ||
       !value ||
       value.length > 2000 ||
       flightRef.current ||
@@ -323,6 +331,8 @@ export function AiChatPanel({
               workspace,
               userId,
               crypto.randomUUID(),
+              Date.now(),
+              plan,
             )
           : null;
       setPendingBatch(autoSave ? null : batch);
@@ -394,6 +404,11 @@ export function AiChatPanel({
         () => generation === revision.current && owns(),
       );
       if (generation !== revision.current || !owns()) return;
+      const savedPlan = batch.items.find(
+        (item, index) =>
+          item.plan &&
+          ["cloud", "local", "unchanged"].includes(results[index]?.status),
+      )?.plan;
       const content = results
         .map(
           (result, index) =>
@@ -405,8 +420,9 @@ export function AiChatPanel({
         {
           role: "assistant",
           content,
-          planReceipt: batch.items.some(
-            (item) => item.action.kind === "create_plan",
+          planDate: savedPlan?.date,
+          planReceipt: batch.items.some((item) =>
+            ["create_plan", "update_plan"].includes(item.action.kind),
           ),
         },
       ]);
@@ -549,6 +565,12 @@ export function AiChatPanel({
         </details>
       )}
 
+      <AiWorkflowPicker
+        surface={surface}
+        disabled={busy || applying}
+        onChoose={setQuestion}
+      />
+
       <Panel
         as="div"
         className={`min-w-0 px-4 py-5 ${compact ? "min-h-0 flex-1 overflow-y-auto rounded-none shadow-none" : "sm:px-5"}`}
@@ -572,19 +594,6 @@ export function AiChatPanel({
                 hội. Lệnh “thêm vào Plan” sẽ lưu các mục đủ thông tin; sửa cơ
                 hội cần xác nhận.
               </p>
-              <div className="mt-4 flex flex-col gap-2">
-                {prompts.map((prompt) => (
-                  <button
-                    type="button"
-                    key={prompt}
-                    onClick={() => setQuestion(prompt)}
-                    disabled={busy}
-                    className="rounded-xl bg-tint-neutral-bg px-3.5 py-3 text-left text-sm text-ink hover:bg-chip"
-                  >
-                    {prompt}
-                  </button>
-                ))}
-              </div>
             </div>
           )}
           {messages.map((message, index) => (
@@ -604,7 +613,11 @@ export function AiChatPanel({
               </p>
               {message.planReceipt && (
                 <Link
-                  to="/app/timeline"
+                  to={
+                    message.planDate
+                      ? `/app/timeline?date=${encodeURIComponent(message.planDate)}`
+                      : "/app/timeline"
+                  }
                   className="mt-3 inline-flex min-h-10 items-center text-sm font-bold text-brand-blue"
                 >
                   Mở Plan để kiểm tra
@@ -829,6 +842,7 @@ export function AiChatPanel({
               type="submit"
               aria-label="Send to Groq"
               disabled={
+                contextPreparing ||
                 !available ||
                 !consent ||
                 !preview.context ||

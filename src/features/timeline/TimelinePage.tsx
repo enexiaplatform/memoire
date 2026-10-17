@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { WeeklyPlanPage, type PlanBoardHeading } from '../plan/WeeklyPlanPage';
 import { SalesActivityCalendarPage } from '../calendar/SalesActivityCalendarPage';
 import { CommitmentLedgerPanel } from '../commitments/CommitmentLedgerPanel';
@@ -9,8 +9,8 @@ import { hasLocalSampleData } from '../../utils/dataMode';
 import { PageContainer, PageHeader } from '../../components/layout/PageFrame';
 import { Segmented } from '../../components/ui/daylight';
 import type { PlanBoardWindow } from '../../domain/commercialKernel/derivePlanCommitments';
-import { getPlanRange } from '../../utils/weeklyPlan';
-import { todayDateKey } from '../../utils/safeDate';
+import { getPlanRange, planDateKeyToDate } from '../../utils/weeklyPlan';
+import { todayDateKey, isValidBusinessDate } from '../../utils/safeDate';
 import { formatCount } from '../../utils/numberFormat';
 
 export type TimelineView = 'upcoming' | 'history';
@@ -45,11 +45,14 @@ export function TimelinePage() {
   const sampleDataActive = hasLocalSampleData();
   const [searchParams, setSearchParams] = useSearchParams();
   const view = readView(searchParams.get('view'));
+  const location = useLocation();
+  const dateParam = searchParams.get('date');
+  const requestedDate = isValidBusinessDate(dateParam) ? dateParam : null;
   // Seeded with the week the board opens on, so the panel above it is already
   // right on the first paint rather than briefly listing what is about to be
   // drawn underneath it.
   const [boardWindow, setBoardWindow] = useState<PlanBoardWindow>(() => {
-    const range = getPlanRange('week');
+    const range = getPlanRange('week', requestedDate ? planDateKeyToDate(requestedDate) : new Date());
     return { start: range.start, end: range.end, today: todayDateKey(), includeOverdueBacklog:false };
   });
   /**
@@ -68,6 +71,9 @@ export function TimelinePage() {
    * do nothing.
    */
   const [focusRequest, setFocusRequest] = useState<{ date: string; seq: number } | null>(null);
+  useEffect(() => {
+    if (requestedDate) setFocusRequest(current => ({date:requestedDate,seq:(current?.seq ?? 0)+1}));
+  }, [requestedDate, location.key]);
 
   // Deliberately no "timeline viewed" event. Page opens measure which rooms
   // people walk into; what matters is whether commitments get created and kept,

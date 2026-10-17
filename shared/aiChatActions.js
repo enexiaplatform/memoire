@@ -15,6 +15,17 @@ export const actionFields = [
   "procurementPath",
   "technicalCriteria",
 ];
+export const planActionFields = ["date", "label", "channel"];
+export const accountActionFields = [
+  "strategy",
+  "nextFollowUp",
+  "relationshipStatus",
+];
+const allActionFields = [
+  ...actionFields,
+  ...planActionFields,
+  ...accountActionFields,
+];
 export const actionChannels = [
   "",
   "On-site visit",
@@ -34,7 +45,15 @@ export const actionSchema = {
     additionalProperties: false,
     required: ["kind", "targetKey", "label", "date", "channel", "changes"],
     properties: {
-      kind: { type: "string", enum: ["create_plan", "update_opportunity"] },
+      kind: {
+        type: "string",
+        enum: [
+          "create_plan",
+          "update_opportunity",
+          "update_plan",
+          "update_account",
+        ],
+      },
       targetKey: { type: "string" },
       label: { type: "string" },
       date: { type: "string" },
@@ -46,7 +65,7 @@ export const actionSchema = {
           additionalProperties: false,
           required: ["field", "value"],
           properties: {
-            field: { type: "string", enum: actionFields },
+            field: { type: "string", enum: allActionFields },
             value: { type: "string" },
           },
         },
@@ -80,7 +99,12 @@ export function parseActionList(value, sources) {
       typeof action !== "object" ||
       Object.keys(action).sort().join(",") !==
         "changes,channel,date,kind,label,targetKey" ||
-      !["create_plan", "update_opportunity"].includes(action.kind) ||
+      ![
+        "create_plan",
+        "update_opportunity",
+        "update_plan",
+        "update_account",
+      ].includes(action.kind) ||
       !["targetKey", "label", "date", "channel"].every(
         (key) => typeof action[key] === "string",
       ) ||
@@ -101,7 +125,12 @@ export function parseActionList(value, sources) {
         throw new Error("invalid_actions");
     } else {
       if (
-        keys.get(action.targetKey) !== "opportunity" ||
+        keys.get(action.targetKey) !==
+          {
+            update_opportunity: "opportunity",
+            update_plan: "plan",
+            update_account: "account",
+          }[action.kind] ||
         action.label ||
         action.date ||
         action.channel ||
@@ -115,13 +144,44 @@ export function parseActionList(value, sources) {
       if (
         !change ||
         Object.keys(change).sort().join(",") !== "field,value" ||
-        !actionFields.includes(change.field) ||
+        !(
+          action.kind === "update_plan"
+            ? planActionFields
+            : action.kind === "update_account"
+              ? accountActionFields
+              : actionFields
+        ).includes(change.field) ||
         typeof change.value !== "string" ||
         change.value.length > 1200 ||
         fields.has(change.field)
       )
         throw new Error("invalid_actions");
       fields.add(change.field);
+      if (
+        ["date", "nextFollowUp"].includes(change.field) &&
+        !validDate(change.value)
+      )
+        throw new Error("invalid_actions");
+      if (
+        change.field === "label" &&
+        (!change.value.trim() || change.value.length > 500)
+      )
+        throw new Error("invalid_actions");
+      if (change.field === "channel" && !actionChannels.includes(change.value))
+        throw new Error("invalid_actions");
+      if (
+        change.field === "relationshipStatus" &&
+        ![
+          "New",
+          "Developing",
+          "Active",
+          "Dormant",
+          "At risk",
+          "Strong",
+        ].includes(change.value)
+      )
+        throw new Error("invalid_actions");
+
       if (change.field === "stage" && !openStages.includes(change.value))
         throw new Error("invalid_actions");
       if (
@@ -142,8 +202,8 @@ export function parseActionList(value, sources) {
         throw new Error("invalid_actions");
     }
     const identity =
-      action.kind === "update_opportunity"
-        ? action.targetKey
+      action.kind !== "create_plan"
+        ? `${action.kind}:${action.targetKey}`
         : `${action.targetKey}:${action.date}:${action.label.trim()}`;
     if (seen.has(identity)) throw new Error("invalid_actions");
     seen.add(identity);
@@ -152,4 +212,23 @@ export function parseActionList(value, sources) {
       changes: action.changes.map((change) => ({ ...change })),
     };
   });
+}
+
+/** Context retention only: assistant text never authorizes a write. */
+export function isPlanTransferRequest(question) {
+  const text = question
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "")
+    .replace(/[đĐ]/g, "d")
+    .toLowerCase();
+  return (
+    /\b(add|put|save|insert|them|luu|dua)\b/.test(text) &&
+    /\b(plan|ke hoach|lich)\b/.test(text) &&
+    (/\b(it|them|these|those|above|draft|this|that|all|nay|do|tren)\b/.test(
+      text,
+    ) ||
+      /^(?:add (?:into|to) (?:the )?plan(?: with details information)?|(?:them|luu) (?:vao )?(?:plan|ke hoach|lich))[.! ]*$/.test(
+        text,
+      ))
+  );
 }

@@ -1,4 +1,9 @@
 import {
+  loadAccounts,
+  accountToFormInput,
+  updateAccount,
+} from "./accountStore";
+import {
   loadOpportunities,
   opportunityToFormInput,
   updateOpportunity,
@@ -27,9 +32,10 @@ export async function executeChatActions(
     stillActive() &&
     getLocalWorkspaceOwner() === batch.userId &&
     !hasLocalSampleData();
-  if (!owns() || !supabaseClient)
+  const client = supabaseClient;
+  if (!owns() || !client)
     throw new Error("Đăng nhập đúng tài khoản trước khi áp dụng.");
-  const { data, error } = await supabaseClient.auth.getUser();
+  const { data, error } = await client.auth.getUser();
   if (
     error ||
     data.user?.id !== batch.userId ||
@@ -41,9 +47,10 @@ export async function executeChatActions(
     batch,
     {
       load: async () => {
-        const [opportunities, plans] = await Promise.all([
+        const [opportunities, plans, accounts] = await Promise.all([
           loadOpportunities(batch.userId),
           loadPlanItemsForUser(batch.userId),
+          loadAccounts(batch.userId),
         ]);
         if (
           batch.items.some(
@@ -59,7 +66,53 @@ export async function executeChatActions(
           throw new Error(
             "Chưa xác nhận được bản cơ hội trên cloud. Hãy đồng bộ rồi yêu cầu lại.",
           );
-        return { opportunities, plans };
+        if (
+          batch.items.some(
+            (item) =>
+              item.account &&
+              !accounts.some(
+                (row) =>
+                  row.id === item.account!.id && row.storageMode === "cloud",
+              ),
+          )
+        )
+          throw new Error(
+            "Chưa xác nhận được bản khách hàng trên cloud. Hãy đồng bộ rồi yêu cầu lại.",
+          );
+        const editedPlans = batch.items.flatMap((item) =>
+          item.originalPlan ? [item.originalPlan] : [],
+        );
+        if (editedPlans.length) {
+          const { data: cloudPlans, error: planError } = await client
+            .from("plan_items")
+            .select("id,payload")
+            .eq("user_id", batch.userId)
+            .in(
+              "id",
+              editedPlans.map((row) => row.id),
+            );
+          if (
+            planError ||
+            !cloudPlans ||
+            editedPlans.some(
+              (original) =>
+                !cloudPlans.some(
+                  (row) =>
+                    row.id === original.id &&
+                    row.payload &&
+                    typeof row.payload === "object" &&
+                    !Array.isArray(row.payload) &&
+                    !Reflect.get(row.payload, "__deleted") &&
+                    Reflect.get(row.payload, "updatedAt") ===
+                      original.updatedAt,
+                ),
+            )
+          )
+            throw new Error(
+              "Chưa xác nhận được bản Plan hiện tại trên cloud. Chưa áp dụng nhóm này.",
+            );
+        }
+        return { opportunities, plans, accounts };
       },
       update: async (row, changes) => {
         if (!owns()) throw new Error("Workspace changed");
@@ -73,6 +126,13 @@ export async function executeChatActions(
               : value,
           );
         return updateOpportunity(row, input, batch.userId);
+      },
+      updateAccount: async (row, changes) => {
+        if (!owns()) throw new Error("Workspace changed");
+        const input = accountToFormInput(row);
+        for (const { field, value } of changes)
+          Reflect.set(input, field, value);
+        return updateAccount(row, input, batch.userId);
       },
       addPlan: async (record) => {
         if (!owns()) throw new Error("Workspace changed");

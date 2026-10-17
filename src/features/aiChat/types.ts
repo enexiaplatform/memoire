@@ -6,7 +6,12 @@ export type ChatSourceKind =
   | "quote"
   | "receivable"
   | "milestone"
-  | "analysis";
+  | "analysis"
+  | "plan"
+  | "stakeholder"
+  | "objection"
+  | "evidence"
+  | "outcome";
 export type ChatSource = {
   key: string;
   kind: ChatSourceKind;
@@ -40,6 +45,7 @@ export type ChatMessage = {
   reply?: ChatReply;
   context?: ChatContext;
   planReceipt?: boolean;
+  planDate?: string;
 };
 export type ChatScope = {
   kind: "all" | "account" | "opportunity";

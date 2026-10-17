@@ -2,6 +2,7 @@ import {
   parseActionList,
   type ChatAction,
 } from "../../../shared/aiChatActions.js";
+import type { AccountMemoryRecord } from "../../services/accountStore";
 import type { CrmLiteOpportunity } from "../../services/opportunityStore";
 import type { SalesWorkspaceData } from "../../services/workspaceData";
 import {
@@ -18,6 +19,8 @@ export type PreparedAction = {
   preview: string;
   opportunity?: CrmLiteOpportunity;
   plan?: PlanRecord;
+  originalPlan?: PlanRecord;
+  account?: AccountMemoryRecord;
 };
 export type ActionBatch = {
   id: string;
@@ -31,6 +34,12 @@ export type ActionResult = {
   detail: string;
 };
 const fieldLabels: Record<string, string> = {
+  date: "Ngày Plan",
+  label: "Nội dung Plan",
+  channel: "Kênh",
+  strategy: "Chiến lược",
+  nextFollowUp: "Ngày follow-up",
+  relationshipStatus: "Quan hệ",
   nextAction: "Việc tiếp theo",
   nextActionDate: "Ngày thực hiện",
   stage: "Giai đoạn",
@@ -54,6 +63,7 @@ export function prepareActionBatch(
   userId: string,
   id: string,
   now = Date.now(),
+  plans: PlanRecord[] = [],
 ): ActionBatch {
   const valid = parseActionList(actions, sources);
   const real = (row: {
@@ -76,10 +86,55 @@ export function prepareActionBatch(
     const account = action.targetKey.startsWith("account:")
       ? workspace.accounts.find((row) => row.id === source?.id && real(row))
       : undefined;
-    if (action.targetKey && !opportunity && !account)
+    const existingPlan =
+      action.kind === "update_plan"
+        ? plans.find(
+            (row) =>
+              row.id === source?.id &&
+              !row.isSample &&
+              row.source !== "demo" &&
+              !row.__deleted &&
+              !row.derivedKey &&
+              !row.dismissed,
+          )
+        : undefined;
+    if (action.targetKey && !opportunity && !account && !existingPlan)
       throw new Error(
         "Không tìm thấy bản ghi thuộc tài khoản hiện tại. Hãy tải lại và yêu cầu lại.",
       );
+    if (action.kind === "update_plan" || action.kind === "update_account") {
+      const original = action.kind === "update_plan" ? existingPlan! : account!;
+      if (action.kind === "update_plan" && existingPlan!.done)
+        throw new Error(
+          "Plan đã hoàn thành cần dùng lịch sử và luồng hoàn thành hiện có. Chưa sửa.",
+        );
+      const preview = action.changes
+        .map(
+          (change) =>
+            `${fieldLabels[change.field]}: ${String(Reflect.get(original, change.field) || "(trống)")} → ${change.value || "(trống)"}`,
+        )
+        .join("\n");
+      if (action.kind === "update_account")
+        return {
+          action,
+          account: { ...account! },
+          title: account!.accountName,
+          preview,
+        };
+      const updated = {
+        ...existingPlan!,
+        updatedAt: new Date(now).toISOString(),
+      };
+      for (const change of action.changes)
+        Reflect.set(updated, change.field, change.value);
+      return {
+        action,
+        plan: updated,
+        originalPlan: { ...existingPlan! },
+        title: `Plan · ${existingPlan!.label}`,
+        preview,
+      };
+    }
     if (action.kind === "create_plan") {
       const plan = createPersonalPlanRecord({
         date: action.date,
@@ -95,7 +150,8 @@ export function prepareActionBatch(
         action,
         plan,
         title:
-          (opportunity && `${opportunity.accountName} · ${opportunity.opportunityName}`) ||
+          (opportunity &&
+            `${opportunity.accountName} · ${opportunity.opportunityName}`) ||
           account?.accountName ||
           "Plan cá nhân",
         preview: `Thêm Plan ${action.date}: ${action.label}${action.channel ? ` · ${action.channel}` : " · chưa ghi kênh"}`,
@@ -138,12 +194,17 @@ type ActionStores = {
   load: () => Promise<{
     opportunities: CrmLiteOpportunity[];
     plans: PlanRecord[];
+    accounts?: AccountMemoryRecord[];
   }>;
   update: (
     row: CrmLiteOpportunity,
     changes: ChatAction["changes"],
   ) => Promise<WriteResult>;
   addPlan: (record: PlanRecord) => Promise<WriteResult>;
+  updateAccount?: (
+    record: AccountMemoryRecord,
+    changes: ChatAction["changes"],
+  ) => Promise<WriteResult>;
 };
 
 /** Preflight the whole batch, then save sequentially. This is not a cross-table transaction. */
@@ -160,6 +221,52 @@ export async function applyActionBatch(
   const fresh = await stores.load();
   if (!owns()) throw new Error("Tài khoản đã thay đổi. Chưa áp dụng nhóm này.");
   for (const item of batch.items) {
+    if (item.originalPlan) {
+      const current = fresh.plans.find(
+        (row) => row.id === item.originalPlan!.id,
+      );
+      if (
+        !current ||
+        current.updatedAt !== item.originalPlan.updatedAt ||
+        current.isSample ||
+        current.source === "demo" ||
+        current.__deleted ||
+        current.derivedKey ||
+        current.done ||
+        current.dismissed ||
+        [
+          "date",
+          "label",
+          "channel",
+          "linkedOpportunityId",
+          "linkedAccountName",
+          "linkedBrand",
+          "linkedStakeholderName",
+        ].some(
+          (field) =>
+            Reflect.get(current, field) !==
+            Reflect.get(item.originalPlan!, field),
+        )
+      )
+        throw new Error(
+          "Plan đã đổi kể từ lúc xem trước. Chưa áp dụng nhóm này; hãy yêu cầu lại.",
+        );
+    }
+    if (item.account) {
+      const current = fresh.accounts?.find(
+        (row) => row.id === item.account!.id,
+      );
+      if (
+        !current ||
+        current.updatedAt !== item.account.updatedAt ||
+        current.userId !== batch.userId ||
+        current.isSample ||
+        current.source === "demo"
+      )
+        throw new Error(
+          "Khách hàng đã đổi kể từ lúc xem trước. Chưa áp dụng nhóm này; hãy yêu cầu lại.",
+        );
+    }
     if (!item.opportunity) continue;
     const current = fresh.opportunities.find(
       (row) => row.id === item.opportunity!.id,
@@ -189,7 +296,43 @@ export async function applyActionBatch(
     }
     try {
       let result: WriteResult;
-      if (item.plan) {
+      if (item.account) {
+        const current = fresh.accounts!.find(
+          (row) => row.id === item.account!.id,
+        )!;
+        if (!stores.updateAccount)
+          throw new Error("Account writer unavailable");
+        if (
+          item.action.changes.every(
+            (change) =>
+              String(Reflect.get(current, change.field) ?? "") === change.value,
+          )
+        ) {
+          results.push({
+            title: item.title,
+            status: "unchanged",
+            detail: "Giá trị đã đúng; không ghi lại.",
+          });
+          continue;
+        }
+        result = await stores.updateAccount(current, item.action.changes);
+      } else if (item.originalPlan && item.plan) {
+        if (
+          item.action.changes.every(
+            (change) =>
+              String(Reflect.get(item.originalPlan!, change.field) ?? "") ===
+              change.value,
+          )
+        ) {
+          results.push({
+            title: item.title,
+            status: "unchanged",
+            detail: "Giá trị đã đúng; không ghi lại.",
+          });
+          continue;
+        }
+        result = await stores.addPlan(item.plan);
+      } else if (item.plan) {
         const existing = plans.find(
           (row) =>
             !row.__deleted &&

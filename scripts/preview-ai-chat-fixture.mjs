@@ -15,9 +15,12 @@ const ids = new Set(
     ...fixtureWorkspace.accounts,
     ...fixtureWorkspace.opportunities,
     ...fixtureWorkspace.activities,
+    ...fixtureWorkspace.stakeholders,
+    ...fixtureWorkspace.objections,
   ].map((row) => row.id),
 );
 ids.add('fixture-decoy');
+ids.add('fixture-plan');
 const handler = createAiChatHandler({
   env: {
     AI_CHAT_ENABLED: "true",
@@ -26,7 +29,7 @@ const handler = createAiChatHandler({
   verify: async (token) =>
     token === "fixture-only-token" ? { id: fixtureOwner } : null,
   clientForToken: () => ({
-    from: () => ({
+    from: (table) => ({
       select() {
         return this;
       },
@@ -35,7 +38,7 @@ const handler = createAiChatHandler({
       },
       in: async (_key, requested) => ({
         data: requested
-          .filter((id) => ids.has(id))
+          .filter((id) => ids.has(id) || (table === "plan_items" && id.startsWith("chat-")))
           .map((id) => ({ id, user_id: fixtureOwner })),
         error: null,
       }),
@@ -92,6 +95,8 @@ const handler = createAiChatHandler({
         answer.actions=answer.actions.map(action=>({...action,targetKey:target}));
       }
     }
+    if(question.includes('FIXTURE_PLAN_EDIT')) Object.assign(answer,{answer:'Move the existing fictional Plan.',sourceKeys:['plan:fixture-plan'],draft:'',suggestedAction:'',missingContext:[],suggestedQuestions:[],actions:[{kind:'update_plan',targetKey:'plan:fixture-plan',label:'',date:'',channel:'',changes:[{field:'date',value:'2026-10-23'},{field:'channel',value:'Phone call'}]}]});
+    if(question.includes('FIXTURE_ACCOUNT_EDIT')) Object.assign(answer,{answer:'Update the existing fictional account strategy.',sourceKeys:['account:fixture-account'],draft:'',suggestedAction:'',missingContext:[],suggestedQuestions:[],actions:[{kind:'update_account',targetKey:'account:fixture-account',label:'',date:'',channel:'',changes:[{field:'strategy',value:'Fixture: review validation evidence with QC'},{field:'nextFollowUp',value:'2026-10-23'}]}]});
     if(question.includes('FIXTURE_REFERENCE'))
       Object.assign(answer,{answer:'Draft for Northstar Research (fictional) · Analyzer evaluation (fictional):\n2026-10-20: call about demo criteria, Phone call.\n2026-10-21: send evaluation checklist, Email / message. Nothing saved.',draft:'',suggestedAction:'',missingContext:[],suggestedQuestions:[],actions:[]});
     if (question.includes('FIXTURE_AGENDA'))

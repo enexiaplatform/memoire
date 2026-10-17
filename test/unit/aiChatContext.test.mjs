@@ -27,8 +27,9 @@ test('relevant retrieval is bounded and explicitly says selected subset', () => 
   const context = buildChatContext(input, 'owner-1', { kind: 'all' }, 'Unique spectrometer');
   assert.equal(context.sources.filter(row => row.kind === 'opportunity').length, 5);
   assert.equal(context.sources.some(row => row.id === 'deal-25'), true);
-  assert.match(context.facts[0], /5 of 35/);
-  assert.match(context.facts[0], /never a complete pipeline total/);
+  assert.match(context.facts[0], /Full scoped workspace: 35/);
+  const selection = context.facts.find(fact => fact.startsWith('Selected 5 of 35'));
+  assert.match(selection, /NOT the measured active pipeline count/);
 });
 test('money evidence that exceeds the source budget never produces a partial total', () => {
   const input = workspace({ quotes: Array.from({ length: 30 }, (_, index) => ({ id: `quote-${index}`, opportunityId: 'd1', amount: 100, currency: 'VND', title: 'Fictional quote' })) });

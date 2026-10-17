@@ -149,12 +149,12 @@ describe('AI chat bounded requests and provider failure handling', () => {
     assert.equal(JSON.stringify(res.payload).includes('private invented tool arguments'),false);
   });
   test('persistent tool errors stop after one repair; unrelated 400 errors are not retried',async()=>{
-    for(const code of ['tool_use_failed','invalid_request_error']) {
+    for(const code of ['tool_use_failed','json_validate_failed','invalid_request_error']) {
       let calls=0;
       const fixture=setup({fetcher:async()=>{calls++;return Response.json({error:{code,failed_generation:'private'}},{status:400});}});
       const res=await fixture.run();
-      assert.equal(calls,code==='tool_use_failed'?2:1);
-      assert.equal(res.code,code==='tool_use_failed'?502:503);
+      assert.equal(calls,code==='invalid_request_error'?1:2);
+      assert.equal(res.code,code==='invalid_request_error'?503:502);
       assert.equal(JSON.stringify(res.payload).includes('private'),false);
     }
   });

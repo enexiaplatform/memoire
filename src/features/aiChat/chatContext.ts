@@ -1,3 +1,4 @@
+import { fitChatContext } from "./contextBudget.ts";
 import type { SalesWorkspaceData } from "../../services/workspaceData";
 import { buildOrderBook } from "../../utils/orderToCash.ts";
 import { buildReceivables } from "../../utils/receivables.ts";
@@ -15,6 +16,7 @@ import type {
 } from "./types";
 import { businessAnswer } from "./businessAnswers.ts";
 import type { PlanRecord } from "../../utils/weeklyPlan";
+import { projectCurrentEvidence } from "../../domain/commercialKernel/commercialEvidence.ts";
 
 const normalized = (value: string) =>
   value
@@ -72,7 +74,14 @@ export function buildChatContext(
   const safeWorkspace: SalesWorkspaceData = {
     ...workspace,
     opportunities: deals,
-    accounts: allAccounts,
+    accounts:
+      scope.kind === "all"
+        ? allAccounts
+        : allAccounts.filter(
+            (row) =>
+              row.id === account?.id ||
+              deals.some((deal) => deal.accountId === row.id),
+          ),
     activities: real(workspace.activities).filter(
       (row) => scope.kind === "all" || scopeIds.has(row.linkedOpportunityId),
     ),
@@ -85,8 +94,43 @@ export function buildChatContext(
     quotes: real(workspace.quotes).filter(
       (row) => scope.kind === "all" || scopeIds.has(row.opportunityId || ""),
     ),
-    threads: real(workspace.threads || []),
-    opportunityOutcomes: real(workspace.opportunityOutcomes || []),
+    stakeholders: real(workspace.stakeholders || []).filter(
+      (row) =>
+        scope.kind === "all" ||
+        scopeIds.has(row.opportunityId) ||
+        (scope.kind === "account" && row.accountId === account?.id),
+    ),
+    objections: real(workspace.objections || []).filter(
+      (row) =>
+        scope.kind === "all" ||
+        scopeIds.has(row.opportunityId) ||
+        (scope.kind === "account" && row.accountId === account?.id),
+    ),
+    receivableRecords: real(workspace.receivableRecords || []).filter(
+      (row) => scope.kind === "all" || scopeIds.has(row.opportunityId),
+    ),
+    milestoneRecords: real(workspace.milestoneRecords || []).filter(
+      (row) => scope.kind === "all" || scopeIds.has(row.opportunityId),
+    ),
+    assets: real(workspace.assets || []).filter(
+      (row) =>
+        scope.kind === "all" || scopeIds.has(row.relatedOpportunityId || ""),
+    ),
+    actionOutcomes: real(workspace.actionOutcomes || []).filter(
+      (row) => scope.kind === "all" || scopeIds.has(row.opportunityId),
+    ),
+    evidence: real(workspace.evidence || []).filter(
+      (row) =>
+        scope.kind === "all" ||
+        scopeIds.has(row.opportunityId || "") ||
+        (scope.kind === "account" && row.accountId === account?.id),
+    ),
+    threads: real(workspace.threads || []).filter(
+      (row) => scope.kind === "all" || scopeIds.has(row.opportunityId || ""),
+    ),
+    opportunityOutcomes: real(workspace.opportunityOutcomes || []).filter(
+      (row) => scope.kind === "all" || scopeIds.has(row.opportunityId),
+    ),
     portfolioRecords: real(workspace.portfolioRecords || []),
   };
   const scopedPlan = real(planRecords).filter(
@@ -157,6 +201,18 @@ export function buildChatContext(
     chosenDeals.map((row) => row.accountId).filter(Boolean),
   );
   if (account) accountIds.add(account.id);
+  if (scope.kind === "all")
+    for (const row of allAccounts) {
+      if (
+        row.accountName?.trim() &&
+        normalized(question).includes(normalized(row.accountName.trim()))
+      )
+        accountIds.add(row.id);
+    }
+  const selectedAccounts = allAccounts
+    .filter((row) => accountIds.has(row.id))
+    .sort((a, b) => score(b.accountName) - score(a.accountName))
+    .slice(0, 3);
   const sources: ChatSource[] = [];
   const add = (
     kind: ChatSourceKind,
@@ -173,14 +229,12 @@ export function buildChatContext(
       detail: text(detail, 1000),
     });
   };
-  for (const row of allAccounts
-    .filter((row) => accountIds.has(row.id))
-    .slice(0, 3)) {
+  for (const row of selectedAccounts) {
     add(
       "account",
       row.id,
       row.accountName,
-      `Relationship: ${row.relationshipStatus}. Industry: ${row.industry}. Strategy: ${text(row.strategy)}. Next follow-up: ${text(row.nextFollowUp)}.`,
+      `Relationship: ${row.relationshipStatus}. Potential: ${row.accountPotential || "Unknown"}. Industry: ${row.industry}. Strategy: ${text(row.strategy)}. Next follow-up: ${text(row.nextFollowUp)}.`,
     );
   }
   for (const row of chosenDeals) {
@@ -191,6 +245,72 @@ export function buildChatContext(
       `Stage: ${row.stage}. Status: ${row.status}. Recorded estimate: ${row.estimatedValue ?? "unknown"} ${row.currency || "unknown currency"}. Next action: ${text(row.nextAction)}; due: ${row.nextActionDate || "unknown"}. Evidence: ${text(row.evidence)}. Missing context: ${text(row.missingContext)}. Objections: ${text(row.objectionDebt)}.`,
     );
   }
+  // Plan item identities allow rescheduling without inventing a second task.
+  for (const row of [...scopedPlan]
+    .filter((row) => !row.derivedKey && !row.dismissed)
+    .sort(
+      (a, b) => score(b.label) - score(a.label) || a.date.localeCompare(b.date),
+    )
+    .slice(0, 3))
+    add(
+      "plan",
+      row.id,
+      `${row.date} · ${row.label}`,
+      `Plan item: ${row.label}. Date ${row.date}; channel ${row.channel || "not recorded"}; done ${row.done}. Opportunity ID ${row.linkedOpportunityId || "none"}; account ${row.linkedAccountName || "none"}.`,
+    );
+  const people = safeWorkspace.stakeholders.filter(
+    (row) =>
+      dealIds.has(row.opportunityId) ||
+      (scope.kind === "account" && row.accountId === account?.id),
+  );
+  for (const row of people.slice(0, 2))
+    add(
+      "stakeholder",
+      row.id,
+      row.name,
+      `Role ${row.stakeholderRole}; title ${row.roleTitle}; influence ${row.influenceLevel}; relationship ${row.relationshipStrength}; stance ${row.stance}; opportunity ID ${row.opportunityId || "account-level only"}. No email, phone or raw notes shared.`,
+    );
+  const blockers = safeWorkspace.objections.filter(
+    (row) =>
+      row.status === "Open" &&
+      (dealIds.has(row.opportunityId) ||
+        (scope.kind === "account" && row.accountId === account?.id)),
+  );
+  for (const row of blockers.slice(0, 2))
+    add(
+      "objection",
+      row.id,
+      row.objectionType,
+      `Opportunity ID ${row.opportunityId || "account-level only"}; impact ${row.impact}; status ${row.status}; objection ${text(row.objectionText, 240)}; required proof ${text(row.requiredProof, 180)}; response plan ${text(row.responsePlan, 180)}; due ${row.dueDate || "unknown"}.`,
+    );
+  const evidence = [
+    ...projectCurrentEvidence(
+      safeWorkspace.evidence || [],
+    ).currentByScope.values(),
+  ]
+    .flat()
+    .filter(
+      (row) =>
+        dealIds.has(row.opportunityId || "") ||
+        (scope.kind === "account" && row.accountId === account?.id),
+    );
+  for (const row of evidence.slice(0, 2))
+    add(
+      "evidence",
+      row.id,
+      row.summary,
+      `Recorded finding; opportunity ID ${row.opportunityId || "account-level only"}; observed ${row.observedAt}; category ${row.category}; direction ${row.direction}; summary ${text(row.summary, 350)}. This is recorded evidence, not independent external verification.`,
+    );
+  for (const row of [...(safeWorkspace.opportunityOutcomes || [])]
+    .filter((row) => dealIds.has(row.opportunityId))
+    .sort((a, b) => b.outcomeDate.localeCompare(a.outcomeDate))
+    .slice(0, 2))
+    add(
+      "outcome",
+      row.id,
+      `${row.outcome} · ${row.opportunityName}`,
+      `Opportunity ID ${row.opportunityId}; date ${row.outcomeDate}; reason ${row.reasonCategory}: ${text(row.reasonText, 250)}; recorded lesson ${text(row.lessonLearned, 250)}.`,
+    );
   const activities = real(workspace.activities).filter(
     (row) =>
       dealIds.has(row.linkedOpportunityId) ||
@@ -238,23 +358,21 @@ export function buildChatContext(
     sources.length + quotes.length + receivables.length + milestones.length <=
     23;
   const facts: string[] = [
-    `Selected ${chosenDeals.length} of ${deals.length} opportunities in this scope. This is a retrieved subset, never a complete pipeline total.`,
+    `Selected ${chosenDeals.length} of ${deals.length} opportunities in this scope. The scope contains ${deals.length} opportunities in total (all stages/statuses). Only ${chosenDeals.length} detailed records were retrieved; this detail count is NOT the measured active pipeline count. Use the full-scope analysis for active counts.`,
     `Local business date: ${todayDateKey()}. Use this date for relative scheduling.`,
   ];
   const limitations = [
     "Only the displayed context and recent conversation are sent. Unselected records and earlier periods are not available.",
     "Sources are browser snapshots; server checks source ownership, not the freshness of every displayed field. Unsynced or changed records may differ.",
   ];
-  for (const row of allAccounts
-    .filter((row) => accountIds.has(row.id))
-    .slice(0, 3)) {
+  for (const row of selectedAccounts) {
     facts.push(
       `Account ${row.accountName} has ${deals.filter((deal) => deal.accountId === row.id).length} opportunities in this scope; only selected details are shown. An account name alone does not uniquely identify a deal when this count exceeds one.`,
     );
   }
   if (business) {
     sources.push(business.source);
-    facts.push(...business.facts);
+    facts.unshift(...business.facts);
     limitations.push(...business.limitations);
   }
   if (businessError) limitations.push(businessError);
@@ -337,14 +455,17 @@ export function buildChatContext(
   facts.push(
     `Selected qualified opportunities: ${qualified.length}; selected leads: ${chosenDeals.length - qualified.length}. Estimated deal values are not realized revenue.`,
   );
-  return {
-    asOf: new Date().toISOString(),
-    scope:
-      account?.accountName ||
-      opportunity?.opportunityName ||
-      "All workspace · calculated summaries and relevant records",
-    sources,
-    facts,
-    limitations,
-  };
+  return fitChatContext(
+    {
+      asOf: new Date().toISOString(),
+      scope:
+        account?.accountName ||
+        opportunity?.opportunityName ||
+        "All workspace · calculated summaries and relevant records",
+      sources,
+      facts: facts.slice(0, 40).map((fact) => fact.slice(0, 1200)),
+      limitations: limitations.slice(0, 10).map((item) => item.slice(0, 600)),
+    },
+    question,
+  );
 }

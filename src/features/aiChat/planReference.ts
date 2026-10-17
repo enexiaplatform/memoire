@@ -1,3 +1,4 @@
+import { isPlanTransferRequest } from "../../../shared/aiChatActions.js";
 import type { ChatContext, ChatMessage } from "./types";
 import type { ChatAction } from "../../../shared/aiChatActions.js";
 
@@ -23,25 +24,7 @@ export function planReferenceContext(
   question: string,
   messages: ChatMessage[],
 ): ChatContext | null {
-  const text = question
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "")
-    .replace(/[đĐ]/g, "d")
-    .toLowerCase();
-  if (
-    !/\b(add|put|save|insert|them|luu|dua)\b/.test(text) ||
-    !/\b(plan|ke hoach|lich)\b/.test(text)
-  )
-    return null;
-  if (
-    !/\b(it|them|these|those|above|draft|this|that|all|nay|do|tren)\b/.test(
-      text,
-    ) &&
-    !/^(?:add (?:into|to) (?:the )?plan(?: with details information)?|(?:them|luu) (?:vao )?(?:plan|ke hoach|lich))[.! ]*$/.test(
-      text,
-    )
-  )
-    return null;
+  if (!isPlanTransferRequest(question)) return null;
   const previous = messages.findLast(
     (message) =>
       message.role === "assistant" && message.context && message.reply,
@@ -82,6 +65,10 @@ export function assertPlanReferenceTargets(
     ? opportunities
     : context.sources.filter((source) => source.kind === "account");
   const keys = new Set(targets.map((source) => source.key));
+  if (!keys.size && context.sources.some((source) => source.kind === "plan"))
+    throw new Error(
+      "Chưa xác định được liên kết gốc khi sao chép Plan. Hãy nêu khách hàng/cơ hội và nội dung cần tạo; chưa ghi dữ liệu.",
+    );
   if (
     actions.some(
       (action) =>

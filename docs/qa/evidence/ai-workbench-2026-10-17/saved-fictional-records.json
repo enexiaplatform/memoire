@@ -1,0 +1,68 @@
+{
+  "accounts": [
+    {
+      "id": "fixture-account",
+      "strategy": "Fixture: review validation evidence with QC",
+      "nextFollowUp": "2026-10-23"
+    }
+  ],
+  "plans": [
+    {
+      "id": "chat-48eea642-c5ed-441d-bbee-aa745df36be2-0",
+      "date": "2026-10-20",
+      "label": "Fixture: call about demo criteria",
+      "tag": "Northstar Research (fictional)",
+      "done": false,
+      "linkedOpportunityId": "fixture-deal",
+      "linkedAccountName": "Northstar Research (fictional)",
+      "channel": "Phone call",
+      "dismissed": false,
+      "createdAt": "2026-10-17T08:18:14.111Z",
+      "updatedAt": "2026-10-17T08:18:14.111Z",
+      "source": "user",
+      "isSample": false
+    },
+    {
+      "id": "chat-48eea642-c5ed-441d-bbee-aa745df36be2-1",
+      "date": "2026-10-21",
+      "label": "Fixture: send evaluation checklist",
+      "tag": "Northstar Research (fictional)",
+      "done": false,
+      "linkedOpportunityId": "fixture-deal",
+      "linkedAccountName": "Northstar Research (fictional)",
+      "channel": "Email / message",
+      "dismissed": false,
+      "createdAt": "2026-10-17T08:18:14.112Z",
+      "updatedAt": "2026-10-17T08:18:14.112Z",
+      "source": "user",
+      "isSample": false
+    },
+    {
+      "id": "fixture-plan",
+      "date": "2026-10-23",
+      "label": "Fixture: prepare meeting brief",
+      "tag": "Northstar Research (fictional)",
+      "done": false,
+      "linkedOpportunityId": "fixture-deal",
+      "linkedAccountName": "Northstar Research (fictional)",
+      "channel": "Phone call",
+      "dismissed": false,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "updatedAt": "2026-10-17T09:50:12.577Z",
+      "source": "user",
+      "isSample": false
+    }
+  ],
+  "opportunities": [
+    {
+      "id": "fixture-deal",
+      "nextAction": "Confirm demo criteria.",
+      "nextActionDate": "2026-10-20"
+    },
+    {
+      "id": "fixture-decoy",
+      "nextAction": "Unrelated decoy task",
+      "nextActionDate": "2026-10-01"
+    }
+  ]
+}
