@@ -2,7 +2,7 @@
 
 The previous chat flow always required a second confirmation even after an explicit request to add Plan items. A separate legacy suggested-action editor could save an assistant instruction as one personal task dated today, instead of creating the weekly agenda. The screenshot is consistent with that path; the exact click history was not observed.
 
-Explicit add/save/create Plan commands now execute a validated creation-only batch through the existing authenticated writer. Drafts, suggestions, questions, negated commands, unresolved output and opportunity updates do not auto-execute. Exact source identity checks, ownership/freshness checks, partial-failure receipts and duplicate prevention remain active. Empty/mixed model output for a direct Plan command is reported as not saved. Removed the legacy prose-to-single-task editor. Receipts link to Plan.
+Explicit add/save/create Plan commands now execute a validated creation-only batch through the existing authenticated writer. Drafts, suggestions, questions, negated commands, unresolved output and opportunity updates do not auto-execute. Exact source identity checks, ownership/freshness checks, partial-failure receipts and duplicate prevention remain active. Empty model output for a direct Plan command is reported as not saved. Mixed Plan/opportunity requests retain their existing whole-batch confirmation flow and never auto-execute. Removed the legacy prose-to-single-task editor. Receipts link to Plan.
 
 A receipt can follow an assistant reply, so outbound history now coalesces adjacent same-role messages into alternating bounded turns. Repeated reference conversion deduplicates its context fact rather than accumulating duplicate entries.
 

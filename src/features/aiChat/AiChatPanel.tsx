@@ -295,7 +295,11 @@ export function AiChatPanel({
         reply.actions || [],
         reply.clarification,
       );
-      if (requestsPlanWrite(value) && !reply.clarification && !autoSave)
+      if (
+        requestsPlanWrite(value) &&
+        !reply.clarification &&
+        !reply.actions?.length
+      )
         throw new Error(
           "Chưa có các mục Plan hợp lệ để lưu. Hãy nêu công việc và ngày cần làm; chưa ghi dữ liệu.",
         );
