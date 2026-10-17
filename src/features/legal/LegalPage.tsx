@@ -164,7 +164,7 @@ const documents: Record<string, LegalDocument> = {
       {
         title: 'Outputs and decisions',
         paragraphs: [
-          'Core risk signals, MEDDIC-lite reviews and Local insights are computed by rule from the records you entered. Optional AI chat generates answers and drafts from the context you share. Both require human review; AI output can be inaccurate or unsupported. A proposed plan item is saved only after you review and confirm it, and customer drafts are never automatically sent.',
+          'Core risk signals, MEDDIC-lite reviews and Local insights are computed by rule from the records you entered. Optional AI chat generates answers, drafts and proposed Plan or opportunity changes from the context you share. All require human review; AI output can be inaccurate or unsupported. A group of proposed changes is saved only after you review it and confirm in chat or with the apply button. Customer drafts are never automatically sent.',
           'You remain responsible for sales decisions, customer communications, forecasts, and information shared with managers or third parties.',
         ],
       },

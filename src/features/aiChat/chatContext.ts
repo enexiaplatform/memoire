@@ -105,6 +105,10 @@ export function buildChatContext(
       "The requested full-scope business calculation could not be completed consistently. Do not infer totals or trends; inspect Plan, Money or Reports.";
   }
   const preferred = new Set(business?.preferredIds || []);
+  const editing =
+    /\b(update|change|reschedule|cap nhat|sua|doi|doi lich|tao|them|create|add|fill)\b/.test(
+      normalized(question),
+    );
   const tokens = [
     ...new Set(
       normalized(question)
@@ -121,7 +125,13 @@ export function buildChatContext(
   };
   const chosenDeals = deals
     // Period analyses must not pull unrelated historical deals back into the answer.
-    .filter((row) => !business || business.source.id === "workspace-overview" || preferred.has(row.id))
+    .filter(
+      (row) =>
+        editing ||
+        !business ||
+        business.source.id === "workspace-overview" ||
+        preferred.has(row.id),
+    )
     .map((row) => ({
       row,
       relevance: score(
@@ -130,7 +140,10 @@ export function buildChatContext(
     }))
     .sort(
       (a, b) =>
-        Number(preferred.has(b.row.id)) - Number(preferred.has(a.row.id)) ||
+        (editing
+          ? 0
+          : Number(preferred.has(b.row.id)) -
+            Number(preferred.has(a.row.id))) ||
         b.relevance - a.relevance ||
         (a.row.nextActionDate || "9999").localeCompare(
           b.row.nextActionDate || "9999",
@@ -226,11 +239,19 @@ export function buildChatContext(
     23;
   const facts: string[] = [
     `Selected ${chosenDeals.length} of ${deals.length} opportunities in this scope. This is a retrieved subset, never a complete pipeline total.`,
+    `Local business date: ${todayDateKey()}. Use this date for relative scheduling.`,
   ];
   const limitations = [
     "Only the displayed context and recent conversation are sent. Unselected records and earlier periods are not available.",
     "Sources are browser snapshots; server checks source ownership, not the freshness of every displayed field. Unsynced or changed records may differ.",
   ];
+  for (const row of allAccounts
+    .filter((row) => accountIds.has(row.id))
+    .slice(0, 3)) {
+    facts.push(
+      `Account ${row.accountName} has ${deals.filter((deal) => deal.accountId === row.id).length} opportunities in this scope; only selected details are shown. An account name alone does not uniquely identify a deal when this count exceeds one.`,
+    );
+  }
   if (business) {
     sources.push(business.source);
     facts.push(...business.facts);

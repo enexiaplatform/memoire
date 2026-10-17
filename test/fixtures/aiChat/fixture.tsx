@@ -3,9 +3,13 @@ import { BrowserRouter, Link } from "react-router-dom";
 import "../../../src/index.css";
 import { MemoireChat } from "../../../src/features/aiChat/MemoireChat";
 import { claimLocalWorkspace } from "../../../src/services/localWorkspaceOwner";
+import {useState} from 'react';
+import {loadPlanItems} from '../../../src/services/planItemStore';
+import {fixtureWorkspace,loadSalesWorkspaceData} from './workspace.mjs';
 
 claimLocalWorkspace("fixture-owner");
 export function Fixture() {
+  const [evidence,setEvidence]=useState('');
   return (
     <BrowserRouter>
       <main className="mx-auto flex max-w-4xl flex-col gap-4 p-4 sm:p-7">
@@ -28,6 +32,8 @@ export function Fixture() {
           Open Ask Memoire. Conversations should remain when navigating or
           minimizing, and clear when closed.
         </p>
+        <button type="button" onClick={()=>{void loadSalesWorkspaceData().then(()=>setEvidence(JSON.stringify({plans:loadPlanItems().filter(row=>row.label.startsWith('Fixture:')),opportunities:fixtureWorkspace.opportunities.map(row=>({id:row.id,nextAction:row.nextAction,nextActionDate:row.nextActionDate}))},null,2)));}} className="self-start rounded-xl border p-3">Read saved fictional records</button>
+        <pre className="max-h-96 overflow-auto text-xs" aria-label="Saved fictional records">{evidence}</pre>
         <MemoireChat />
       </main>
     </BrowserRouter>

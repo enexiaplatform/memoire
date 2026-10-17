@@ -22,6 +22,7 @@ export type ChatContext = {
   facts: string[];
   limitations: string[];
 };
+import type { ChatAction } from '../../../shared/aiChatActions.js';
 export type ChatReply = {
   answer: string;
   sourceKeys: string[];
@@ -30,6 +31,8 @@ export type ChatReply = {
   suggestedAction: string;
   missingContext: string[];
   suggestedQuestions: string[];
+  actions?: ChatAction[];
+  clarification?: string;
 };
 export type ChatMessage = {
   role: "user" | "assistant";

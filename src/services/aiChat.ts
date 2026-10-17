@@ -1,4 +1,5 @@
 import { supabaseClient } from "../lib/supabaseClient";
+import { parseActionList } from "../../shared/aiChatActions.js";
 import type {
   ChatContext,
   ChatMessage,
@@ -116,5 +117,10 @@ export async function sendAiChat(
       source.href.startsWith("/app/") &&
       !source.href.includes("//"),
   );
+  try {
+    result.actions = parseActionList(result.actions ?? [], context.sources);
+  } catch {
+    throw new AiChatError("invalid_model_response");
+  }
   return result as ChatReply;
 }

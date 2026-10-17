@@ -68,6 +68,16 @@ const handler = createAiChatHandler({
       missingContext: ["Decision date is not recorded."],
       suggestedQuestions: ["Viết ngắn hơn.", "Which evidence is missing?"],
     };
+    if (/FIXTURE_ACTIONS|tạo 2 việc plan/i.test(question)) {
+      Object.assign(answer,{
+        answer:'Đề xuất tạo 2 việc Plan và sửa next action của cơ hội Analyzer (dữ liệu giả lập). Nhắn “thực hiện” để áp dụng hoặc “hủy”.',draft:'',suggestedAction:'',missingContext:[],suggestedQuestions:[],
+        actions:[
+          {kind:'create_plan',targetKey:'opportunity:fixture-deal',label:'Fixture: call about demo criteria',date:'2026-10-20',channel:'Phone call',changes:[]},
+          {kind:'create_plan',targetKey:'opportunity:fixture-deal',label:'Fixture: send evaluation checklist',date:'2026-10-21',channel:'Email / message',changes:[]},
+          {kind:'update_opportunity',targetKey:'opportunity:fixture-deal',label:'',date:'',channel:'',changes:[{field:'nextAction',value:'Fixture: confirm demo criteria and send checklist'},{field:'nextActionDate',value:'2026-10-20'}]},
+        ],
+      });
+    }
     return new Response(
       JSON.stringify({
         choices: [
@@ -86,6 +96,7 @@ const fixturePlugin = {
   enforce: "pre",
   resolveId(source, importer) {
     const file = importer?.replace(/\\/g, "/");
+    if (file?.endsWith('/src/features/aiChat/AiChatPanel.tsx') && source==='../../services/aiChatActions') return resolve(root,'test/fixtures/aiChat/actions.mjs');
     if (
       file?.endsWith("/src/features/aiChat/AiChatPanel.tsx") &&
       source === "../../services/workspaceData"

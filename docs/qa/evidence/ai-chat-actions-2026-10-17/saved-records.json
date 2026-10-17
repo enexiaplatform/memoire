@@ -1,0 +1,41 @@
+{
+  "plans": [
+    {
+      "id": "chat-77252d3b-2970-47b7-af85-a8028a3da515-0",
+      "date": "2026-10-20",
+      "label": "Fixture: call about demo criteria",
+      "tag": "Northstar Research (fictional)",
+      "done": false,
+      "linkedOpportunityId": "fixture-deal",
+      "linkedAccountName": "Northstar Research (fictional)",
+      "channel": "Phone call",
+      "dismissed": false,
+      "createdAt": "2026-10-17T03:01:24.613Z",
+      "updatedAt": "2026-10-17T03:01:24.613Z",
+      "source": "user",
+      "isSample": false
+    },
+    {
+      "id": "chat-77252d3b-2970-47b7-af85-a8028a3da515-1",
+      "date": "2026-10-21",
+      "label": "Fixture: send evaluation checklist",
+      "tag": "Northstar Research (fictional)",
+      "done": false,
+      "linkedOpportunityId": "fixture-deal",
+      "linkedAccountName": "Northstar Research (fictional)",
+      "channel": "Email / message",
+      "dismissed": false,
+      "createdAt": "2026-10-17T03:01:24.614Z",
+      "updatedAt": "2026-10-17T03:01:24.614Z",
+      "source": "user",
+      "isSample": false
+    }
+  ],
+  "opportunities": [
+    {
+      "id": "fixture-deal",
+      "nextAction": "Fixture: confirm demo criteria and send checklist",
+      "nextActionDate": "2026-10-20"
+    }
+  ]
+}

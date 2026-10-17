@@ -14,6 +14,7 @@ import {
 import {
   loadSalesWorkspaceData,
   type SalesWorkspaceData,
+  WORKSPACE_REFRESHED_EVENT,
 } from "../../services/workspaceData";
 import {
   AiChatError,
@@ -36,6 +37,8 @@ import { Panel } from "../../components/ui/daylight";
 import { buildChatContext } from "./chatContext";
 import type { ChatMessage, ChatScope } from "./types";
 import type { PlanRecord } from "../../utils/weeklyPlan";
+import { prepareActionBatch, type ActionBatch } from "./actionBatch";
+import { executeChatActions } from "../../services/aiChatActions";
 
 type Props = {
   userId: string;
@@ -55,7 +58,7 @@ export function AiChatPanel({
   scope,
   onLocal,
   compact = false,
-  dataRefreshKey = '',
+  dataRefreshKey = "",
 }: Props) {
   const [workspace, setWorkspace] = useState<SalesWorkspaceData | null>(null);
   const [plan, setPlan] = useState<PlanRecord[]>([]);
@@ -70,6 +73,9 @@ export function AiChatPanel({
   const [retryAt, setRetryAt] = useState(0);
   const [now, setNow] = useState(Date.now());
   const [copied, setCopied] = useState<number | null>(null);
+  const [pendingBatch, setPendingBatch] = useState<ActionBatch | null>(null);
+  const [applying, setApplying] = useState(false);
+  const applyingRef = useRef(false);
   const [action, setAction] = useState<{
     text: string;
     date: string;
@@ -86,6 +92,7 @@ export function AiChatPanel({
     const stillOwnsWorkspace = captureLocalWorkspaceScope();
     let active = true;
     setChecking(true);
+    setPendingBatch(null);
     flightRef.current = false;
     setBusy(false);
     void Promise.all([
@@ -170,6 +177,7 @@ export function AiChatPanel({
   const cooldown = Math.max(0, Math.ceil((retryAt - now) / 1000));
 
   function reset() {
+    if (applyingRef.current) return;
     revision.current += 1;
     requestRef.current?.abort();
     flightRef.current = false;
@@ -179,6 +187,7 @@ export function AiChatPanel({
     setConsent(false);
     setAction(null);
     setCopied(null);
+    setPendingBatch(null);
     setError(
       available
         ? ""
@@ -188,6 +197,67 @@ export function AiChatPanel({
 
   async function send() {
     const value = question.trim();
+    if (applyingRef.current || flightRef.current) return;
+    const command = value
+      .toLocaleLowerCase("vi")
+      .replace(/[.!]+$/, "")
+      .trim();
+    if (
+      !pendingBatch &&
+      [
+        "thực hiện",
+        "thực hiện tất cả",
+        "xác nhận",
+        "áp dụng",
+        "confirm",
+        "apply",
+        "do it",
+        "hủy",
+        "huỷ",
+        "cancel",
+      ].includes(command)
+    ) {
+      setQuestion("");
+      setMessages((previous) => [
+        ...previous,
+        { role: "user", content: value },
+        {
+          role: "assistant",
+          content:
+            "Không có nhóm thay đổi nào đang chờ. Hãy mô tả việc cần tạo hoặc cập nhật.",
+        },
+      ]);
+      return;
+    }
+    if (
+      pendingBatch &&
+      [
+        "thực hiện",
+        "thực hiện tất cả",
+        "xác nhận",
+        "áp dụng",
+        "confirm",
+        "apply",
+        "do it",
+      ].includes(command)
+    ) {
+      setQuestion("");
+      await applyPendingBatch(value);
+      return;
+    }
+    if (pendingBatch && ["hủy", "huỷ", "cancel", "bỏ qua"].includes(command)) {
+      setPendingBatch(null);
+      setQuestion("");
+      setMessages((previous) => [
+        ...previous,
+        { role: "user", content: value },
+        {
+          role: "assistant",
+          content: "Đã hủy nhóm thay đổi. Chưa ghi dữ liệu.",
+        },
+      ]);
+      return;
+    }
     if (
       !value ||
       value.length > 2000 ||
@@ -205,6 +275,7 @@ export function AiChatPanel({
     flightRef.current = true;
     setBusy(true);
     setError("");
+    setPendingBatch(null);
     try {
       const reply = await sendAiChat(
         userId,
@@ -227,6 +298,17 @@ export function AiChatPanel({
         .filter(Boolean)
         .join("\n\n")
         .slice(0, 6000);
+      const batch =
+        reply.actions?.length && workspace
+          ? prepareActionBatch(
+              reply.actions,
+              preview.context.sources,
+              workspace,
+              userId,
+              crypto.randomUUID(),
+            )
+          : null;
+      setPendingBatch(batch);
       setMessages((previous) => [
         ...previous,
         { role: "user", content: value },
@@ -266,8 +348,77 @@ export function AiChatPanel({
     }
   }
 
+  async function applyPendingBatch(confirmation = "Thực hiện") {
+    if (!pendingBatch || applyingRef.current || flightRef.current) return;
+    const batch = pendingBatch;
+    const generation = revision.current;
+    const owns = captureLocalWorkspaceScope();
+    applyingRef.current = true;
+    flightRef.current = true;
+    setApplying(true);
+    setBusy(true);
+    setPendingBatch(null);
+    setError("");
+    setMessages((previous) => [
+      ...previous,
+      { role: "user", content: confirmation },
+    ]);
+    try {
+      const results = await executeChatActions(
+        batch,
+        () => generation === revision.current && owns(),
+      );
+      if (generation !== revision.current || !owns()) return;
+      const content = results
+        .map(
+          (result, index) =>
+            `${index + 1}. ${result.title}\n${batch.items[index].preview}\n${result.detail}`,
+        )
+        .join("\n\n");
+      setMessages((previous) => [...previous, { role: "assistant", content }]);
+      // Refresh failure must not turn successful writes into a retry instruction.
+      try {
+        const [updated, records] = await Promise.all([
+          loadSalesWorkspaceData(userId, { force: true }),
+          loadPlanItemsForUser(userId),
+        ]);
+        if (generation === revision.current && owns()) {
+          setWorkspace(updated);
+          setPlan(records);
+          window.dispatchEvent(
+            new CustomEvent(WORKSPACE_REFRESHED_EVENT, { detail: { userId } }),
+          );
+        }
+      } catch {
+        if (generation === revision.current && owns())
+          setError(
+            "Kết quả lưu ở trên vẫn có hiệu lực. Chưa tải lại được dữ liệu; không thực hiện lại nhóm này.",
+          );
+      }
+    } catch (reason) {
+      if (generation === revision.current && owns())
+        setMessages((previous) => [
+          ...previous,
+          {
+            role: "assistant",
+            content:
+              reason instanceof Error
+                ? reason.message
+                : "Không thể kiểm tra nhóm thay đổi. Hãy tải lại dữ liệu.",
+          },
+        ]);
+    } finally {
+      applyingRef.current = false;
+      setApplying(false);
+      if (generation === revision.current) {
+        flightRef.current = false;
+        setBusy(false);
+      }
+    }
+  }
+
   function saveAction() {
-    const selectedDate = actionDateInput.current?.value || action?.date || '';
+    const selectedDate = actionDateInput.current?.value || action?.date || "";
     if (
       !action ||
       action.saved ||
@@ -319,7 +470,9 @@ export function AiChatPanel({
         <div className="flex items-center gap-3">
           {!compact && <MessageCircle className="h-5 w-5 text-brand-blue" />}
           <div>
-            {!compact && <h2 className="text-sm font-bold text-ink">Chat with Memoire</h2>}
+            {!compact && (
+              <h2 className="text-sm font-bold text-ink">Chat with Memoire</h2>
+            )}
             <p className="mt-1 text-xs text-muted">
               Groq ·{" "}
               {checking
@@ -327,13 +480,14 @@ export function AiChatPanel({
                 : available
                   ? "Ready"
                   : "Unavailable"}{" "}
-              {!compact && ' · Kept for this visit only'}
+              {!compact && " · Kept for this visit only"}
             </p>
           </div>
         </div>
         <div className="flex gap-3">
           <button
             type="button"
+            disabled={applying}
             onClick={() => {
               reset();
               setReload((value) => value + 1);
@@ -346,6 +500,7 @@ export function AiChatPanel({
           <button
             type="button"
             onClick={reset}
+            disabled={applying}
             className="min-h-10 text-xs font-bold text-brand-blue"
           >
             New conversation
@@ -439,7 +594,8 @@ export function AiChatPanel({
               <p className="mt-2 text-sm leading-6 text-muted">
                 Explore a deal, prepare a follow-up, or ask what needs
                 attention. Answers name their sources and distinguish evidence
-                from suggestions.
+                from suggestions. Bạn cũng có thể yêu cầu tạo Plan hoặc sửa cơ
+                hội; xem cả nhóm thay đổi rồi nhắn “thực hiện”.
               </p>
               <div className="mt-4 flex flex-col gap-2">
                 {prompts.map((prompt) => (
@@ -543,13 +699,65 @@ export function AiChatPanel({
               )}
             </div>
           ))}
+          {pendingBatch && (
+            <div
+              className="rounded-xl border border-brand-blue/30 bg-tint-blue-bg p-4"
+              aria-label="Nhóm thay đổi chờ xác nhận"
+            >
+              <p className="text-sm font-bold">
+                {pendingBatch.items.length} thay đổi · chưa áp dụng
+              </p>
+              <ol className="mt-3 max-h-64 space-y-3 overflow-y-auto text-xs leading-5">
+                {pendingBatch.items.map((item, index) => (
+                  <li key={index}>
+                    <p className="font-semibold">
+                      {index + 1}. {item.title}
+                    </p>
+                    <p className="whitespace-pre-wrap break-words">
+                      {item.preview}
+                    </p>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-3 text-xs">
+                Nhắn “thực hiện” để áp dụng cả nhóm hoặc “hủy”. Khi sửa yêu cầu,
+                nhóm cũ sẽ được thay thế.
+              </p>
+              <button
+                type="button"
+                onClick={() => void applyPendingBatch()}
+                className="mt-3 min-h-10 rounded-xl bg-brand-blue px-4 text-xs font-bold text-white"
+              >
+                Thực hiện tất cả
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPendingBatch(null);
+                  setMessages((previous) => [
+                    ...previous,
+                    { role: "user", content: "Hủy" },
+                    {
+                      role: "assistant",
+                      content: "Đã hủy nhóm thay đổi. Chưa ghi dữ liệu.",
+                    },
+                  ]);
+                }}
+                className="ml-3 min-h-10 text-xs font-semibold"
+              >
+                Hủy
+              </button>
+            </div>
+          )}
           {busy && (
             <p
               role="status"
               className="flex items-center gap-2 text-sm text-muted"
             >
               <LoaderCircle className="h-4 w-4 animate-spin" />
-              Reading the selected context…
+              {applying
+                ? "Đang lưu thay đổi…"
+                : "Reading the selected context…"}
             </p>
           )}
           <div ref={output} />
@@ -616,7 +824,9 @@ export function AiChatPanel({
               key="stop"
               type="button"
               aria-label="Stop response"
+              disabled={applying}
               onClick={(event) => {
+                if (applyingRef.current) return;
                 event.preventDefault();
                 event.stopPropagation();
                 revision.current += 1;
@@ -663,7 +873,7 @@ export function AiChatPanel({
       {action && (
         <Panel
           as="div"
-          className={`border border-brand-blue/20 bg-white p-5 ${compact ? 'absolute inset-3 z-10 overflow-y-auto shadow-xl' : ''}`}
+          className={`border border-brand-blue/20 bg-white p-5 ${compact ? "absolute inset-3 z-10 overflow-y-auto shadow-xl" : ""}`}
           aria-label="Review suggested plan item"
         >
           <div className="flex items-center justify-between">
