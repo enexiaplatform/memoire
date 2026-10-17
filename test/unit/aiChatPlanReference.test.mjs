@@ -52,3 +52,14 @@ test('identity recovery refuses product fragments and longer lookalike names',()
     assert.deepEqual(locked.sources,[]);
   }
 });
+
+
+test('saving a long agenda reserves its history without dropping locked targets or calculated facts',()=>{
+  const content='Dated draft for Fictional Samil · Swab / PMM. '+ 'Recorded task details. '.repeat(180);
+  const previous={...messages[1],content,context:{...context,sources:[{...swab,detail:'Long evidence '.repeat(500)}]}};
+  const locked=planReferenceContext('Thêm các việc trên vào Plan',[messages[0],previous]);
+  assert.deepEqual(locked.sources.map(source=>source.key),[swab.key]);
+  assert.ok(locked.facts.includes(context.facts[0]));
+  assert.ok(Buffer.byteLength(JSON.stringify(locked)+content+messages[0].content+'Thêm các việc trên vào Plan')<8000);
+  assert.ok(locked.sources[0].detail.length<previous.context.sources[0].detail.length);
+});

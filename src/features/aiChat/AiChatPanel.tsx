@@ -147,19 +147,19 @@ export function AiChatPanel({
 
   const preview = useMemo(() => {
     if (!workspace) return { context: null, error: "" };
-    const reference = planReferenceContext(contextQuestion, messages);
-    if (reference) return { context: reference, error: "" };
-    const topic =
-      /brand|thuong hieu|thuong hiệu|nhan hang|nhãn hàng|forecast|forcast|du bao|dự báo|\bq[1-4]\b|quy\s*[1-4]|quý\s*[1-4]|tuan|tuần|week|gap|gặp|visit|follow.?up|plan|lead|qualif|brief|coaching|risk|rescue|downgrade|ưu tiên|uu tien|priorit|collections|công nợ|cong no|thanh toán|learning|win.?loss|bài học|hygiene|dữ liệu|ghi chú|strategy|chiến lược|cập nhật|update|sửa/i;
-    const previous =
-      [...messages]
-        .reverse()
-        .find((item) => item.role === "user" && topic.test(item.content))
-        ?.content || "";
-    const contextualQuestion = topic.test(contextQuestion)
-      ? contextQuestion
-      : `${contextQuestion}\n${previous}`;
     try {
+      const reference = planReferenceContext(contextQuestion, messages);
+      if (reference) return { context: reference, error: "" };
+      const topic =
+        /brand|thuong hieu|thuong hiệu|nhan hang|nhãn hàng|forecast|forcast|du bao|dự báo|\bq[1-4]\b|quy\s*[1-4]|quý\s*[1-4]|tuan|tuần|week|gap|gặp|visit|follow.?up|plan|lead|qualif|brief|coaching|risk|rescue|downgrade|ưu tiên|uu tien|priorit|collections|công nợ|cong no|thanh toán|learning|win.?loss|bài học|hygiene|dữ liệu|ghi chú|strategy|chiến lược|cập nhật|update|sửa/i;
+      const previous =
+        [...messages]
+          .reverse()
+          .find((item) => item.role === "user" && topic.test(item.content))
+          ?.content || "";
+      const contextualQuestion = topic.test(contextQuestion)
+        ? contextQuestion
+        : `${contextQuestion}\n${previous}`;
       return {
         context: buildChatContext(
           workspace,

@@ -37,3 +37,30 @@ test('brand trend is a dated metric comparison and preserves missing historical 
   assert.match(result.limitations.join(' '), /1 Won deals have no confirmed close date/);
   assert.match(result.limitations.join(' '), /do not claim that current pipeline increased/);
 });
+
+
+test('preparing an empty next week proposes unfinished work instead of asking for known details', () => {
+  const data = workspace({opportunities:[deal('overdue'),deal('lead',{stage:'Lead',nextActionDate:'2026-09-23'}),deal('undated',{nextActionDate:''}),deal('future',{nextActionDate:'2026-11-01'}),deal('won',{status:'Won'})]});
+  const result = businessAnswer(data, 'Chuẩn bị plan tuần sau cho tôi', [], now);
+  const facts = result.facts.join(' ');
+  assert.match(facts, /0 open plan\/follow-up items/);
+  assert.match(facts, /3 active opportunity\/Lead next actions/);
+  assert.match(facts, /opportunity:overdue:.*original due 2026-10-15; suggested date 2026-10-20/);
+  assert.match(facts, /opportunity:lead:.*suggested date 2026-10-19/);
+  assert.match(facts, /opportunity:undated:.*suggested date 2026-10-21/);
+  assert.match(facts, /not a confirmed appointment/);
+  assert.deepEqual(result.preferredIds, ['lead','overdue','undated']);
+});
+
+test('Plan preparation honors canonical completion and does not recreate already scheduled tasks', () => {
+  const data=workspace({opportunities:[deal('done'),deal('scheduled',{stage:'Lead',nextActionDate:'2026-10-21'}),deal('blank',{nextAction:''}),deal('held',{status:'On hold'})]});
+  const result=businessAnswer(data,'Prepare my plan for next week',[{id:'completion',derivedKey:'deal:done:2026-10-15',date:'2026-10-15',label:'Done',tag:'',done:true,createdAt:'2026-10-15',updatedAt:'2026-10-15'}],now);
+  assert.match(result.facts.join(' '),/0 active opportunity\/Lead next actions/);
+  assert.match(result.facts.join(' '),/1 open plan\/follow-up items/);
+  assert.equal(result.facts.some(fact=>fact.startsWith('DRAFT CANDIDATE')),false);
+});
+
+test('a question about existing next-week work stays a calendar query', () => {
+  const result=businessAnswer(workspace(),'Tuần sau có việc gì đã lên lịch?',[],now);
+  assert.equal(result.facts.some(fact=>fact.startsWith('DRAFT PLANNING MODE:')),false);
+});

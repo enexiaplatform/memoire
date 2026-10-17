@@ -8,7 +8,7 @@ export function fitChatContext(
   question: string,
 ): ChatContext {
   // Reserve room for the system instructions, current question and latest draft.
-  const budget = Math.max(1600, 7600 - Math.max(0, bytes(question) - 800));
+  const budget = Math.max(1600, 7200 - Math.max(0, bytes(question) - 800));
   if (bytes(JSON.stringify(context)) <= budget) return context;
   let sources = context.sources;
   let omitted = 0;

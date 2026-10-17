@@ -1,3 +1,4 @@
+import { fitChatContext } from "./contextBudget.ts";
 import { isPlanTransferRequest } from "../../../shared/aiChatActions.js";
 import type { ChatContext, ChatMessage } from "./types";
 import type { ChatAction } from "../../../shared/aiChatActions.js";
@@ -40,7 +41,7 @@ export function planReferenceContext(
       (["account", "opportunity"].includes(source.kind) &&
         namesExactSource(previous.content, source.title)),
   );
-  return {
+  return fitChatContext({
     ...previous.context,
     sources,
     facts: [
@@ -49,7 +50,7 @@ export function planReferenceContext(
         "Plan conversion of the preceding draft: record identities are locked to the cited sources below. Preserve each task and its original customer/opportunity. Never substitute another deal or turn a named customer task into an unlinked personal task. Ask for clarification if an exact target is unavailable.",
       ]),
     ],
-  };
+  }, [question, previous.content, messages.findLast(message => message.role === "user")?.content || ""].join("\n"));
 }
 
 /** Fail closed instead of silently remapping or unlinking a named draft. */

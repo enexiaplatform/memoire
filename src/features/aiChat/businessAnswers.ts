@@ -23,6 +23,7 @@ import {
   toLocalDateKey,
 } from "../../utils/safeDate.ts";
 import type { ChatSource } from "./types";
+import { weeklyPlanDraft } from "./weeklyPlanDraft.ts";
 import { workbenchAnswer } from "./workbenchAnswers.ts";
 
 export type BusinessAnswer = {
@@ -51,9 +52,10 @@ export function businessAnswer(
     today = todayDateKey(reference),
     currency = getReportingCurrency();
   const outcomes = workspace.opportunityOutcomes || [];
+  const closedLeadIds = disqualifiedLeadIds(outcomes);
   const opportunities = selectQualifiedPipeline(
     workspace.opportunities,
-    disqualifiedLeadIds(outcomes),
+    closedLeadIds,
   );
   const facts: string[] = [],
     limitations: string[] = [],
@@ -230,13 +232,14 @@ export function businessAnswer(
   ) {
     id = "weekly-actions";
     const nextWeek = /next week|tuan sau|tuan toi/.test(q);
+    const drafting = nextWeek && !/da (?:len lich|lap)|already scheduled/.test(q) && /\b(?:chuan bi|lap|de xuat|sap xep|len (?:plan|ke hoach)|prepare|draft|suggest|build|create|plan (?:for )?next week)\b/.test(q);
     const anchor = new Date(reference);
     if (nextWeek) anchor.setDate(anchor.getDate() + 7);
     title = `${nextWeek ? "Next week" : "This week"} · full scoped Plan and follow-ups`;
     const board = buildPlanBoard({
       periodType: "week",
       anchorDate: anchor,
-      opportunities,
+      opportunities: workspace.opportunities.filter(row => !closedLeadIds.has(row.id) && !["Won", "Lost"].includes(row.stage)),
       obligations: [],
       activities: workspace.activities,
       records: plan,
@@ -269,6 +272,12 @@ export function businessAnswer(
         item.linkedOpportunityId ||
         (item.kind === "deal" ? item.id.slice("deal-".length) : "");
       if (linkedId) preferredIds.push(linkedId);
+    }
+    if (drafting) {
+      const draft = weeklyPlanDraft(workspace, plan, reference, board.rangeStart, board.rangeEnd);
+      facts.push(...draft.facts);
+      preferredIds.unshift(...draft.preferredIds);
+      limitations.push(...draft.limitations);
     }
     limitations.push(
       `Up to 10 open items shown, from ${items.length} calculated. A follow-up is not a confirmed face-to-face visit: preserve the recorded channel; label any proposed meeting as a suggestion. Own-obligation money tasks were not loaded into this weekly tool.`,

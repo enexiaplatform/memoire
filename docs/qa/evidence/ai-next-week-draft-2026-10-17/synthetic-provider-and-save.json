@@ -1,0 +1,79 @@
+{
+  "draft": {
+    "status": 200,
+    "passed": true,
+    "answer": "Dưới đây là bản đề xuất kế hoạch công việc cho tuần tới (19/10/2026 – 25/10/2026).",
+    "draft": "1. **Review validation request** – Opportunity: Fictional Acme · lead\n   - Suggested date: 2026-10-19\n   - Channel: (none recorded – đề xuất làm việc nội bộ)\n\n2. **Prepare demo checklist** – Opportunity: Fictional Acme · deal\n   - Suggested date: 2026-10-20\n   - Channel: (none recorded – đề xuất làm việc nội bộ)",
+    "actions": []
+  },
+  "save": {
+    "status": 200,
+    "passed": true,
+    "answer": "Đề xuất 2 thay đổi bên dưới. Chưa áp dụng. Nhắn “thực hiện” để lưu cả nhóm hoặc “hủy”.",
+    "draft": "",
+    "actions": [
+      {
+        "kind": "create_plan",
+        "targetKey": "opportunity:lead",
+        "label": "Review validation request",
+        "date": "2026-10-19",
+        "channel": "",
+        "changes": []
+      },
+      {
+        "kind": "create_plan",
+        "targetKey": "opportunity:deal",
+        "label": "Prepare demo checklist",
+        "date": "2026-10-20",
+        "channel": "",
+        "changes": []
+      }
+    ]
+  },
+  "execution": {
+    "boundary": "In-memory writers only; no real cloud writes",
+    "saved": [
+      {
+        "id": "chat-synthetic-week-draft-0",
+        "date": "2026-10-19",
+        "label": "Review validation request",
+        "tag": "Fictional Acme",
+        "done": false,
+        "linkedOpportunityId": "lead",
+        "linkedAccountName": "Fictional Acme",
+        "channel": "",
+        "createdAt": "2026-10-17T15:10:52.462Z",
+        "updatedAt": "2026-10-17T15:10:52.462Z",
+        "source": "user",
+        "isSample": false
+      },
+      {
+        "id": "chat-synthetic-week-draft-1",
+        "date": "2026-10-20",
+        "label": "Prepare demo checklist",
+        "tag": "Fictional Acme",
+        "done": false,
+        "linkedOpportunityId": "deal",
+        "linkedAccountName": "Fictional Acme",
+        "channel": "",
+        "createdAt": "2026-10-17T15:10:52.462Z",
+        "updatedAt": "2026-10-17T15:10:52.462Z",
+        "source": "user",
+        "isSample": false
+      }
+    ],
+    "receipts": [
+      {
+        "title": "Fictional Acme · lead",
+        "status": "cloud",
+        "detail": "Đã lưu và đồng bộ."
+      },
+      {
+        "title": "Fictional Acme · deal",
+        "status": "cloud",
+        "detail": "Đã lưu và đồng bộ."
+      }
+    ]
+  },
+  "boundary": "Real Groq calls with fictional data and mocked owner checks; execution used only in-memory writers, no business database writes."
+}

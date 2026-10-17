@@ -149,6 +149,8 @@ export function buildChatContext(
       "The requested full-scope business calculation could not be completed consistently. Do not infer totals or trends; inspect Plan, Money or Reports.";
   }
   const preferred = new Set(business?.preferredIds || []);
+  const draftingPlan = business?.facts.some(fact => fact.startsWith("DRAFT PLANNING MODE:"));
+  const draftRank = (id: string) => business?.preferredIds.indexOf(id) ?? -1;
   const editing =
     /\b(update|change|reschedule|cap nhat|sua|doi|doi lich|tao|them|create|add|fill)\b/.test(
       normalized(question),
@@ -184,6 +186,7 @@ export function buildChatContext(
     }))
     .sort(
       (a, b) =>
+        (draftingPlan ? (draftRank(a.row.id) < 0 ? 999 : draftRank(a.row.id)) - (draftRank(b.row.id) < 0 ? 999 : draftRank(b.row.id)) : 0) ||
         (editing
           ? 0
           : Number(preferred.has(b.row.id)) -

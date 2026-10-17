@@ -934,3 +934,14 @@ test("Plan transfer never drops the most recent agenda to squeeze into the model
   assert.equal(independent.response.code, 200);
   assert.equal(independent.calls, 1);
 });
+
+
+test('Plan drafting retrieval keeps overdue candidates even when next week already has many scheduled deals', () => {
+  const rows=[...Array.from({length:8},(_,i)=>deal(`scheduled-${i}`,{nextActionDate:'2026-10-21'})),deal('backlog',{nextActionDate:'2026-10-15'}),deal('lead-backlog',{stage:'Lead',nextActionDate:'2026-09-23'})];
+  const context=buildChatContext(workspace({opportunities:rows}), 'u1', {kind:'all'}, 'Chuẩn bị plan tuần sau cho tôi');
+  const ids=context.sources.filter(source=>source.kind==='opportunity').map(source=>source.id);
+  assert.ok(ids.includes('backlog'));
+  assert.ok(ids.includes('lead-backlog'));
+  assert.equal(ids.length,5);
+  assert.match(context.facts.join(' '),/DRAFT CANDIDATE opportunity:lead-backlog/);
+});
