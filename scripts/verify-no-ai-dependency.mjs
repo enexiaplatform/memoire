@@ -30,7 +30,9 @@ for (const marker of ['getBearerToken', 'verifyUserToken', "body.consent !== tru
 assert.match(endpoint, /\.eq\(['"]user_id['"], userId\)/, 'Source queries must be owner-bound');
 assert.equal(endpoint.includes('SERVICE_ROLE'), false, 'AI chat must use caller RLS, not service authority');
 const panel = read('src/features/aiChat/AiChatPanel.tsx');
-for (const marker of ['Data preview', 'I choose to share', 'captureLocalWorkspaceScope', 'Confirm and add to Plan', 'Nothing is sent to the customer.']) assert.ok(panel.includes(marker), `Chat disclosure missing: ${marker}`);
+for (const marker of ['Data preview', 'I choose to share', 'captureLocalWorkspaceScope', 'canAutoSavePlan', 'Nothing is sent to the customer.']) assert.ok(panel.includes(marker), `Chat disclosure missing: ${marker}`);
+assert.equal(panel.includes('Review as a plan item'), false, 'Assistant prose must not be saved as a single task');
+assert.ok(panel.includes('executeChatActions'), 'Plan commands use the authenticated action writer');
 const legal = read('src/features/legal/LegalPage.tsx');
 for (const marker of ['Optional AI chat', 'Groq', 'page memory', 'human review']) assert.ok(legal.includes(marker));
 for (const falseClaim of ['Memoire has no AI provider', 'Nothing you write is sent to a language model', 'There is no AI provider in this list']) assert.equal(legal.includes(falseClaim), false, `Stale privacy claim: ${falseClaim}`);

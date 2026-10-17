@@ -1,0 +1,9 @@
+# AI Plan commands execute directly — 2026-10-17
+
+The previous chat flow always required a second confirmation even after an explicit request to add Plan items. A separate legacy suggested-action editor could save an assistant instruction as one personal task dated today, instead of creating the weekly agenda. The screenshot is consistent with that path; the exact click history was not observed.
+
+Explicit add/save/create Plan commands now execute a validated creation-only batch through the existing authenticated writer. Drafts, suggestions, questions, negated commands, unresolved output and opportunity updates do not auto-execute. Exact source identity checks, ownership/freshness checks, partial-failure receipts and duplicate prevention remain active. Empty/mixed model output for a direct Plan command is reported as not saved. Removed the legacy prose-to-single-task editor. Receipts link to Plan.
+
+A receipt can follow an assistant reply, so outbound history now coalesces adjacent same-role messages into alternating bounded turns. Repeated reference conversion deduplicates its context fact rather than accumulating duplicate entries.
+
+Verification: local browser fixture generated two dated tasks from a draft, then `add it into the Plan for next week` saved both with the original opportunity ID without another confirmation. Repeating the command reported both already existed, with two records total and no changed opportunity. Screenshot and records are in `evidence/ai-chat-auto-plan-2026-10-17/`. Provider, authentication and cloud acknowledgement in this fixture are simulated; this is not a real production cloud-write test. New intent/history tests cover create commands, exclusions, mixed/empty actions, clarification and repeated conversation turns. Full checks and release receipt are recorded privately after completion.

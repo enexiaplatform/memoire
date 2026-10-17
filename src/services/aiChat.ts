@@ -1,10 +1,6 @@
 import { supabaseClient } from "../lib/supabaseClient";
 import { parseActionList } from "../../shared/aiChatActions.js";
-import type {
-  ChatContext,
-  ChatMessage,
-  ChatReply,
-} from "../features/aiChat/types";
+import type { ChatContext, ChatReply } from "../features/aiChat/types";
 
 export class AiChatError extends Error {
   code: string;
@@ -66,15 +62,7 @@ export async function getAiChatStatus(
   return result;
 }
 
-/** History is bounded to four complete exchanges plus the current question. */
-export function chatHistory(messages: ChatMessage[], question: string) {
-  return [
-    ...messages
-      .slice(-8)
-      .map(({ role, content }) => ({ role, content: content.slice(0, 6000) })),
-    { role: "user" as const, content: question },
-  ];
-}
+export { chatHistory } from "../features/aiChat/chatHistory";
 
 export async function sendAiChat(
   userId: string,

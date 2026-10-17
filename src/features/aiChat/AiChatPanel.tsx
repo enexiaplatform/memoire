@@ -9,7 +9,6 @@ import {
   RefreshCw,
   ShieldCheck,
   Square,
-  X,
 } from "lucide-react";
 import {
   loadSalesWorkspaceData,
@@ -27,19 +26,18 @@ import {
   getLocalWorkspaceOwner,
 } from "../../services/localWorkspaceOwner";
 import { hasLocalSampleData } from "../../utils/dataMode";
-import { createPersonalPlanRecord } from "../../utils/weeklyPlan";
-import {
-  savePlanItem,
-  loadPlanItemsForUser,
-} from "../../services/planItemStore";
-import { isValidBusinessDate, todayDateKey } from "../../utils/safeDate";
+import { loadPlanItemsForUser } from "../../services/planItemStore";
 import { Panel } from "../../components/ui/daylight";
 import { buildChatContext } from "./chatContext";
 import type { ChatMessage, ChatScope } from "./types";
 import type { PlanRecord } from "../../utils/weeklyPlan";
 import { prepareActionBatch, type ActionBatch } from "./actionBatch";
 import { executeChatActions } from "../../services/aiChatActions";
-import { planReferenceContext, assertPlanReferenceTargets } from "./planReference";
+import {
+  planReferenceContext,
+  assertPlanReferenceTargets,
+} from "./planReference";
+import { requestsPlanWrite, canAutoSavePlan } from "./planWriteIntent";
 
 type Props = {
   userId: string;
@@ -77,17 +75,11 @@ export function AiChatPanel({
   const [pendingBatch, setPendingBatch] = useState<ActionBatch | null>(null);
   const [applying, setApplying] = useState(false);
   const applyingRef = useRef(false);
-  const [action, setAction] = useState<{
-    text: string;
-    date: string;
-    saved: boolean;
-  } | null>(null);
   const requestRef = useRef<AbortController | null>(null);
   const flightRef = useRef(false);
   const revision = useRef(0);
   const output = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLFormElement>(null);
-  const actionDateInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -193,7 +185,6 @@ export function AiChatPanel({
     setMessages([]);
     setQuestion("");
     setConsent(false);
-    setAction(null);
     setCopied(null);
     setPendingBatch(null);
     setError(
@@ -299,6 +290,17 @@ export function AiChatPanel({
         getLocalWorkspaceOwner() !== userId
       )
         return;
+      const autoSave = canAutoSavePlan(
+        value,
+        reply.actions || [],
+        reply.clarification,
+      );
+      if (requestsPlanWrite(value) && !reply.clarification && !autoSave)
+        throw new Error(
+          "Chưa có các mục Plan hợp lệ để lưu. Hãy nêu công việc và ngày cần làm; chưa ghi dữ liệu.",
+        );
+      if (autoSave)
+        reply.answer = "Các mục Plan và kết quả lưu được hiển thị bên dưới.";
       const content = [
         reply.answer,
         reply.draft && `Draft:\n${reply.draft}`,
@@ -319,13 +321,17 @@ export function AiChatPanel({
               crypto.randomUUID(),
             )
           : null;
-      setPendingBatch(batch);
+      setPendingBatch(autoSave ? null : batch);
       setMessages((previous) => [
         ...previous,
         { role: "user", content: value },
         { role: "assistant", content, reply, context: sentContext },
       ]);
       setQuestion((current) => (current.trim() === value ? "" : current));
+      if (autoSave && batch) {
+        flightRef.current = false;
+        await applyPendingBatch(undefined, batch);
+      }
     } catch (reason) {
       if (
         !controller.signal.aborted &&
@@ -359,9 +365,12 @@ export function AiChatPanel({
     }
   }
 
-  async function applyPendingBatch(confirmation = "Thực hiện") {
-    if (!pendingBatch || applyingRef.current || flightRef.current) return;
-    const batch = pendingBatch;
+  async function applyPendingBatch(
+    confirmation?: string,
+    prepared = pendingBatch,
+  ) {
+    if (!prepared || applyingRef.current || flightRef.current) return;
+    const batch = prepared;
     const generation = revision.current;
     const owns = captureLocalWorkspaceScope();
     applyingRef.current = true;
@@ -370,10 +379,11 @@ export function AiChatPanel({
     setBusy(true);
     setPendingBatch(null);
     setError("");
-    setMessages((previous) => [
-      ...previous,
-      { role: "user", content: confirmation },
-    ]);
+    if (confirmation)
+      setMessages((previous) => [
+        ...previous,
+        { role: "user", content: confirmation },
+      ]);
     try {
       const results = await executeChatActions(
         batch,
@@ -386,7 +396,16 @@ export function AiChatPanel({
             `${index + 1}. ${result.title}\n${batch.items[index].preview}\n${result.detail}`,
         )
         .join("\n\n");
-      setMessages((previous) => [...previous, { role: "assistant", content }]);
+      setMessages((previous) => [
+        ...previous,
+        {
+          role: "assistant",
+          content,
+          planReceipt: batch.items.some(
+            (item) => item.action.kind === "create_plan",
+          ),
+        },
+      ]);
       // Refresh failure must not turn successful writes into a retry instruction.
       try {
         const [updated, records] = await Promise.all([
@@ -425,47 +444,6 @@ export function AiChatPanel({
         flightRef.current = false;
         setBusy(false);
       }
-    }
-  }
-
-  function saveAction() {
-    const selectedDate = actionDateInput.current?.value || action?.date || "";
-    if (
-      !action ||
-      action.saved ||
-      !action.text.trim() ||
-      !isValidBusinessDate(selectedDate) ||
-      getLocalWorkspaceOwner() !== userId
-    )
-      return;
-    try {
-      const selected =
-        scope.kind === "opportunity"
-          ? workspace?.opportunities.find((row) => row.id === scope.id)
-          : undefined;
-      const selectedAccount =
-        scope.kind === "account"
-          ? workspace?.accounts.find((row) => row.id === scope.id)
-          : undefined;
-      const savedRecords = savePlanItem(
-        createPersonalPlanRecord({
-          date: selectedDate,
-          label: action.text.trim(),
-          linkedOpportunityId: selected?.id,
-          linkedAccountName:
-            selected?.accountName || selectedAccount?.accountName,
-          source: "user",
-          isSample: false,
-        }),
-      );
-      setPlan(savedRecords);
-      setAction({ ...action, date: selectedDate, saved: true });
-    } catch (reason) {
-      setError(
-        reason instanceof Error
-          ? reason.message
-          : "Could not save the plan item.",
-      );
     }
   }
 
@@ -587,7 +565,8 @@ export function AiChatPanel({
                 Explore a deal, prepare a follow-up, or ask what needs
                 attention. Answers name their sources and distinguish evidence
                 from suggestions. Bạn cũng có thể yêu cầu tạo Plan hoặc sửa cơ
-                hội; xem cả nhóm thay đổi rồi nhắn “thực hiện”.
+                hội. Lệnh “thêm vào Plan” sẽ lưu các mục đủ thông tin; sửa cơ
+                hội cần xác nhận.
               </p>
               <div className="mt-4 flex flex-col gap-2">
                 {prompts.map((prompt) => (
@@ -619,6 +598,14 @@ export function AiChatPanel({
               <p className="whitespace-pre-wrap break-words text-sm leading-7 text-ink">
                 {message.reply?.answer || message.content}
               </p>
+              {message.planReceipt && (
+                <Link
+                  to="/app/timeline"
+                  className="mt-3 inline-flex min-h-10 items-center text-sm font-bold text-brand-blue"
+                >
+                  Mở Plan để kiểm tra
+                </Link>
+              )}
               {message.reply?.sources.length ? (
                 <div className="mt-3 flex flex-wrap gap-2" aria-label="Sources">
                   {message.reply.sources.map((source) => (
@@ -669,26 +656,6 @@ export function AiChatPanel({
                   </p>
                 </div>
               )}
-              {message.reply?.suggestedAction && (
-                <div className="mt-3">
-                  <p className="text-xs leading-5 text-muted">
-                    Suggested next action: {message.reply.suggestedAction}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setAction({
-                        text: message.reply!.suggestedAction,
-                        date: todayDateKey(),
-                        saved: false,
-                      })
-                    }
-                    className="mt-2 min-h-10 text-xs font-bold text-brand-blue"
-                  >
-                    Review as a plan item
-                  </button>
-                </div>
-              )}
             </div>
           ))}
           {pendingBatch && (
@@ -717,7 +684,7 @@ export function AiChatPanel({
               </p>
               <button
                 type="button"
-                onClick={() => void applyPendingBatch()}
+                onClick={() => void applyPendingBatch("Thực hiện")}
                 className="mt-3 min-h-10 rounded-xl bg-brand-blue px-4 text-xs font-bold text-white"
               >
                 Thực hiện tất cả
@@ -788,7 +755,11 @@ export function AiChatPanel({
             {cooldown > 0 && (
               <p className="mt-1 text-xs">Thử lại sau {cooldown}s.</p>
             )}
-            <button type="button" onClick={onLocal} className="mt-1 min-h-9 font-semibold underline">
+            <button
+              type="button"
+              onClick={onLocal}
+              className="mt-1 min-h-9 font-semibold underline"
+            >
               Use Local insights
             </button>
           </div>
@@ -876,74 +847,6 @@ export function AiChatPanel({
           and Local insights continue to work without AI.
         </p>
       </form>
-
-      {action && (
-        <Panel
-          as="div"
-          className={`border border-brand-blue/20 bg-white p-5 ${compact ? "absolute inset-3 z-10 overflow-y-auto shadow-xl" : ""}`}
-          aria-label="Review suggested plan item"
-        >
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-ink">
-              Review suggested plan item
-            </h3>
-            <button
-              type="button"
-              aria-label="Close plan preview"
-              onClick={() => setAction(null)}
-              className="p-2"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <label className="mt-3 block text-xs font-semibold text-muted">
-            Action
-            <textarea
-              aria-label="Plan action"
-              value={action.text}
-              disabled={action.saved}
-              onChange={(event) =>
-                setAction({ ...action, text: event.target.value })
-              }
-              maxLength={500}
-              className="mt-2 block w-full rounded-xl border border-line p-3 text-sm text-ink"
-            />
-          </label>
-          <label className="mt-3 block text-xs font-semibold text-muted">
-            Date
-            <input
-              aria-label="Plan date"
-              ref={actionDateInput}
-              type="date"
-              value={action.date}
-              disabled={action.saved}
-              onChange={(event) =>
-                setAction({ ...action, date: event.target.value })
-              }
-              className="mt-2 block rounded-xl border border-line p-2 text-sm text-ink"
-            />
-          </label>
-          {action.saved ? (
-            <p role="status" className="mt-3 text-sm text-green-700">
-              Saved to your plan on this device.{" "}
-              <Link to="/app/timeline" className="font-semibold underline">
-                Open Plan
-              </Link>
-            </p>
-          ) : (
-            <button
-              type="button"
-              onClick={saveAction}
-              disabled={
-                !action.text.trim() || !isValidBusinessDate(action.date)
-              }
-              className="mt-4 rounded-full bg-brand-blue px-4 py-2 text-sm font-bold text-white disabled:opacity-40"
-            >
-              Confirm and add to Plan
-            </button>
-          )}
-        </Panel>
-      )}
     </div>
   );
 }

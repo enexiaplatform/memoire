@@ -22,7 +22,7 @@ export type ChatContext = {
   facts: string[];
   limitations: string[];
 };
-import type { ChatAction } from '../../../shared/aiChatActions.js';
+import type { ChatAction } from "../../../shared/aiChatActions.js";
 export type ChatReply = {
   answer: string;
   sourceKeys: string[];
@@ -39,6 +39,7 @@ export type ChatMessage = {
   content: string;
   reply?: ChatReply;
   context?: ChatContext;
+  planReceipt?: boolean;
 };
 export type ChatScope = {
   kind: "all" | "account" | "opportunity";
