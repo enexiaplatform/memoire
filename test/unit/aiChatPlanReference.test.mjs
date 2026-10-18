@@ -63,3 +63,19 @@ test('saving a long agenda reserves its history without dropping locked targets 
   assert.ok(Buffer.byteLength(JSON.stringify(locked)+content+messages[0].content+'Thêm các việc trên vào Plan')<8000);
   assert.ok(locked.sources[0].detail.length<previous.context.sources[0].detail.length);
 });
+
+
+test('next-week draft conversion omits repeated analytics while preserving the complete agenda and exact sources',()=>{
+  const sources=Array.from({length:5},(_,i)=>({...swab,id:`draft-${i}`,key:`opportunity:draft-${i}`,title:`Fictional pharmaceutical customer ${i} · Analyzer`,detail:'Evidence '.repeat(100)}));
+  const agenda=sources.map((source,i)=>`${i+1}. ${source.title}: Review criteria on 2026-10-${19+i}. `+'Task details. '.repeat(30)).join('\n');
+  const snapshot={...context,sources,facts:['Local business date: 2026-10-18','DRAFT PLANNING MODE: five candidates',...sources.map(source=>'DRAFT CANDIDATE '+source.key+' details '.repeat(100))]};
+  const previous={role:'assistant',content:agenda,context:snapshot,reply:{...reply,answer:agenda,sourceKeys:sources.map(source=>source.key)}};
+  const locked=planReferenceContext('Thêm các việc trên vào Plan',[messages[0],previous]);
+  assert.deepEqual(locked.sources.map(source=>source.key),sources.map(source=>source.key));
+  assert.ok(locked.facts.includes(snapshot.facts[0]));
+  assert.equal(locked.facts.some(fact=>fact.startsWith('DRAFT CANDIDATE')),false);
+  assert.match(locked.limitations.join(' '),/Conversion only/);
+  assert.ok(Buffer.byteLength(JSON.stringify(locked)+agenda+messages[0].content+'Thêm các việc trên vào Plan')<8000);
+  assert.equal(previous.content,agenda);
+  assert.equal(snapshot.facts.length,7);
+});

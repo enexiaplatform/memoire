@@ -41,12 +41,21 @@ export function planReferenceContext(
       (["account", "opportunity"].includes(source.kind) &&
         namesExactSource(previous.content, source.title)),
   );
+  const draftConversion = previous.context.facts.some(fact => fact.startsWith("DRAFT PLANNING MODE:"));
+  // The complete preceding agenda is already in history. Aggregate readings and
+  // repeated candidate descriptions are not needed to convert it into writes.
+  const facts = draftConversion
+    ? previous.context.facts.filter(fact => fact.startsWith("Local business date:") || fact.startsWith("DRAFT PLANNING MODE:"))
+    : previous.context.facts;
   return fitChatContext({
     ...previous.context,
+    limitations: draftConversion
+      ? ["Conversion only: full-scope analytical readings are omitted. Use the complete preceding agenda for task details; exact cited record identities remain locked. Do not invent additional work or recompute analysis."]
+      : previous.context.limitations,
     sources,
     facts: [
       ...new Set([
-        ...previous.context.facts,
+        ...facts,
         "Plan conversion of the preceding draft: record identities are locked to the cited sources below. Preserve each task and its original customer/opportunity. Never substitute another deal or turn a named customer task into an unlinked personal task. Ask for clarification if an exact target is unavailable.",
       ]),
     ],

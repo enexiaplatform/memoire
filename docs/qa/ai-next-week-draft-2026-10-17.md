@@ -12,13 +12,17 @@ Existing future-calendar counts remain separate and accurate. Ordinary questions
 
 ## Verification
 
-- 72 focused AI tests passed, including an empty next-week calendar with current/overdue work, an overdue Lead, an undated action, completed/closed/future exclusions, normal calendar intent and candidate retention alongside many scheduled records, and history-budget reservation for long draft conversion.
+- 73 focused AI tests passed, including an empty next-week calendar with current/overdue work, an overdue Lead, an undated action, completed/closed/future exclusions, normal calendar intent and candidate retention alongside many scheduled records, and history-budget reservation for long draft conversion.
 - Actual Groq received the exact reported Vietnamese request against fictional records with zero next-week items. It returned a Vietnamese dated draft for both overdue actions and no writes.
 - A subsequent “Thêm các việc trên vào Plan” returned exactly two `create_plan` actions, dated 2026-10-19 and 2026-10-20, linked to the original Lead and Opportunity. The reference-target guard passed. The actual intent/batch/application functions saved two correctly linked Plan records using in-memory writers. No production business writes were used for QA.
 - An initial full-check timing gate measured an unrelated unchanged pipeline engine at 3.2× against a 3× ceiling. The resumed exact check chain reran that gate; final unit/contract and release results are recorded in the private release receipt. No timing threshold was weakened.
 
-[Synthetic provider and save evidence](evidence/ai-next-week-draft-2026-10-17/synthetic-provider-and-save.json). The full unit run passed 2,284 tests before the additional long-agenda regression, which also passed in the final focused run. Draft conversion now reserves input room for the preceding agenda while retaining calculated facts and exact writable identities; local budget failures are displayed in the composer instead of escaping its error boundary.
+[Synthetic provider and save evidence](evidence/ai-next-week-draft-2026-10-17/synthetic-provider-and-save.json). The full unit run passed 2,287 tests before the final conversion-only regression, which also passed in the 73-test focused run. Draft conversion now reserves input room for the preceding agenda while retaining calculated facts and exact writable identities; local budget failures are displayed in the composer instead of escaping its error boundary.
 
 Release acceptance requires completed local checks, exact-commit CI, production READY and fresh read-only production smoke. Provider tests use real Groq with fictional context and mocked ownership; in-memory execution is not production cloud-write acceptance.
 
 A production-sized scope with long Vietnamese account names also exposed the input budget: draft creation now omits unrelated personal Plan edit identities and avoids repeating account names in each candidate fact. Exact candidate opportunity IDs and their source identities remain intact. A 100-opportunity long-name regression verifies five candidates fit the reserved budget.
+
+Production draft conversion also exposed repeated aggregate/candidate facts competing with the complete preceding agenda. For this conversion-only mode, context now retains the local date, planning scope, full cited identities and complete agenda, while omitting repeated analytical readings. A regression verifies the five-source conversion fits without changing the agenda or source mapping.
+
+The visible production answer and draft were replayed through the real request handler with mocked ownership/provider: 4,669 context bytes, 2,439 agenda bytes, 17,064 total input bytes, five locked opportunity targets, HTTP 200. This replay makes no network call and writes no records; it validates the actual displayed agenda fits after conversion-only compaction.

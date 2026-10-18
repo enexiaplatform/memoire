@@ -95,5 +95,14 @@
     ],
     "actionCount": 0,
     "answer": "Dưới đây là bản đề xuất kế hoạch công việc cho tuần tới (19/10/2026 – 25/10/2026). Mỗi mục là một công việc cần thực hiện, chưa có lịch hẹn xác nhận nào trong tuần này. Bạn có thể xem lại và quyết định lưu vào lịch làm việc của mình.\n\n1. **Rà soát cơ hội và xác nhận bước tiếp theo** – Opportunity: Fictional quality opportunity 0 (opportunity:d0). Đề xuất ngày: 19/10/2026.\n2. **Rà soát cơ hội và xác nhận bước tiếp theo** – Opportunity: Fictional quality opportunity 1 (opportunity:d1). Đề xuất ngày: 20/10/2026.\n3. **Rà soát cơ hội và xác nhận bước tiếp theo** – Opportunity: Fictional quality opportunity 2 (opportunity:d2). Đề xuất ngày: 21/10/2026.\n4. **Rà soát cơ hội và xác nhận bước tiếp theo** – Opportunity: Fictional quality opportunity 3 (opportunity:d3). Đề xuất ngày: 22/10/2026.\n5. **Rà soát cơ hội và xác nhận bước tiếp theo** – Opportunity: Fictional quality opportunity 4 (opportunity:d4). Đề xuất ngày: 23/10/2026.\n\nNếu bạn muốn lưu các công việc này vào lịch, hãy cho tôi biết. Nếu cần điều chỉnh ngày hoặc thêm thông tin, xin vui lòng cho biết.\n"
+  },
+  "visibleDraftConversionBudget": {
+    "status": 200,
+    "contextBytes": 4669,
+    "historyBytes": 2439,
+    "inputBytes": 17064,
+    "lockedOpportunityCount": 5,
+    "passed": true,
+    "boundary": "Replayed visible production draft through mocked ownership/provider; no network call or record writes."
   }
 }
