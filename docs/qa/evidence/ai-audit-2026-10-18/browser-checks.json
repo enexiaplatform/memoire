@@ -1,0 +1,13 @@
+{
+  "boundary": "Actual panel/client/API handler; fictional auth/provider/stores; no production writes.",
+  "cancelledDraftBlocked": true,
+  "longDraftTailVisible": true,
+  "longDraftConversionBlocked": true,
+  "quotaMessageAndTwoSecondWaitObserved": true,
+  "timeoutMessageObserved": true,
+  "stop": {
+    "questionRetained": true,
+    "stoppedMessage": true,
+    "lateAnswer": false
+  }
+}

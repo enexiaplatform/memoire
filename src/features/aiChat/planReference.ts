@@ -1,3 +1,4 @@
+import { assistantTranscript } from "./chatHistory.ts";
 import { fitChatContext } from "./contextBudget.ts";
 import { isPlanTransferRequest } from "../../../shared/aiChatActions.js";
 import type { ChatContext, ChatMessage } from "./types";
@@ -31,6 +32,11 @@ export function planReferenceContext(
       message.role === "assistant" && message.context && message.reply,
   );
   if (!previous?.context || !previous.reply) return null;
+  const latest = messages.findLast(message => message.role === "assistant");
+  if (latest !== previous || previous.planReceipt)
+    throw new Error("Bản nháp trước đã bị hủy hoặc đã xử lý. Hãy lập bản nháp mới hoặc nêu rõ công việc cần tạo; chưa ghi dữ liệu.");
+  if (previous.content.length > 6000 || assistantTranscript(previous.reply).length > 6000)
+    throw new Error("Bản nháp quá dài để chuyển đầy đủ thành Plan. Hãy lập bản nháp mới với ít việc hơn hoặc nêu riêng các việc cần lưu; chưa ghi dữ liệu.");
   const cited = new Set(previous.reply.sourceKeys);
   // Some model drafts cite only the weekly analysis. Recover an omitted
   // citation only by its complete displayed identity from the same snapshot;

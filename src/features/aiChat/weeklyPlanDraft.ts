@@ -3,6 +3,9 @@ import { buildPlanBoard, type PlanRecord } from "../../utils/weeklyPlan.ts";
 import { isValidBusinessDate, toLocalDateKey, todayDateKey } from "../../utils/safeDate.ts";
 import { disqualifiedLeadIds } from "../../utils/leadIdentity.ts";
 
+const workLabel = (value: string) => value.normalize("NFKC").toLocaleLowerCase("vi").trim().replace(/\s+/g, " ");
+const proposedTask = (nextAction?: string) => nextAction?.trim() || "Rà soát cơ hội và xác nhận bước tiếp theo";
+
 /** Drafting work is different from querying an already populated future calendar. */
 export function weeklyPlanDraft(
   workspace: SalesWorkspaceData,
@@ -23,7 +26,12 @@ export function weeklyPlanDraft(
   const openIds = new Set(current.days.flatMap(day => day.items)
     .filter(item => !item.done && item.kind === "deal")
     .map(item => item.id.slice("deal-".length)));
-  const candidates = active.filter(row =>
+  const scheduledWork = new Set(records.filter(record =>
+    !record.__deleted && !record.dismissed && !record.done && !record.derivedKey &&
+    !record.isSample && record.source !== "demo" && record.linkedOpportunityId &&
+    isValidBusinessDate(record.date) && record.date >= rangeStart && record.date <= rangeEnd,
+  ).map(record => JSON.stringify([record.linkedOpportunityId, workLabel(record.label)])));
+  const candidates = active.filter(row => !scheduledWork.has(JSON.stringify([row.id, workLabel(proposedTask(row.nextAction).slice(0,450))]))).filter(row =>
     (!isValidBusinessDate(row.nextActionDate) ||
       (row.nextActionDate < rangeStart && openIds.has(row.id))),
   ).sort((a, b) => (a.nextActionDate || "9999").localeCompare(b.nextActionDate || "9999") || a.id.localeCompare(b.id));
@@ -36,7 +44,7 @@ export function weeklyPlanDraft(
     date.setDate(date.getDate() + index);
     const suggestedDate = toLocalDateKey(date);
     facts.push(
-      `DRAFT CANDIDATE opportunity:${row.id}: ${row.opportunityName.slice(0, 100)}; task ${row.nextAction?.trim() ? row.nextAction.slice(0, 450) : "Rà soát cơ hội và xác nhận bước tiếp theo"}; original due ${row.nextActionDate || "not recorded"}; suggested date ${suggestedDate}; channel not recorded. Reason: ${!row.nextAction?.trim() ? "no recorded next action; propose a record review to clarify it, not an invented customer promise" : isValidBusinessDate(row.nextActionDate) ? "unfinished current/backlog next action" : "recorded next action missing a due date"}. Proposed work date only, not a confirmed appointment.`,
+      `DRAFT CANDIDATE opportunity:${row.id}: ${row.opportunityName.slice(0, 100)}; task ${proposedTask(row.nextAction).slice(0,450)}; original due ${row.nextActionDate || "not recorded"}; suggested date ${suggestedDate}; channel not recorded. Reason: ${!row.nextAction?.trim() ? "no recorded next action; propose a record review to clarify it, not an invented customer promise" : isValidBusinessDate(row.nextActionDate) ? "unfinished current/backlog next action" : "recorded next action missing a due date"}. Proposed work date only, not a confirmed appointment.`,
     );
   }
   return {

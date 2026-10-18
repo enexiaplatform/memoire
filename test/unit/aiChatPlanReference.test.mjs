@@ -31,7 +31,7 @@ test('new named work is retrieved independently; unrecorded history cannot becom
   assert.equal(planReferenceContext('Plan next week',messages),null);
   assert.equal(planReferenceContext('add it into Plan',[]),null);
   assert.equal(planReferenceContext('add it into Plan',[{role:'assistant',content:'draft with no evidence'}]),null);
-  assert.deepEqual(planReferenceContext('add it into Plan',[...messages,{role:'assistant',content:'Canceled; nothing saved.'}]).sources,[swab]);
+  assert.throws(()=>planReferenceContext('add it into Plan',[...messages,{role:'assistant',content:'Canceled; nothing saved.'}]),/Bản nháp/);
 });
 test('personal drafts keep unlinked work personal; conversion does not update opportunities',()=>{
   const locked={...context,sources:[]};

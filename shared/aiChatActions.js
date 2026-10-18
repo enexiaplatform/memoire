@@ -224,11 +224,12 @@ export function isPlanTransferRequest(question) {
   return (
     /\b(add|put|save|insert|them|luu|dua)\b/.test(text) &&
     /\b(plan|ke hoach|lich)\b/.test(text) &&
-    (/\b(it|them|these|those|above|draft|this|that|all|nay|do|tren)\b/.test(
-      text,
-    ) ||
-      /^(?:add (?:into|to) (?:the )?plan(?: with details information)?|(?:them|luu) (?:vao )?(?:plan|ke hoach|lich))[.! ]*$/.test(
-        text,
-      ))
+    (// Vietnamese "them" is the add verb, not the English pronoun "them".
+      (/\b(add|put|save|insert)\b/.test(text) && /\b(it|them|these|those|above|draft|this|that|all)\b/.test(text)) ||
+      (/\b(add|put|save|insert)\b/.test(text) && /\b(?:first|last) (?:one|two|three|\d+|task|item)\b/.test(text)) ||
+      /\b(?:(?:cac|nhung) )?(?:viec|cong viec|muc|lich|ke hoach|ban nhap|de xuat|danh sach) (?:o )?(?:nay|do|tren)\b/.test(text) ||
+      /\b(?:tat ca|toan bo|chung) vao (?:plan|ke hoach|lich)\b/.test(text) ||
+      /\b(?:viec|muc)(?: so)? \d+\b|\b\d+ (?:viec|muc) (?:dau|cuoi)\b/.test(text) ||
+      /^(?:add (?:into|to) (?:the )?plan(?: with details information)?|(?:them|luu) (?:vao )?(?:plan|ke hoach|lich))(?: (?:tuan sau|tuan toi|next week))?[.! ]*$/.test(text))
   );
 }

@@ -1,0 +1,38 @@
+{
+  "accounts": [
+    {
+      "id": "fixture-account",
+      "strategy": "Prepare a bounded evaluation.",
+      "nextFollowUp": "2026-10-20"
+    }
+  ],
+  "plans": [
+    {
+      "id": "fixture-plan",
+      "date": "2026-10-20",
+      "label": "Fixture: prepare meeting brief",
+      "tag": "Northstar Research (fictional)",
+      "done": false,
+      "linkedOpportunityId": "fixture-deal",
+      "linkedAccountName": "Northstar Research (fictional)",
+      "channel": "Desk work",
+      "dismissed": false,
+      "createdAt": "2026-10-16T00:00:00Z",
+      "updatedAt": "2026-10-16T00:00:00Z",
+      "source": "user",
+      "isSample": false
+    }
+  ],
+  "opportunities": [
+    {
+      "id": "fixture-deal",
+      "nextAction": "Confirm demo criteria.",
+      "nextActionDate": "2026-10-20"
+    },
+    {
+      "id": "fixture-decoy",
+      "nextAction": "Unrelated decoy task",
+      "nextActionDate": "2026-10-01"
+    }
+  ]
+}

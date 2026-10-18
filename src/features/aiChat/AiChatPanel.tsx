@@ -37,6 +37,7 @@ import {
   planReferenceContext,
   assertPlanReferenceTargets,
 } from "./planReference";
+import { assistantTranscript } from "./chatHistory";
 import { AiWorkflowPicker } from "./AiWorkflowPicker";
 import { requestsPlanWrite, canAutoSavePlan } from "./planWriteIntent";
 
@@ -313,14 +314,7 @@ export function AiChatPanel({
         );
       if (autoSave)
         reply.answer = "Các mục Plan và kết quả lưu được hiển thị bên dưới.";
-      const content = [
-        reply.answer,
-        reply.draft && `Draft:\n${reply.draft}`,
-        reply.suggestedAction && `Proposed action: ${reply.suggestedAction}`,
-      ]
-        .filter(Boolean)
-        .join("\n\n")
-        .slice(0, 6000);
+      const content = assistantTranscript(reply).slice(0, 6000);
       const reference = planReferenceContext(value, messages);
       if (reference) assertPlanReferenceTargets(reply.actions || [], reference);
       const batch =

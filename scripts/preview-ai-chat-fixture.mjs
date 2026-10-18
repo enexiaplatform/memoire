@@ -75,6 +75,13 @@ const handler = createAiChatHandler({
       missingContext: ["Decision date is not recorded."],
       suggestedQuestions: ["Viết ngắn hơn.", "Which evidence is missing?"],
     };
+    if (question.includes("LONG_DRAFT")) {
+      Object.assign(answer, {
+        answer: "Fictional long agenda for Northstar Research (fictional) · Analyzer.\n" + "Fictional supporting detail. ".repeat(170),
+        draft: "Review criteria on 2026-10-20.\n" + "Preserve the complete task. ".repeat(80) + "\nLast task: send checklist on 2026-10-23.",
+        suggestedAction: "", missingContext: [], suggestedQuestions: [], actions: [],
+      });
+    }
     if (/FIXTURE_ACTIONS|tạo 2 việc plan|add into Plan with details information|add it into the Plan for next week/i.test(question)) {
       Object.assign(answer,{
         answer:'Đề xuất tạo 2 việc Plan và sửa next action của cơ hội Analyzer (dữ liệu giả lập). Nhắn “thực hiện” để áp dụng hoặc “hủy”.',draft:'',suggestedAction:'',missingContext:[],suggestedQuestions:[],

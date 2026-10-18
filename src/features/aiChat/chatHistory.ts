@@ -1,4 +1,4 @@
-import type { ChatMessage } from "./types";
+import type { ChatMessage, ChatReply } from "./types";
 
 /** Receipts can follow an assistant answer; the API requires alternating turns. */
 export function chatHistory(messages: ChatMessage[], question: string) {
@@ -12,4 +12,10 @@ export function chatHistory(messages: ChatMessage[], question: string) {
   }
   if (turns.at(-1)?.role === "user") turns.pop();
   return [...turns.slice(-8), { role: "user" as const, content: question }];
+}
+
+/** The visible answer and editable draft must share one loss-detection boundary. */
+export function assistantTranscript(reply: ChatReply): string {
+  return [reply.answer, reply.draft && `Draft:\n${reply.draft}`, reply.suggestedAction && `Proposed action: ${reply.suggestedAction}`]
+    .filter(Boolean).join("\n\n");
 }
