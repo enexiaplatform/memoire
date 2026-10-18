@@ -256,7 +256,7 @@ export function businessAnswer(
         (a, b) =>
           Number(b.overdue) - Number(a.overdue) || a.date.localeCompare(b.date),
       )
-      .slice(0, 10);
+      .slice(0, drafting ? 3 : 10);
     const visits = items.filter(
       (item) =>
         item.channel === "On-site visit" || item.channel === "Hosted visit",
@@ -265,8 +265,10 @@ export function businessAnswer(
       `Explicitly recorded in-person visit channels in this week: ${visits.length}. ${items.filter((item) => !item.channel).length} items have no recorded channel. When channel is absent, describe a task or proposed visit, never a confirmed meeting. Dates before ${board.rangeStart} are old backlog, not appointments scheduled this week.`,
     );
     for (const item of listed) {
+      const taskLabel = drafting && item.label.length > 120 ? `${item.label.slice(0,120)} … [excerpt]` : item.label;
+      const taskTag = drafting ? item.tag.slice(0,70) : item.tag;
       facts.push(
-        `${item.date}${item.carriedFrom ? ` (originally ${item.carriedFrom}, overdue)` : ""}: ${item.tag || "No account tag"} · ${item.label}; channel ${item.channel || "not recorded"}; ${item.overdue ? "overdue" : "scheduled"}.`,
+        `${item.date}${item.carriedFrom ? ` (originally ${item.carriedFrom}, overdue)` : ""}: ${taskTag || "No account tag"} · ${taskLabel}; channel ${item.channel || "not recorded"}; ${item.overdue ? "overdue" : "scheduled"}.`,
       );
       const linkedId =
         item.linkedOpportunityId ||
@@ -280,7 +282,7 @@ export function businessAnswer(
       limitations.push(...draft.limitations);
     }
     limitations.push(
-      `Up to 10 open items shown, from ${items.length} calculated. A follow-up is not a confirmed face-to-face visit: preserve the recorded channel; label any proposed meeting as a suggestion. Own-obligation money tasks were not loaded into this weekly tool.`,
+      `Up to ${drafting ? 3 : 10} open items shown, from ${items.length} calculated. A follow-up is not a confirmed face-to-face visit: preserve the recorded channel; label any proposed meeting as a suggestion. Own-obligation money tasks were not loaded into this weekly tool.`,
     );
   } else {
     id = "workspace-overview";

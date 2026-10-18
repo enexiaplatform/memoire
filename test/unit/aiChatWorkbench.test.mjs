@@ -945,3 +945,16 @@ test('Plan drafting retrieval keeps overdue candidates even when next week alrea
   assert.equal(ids.length,5);
   assert.match(context.facts.join(' '),/DRAFT CANDIDATE opportunity:lead-backlog/);
 });
+
+
+test('weekly draft with long Vietnamese account names fits without unrelated personal Plan identities',()=>{
+  const name='CÔNG TY CỔ PHẦN DƯỢC PHẨM VÀ NGHIÊN CỨU THỬ NGHIỆM SẢN XUẤT QUỐC TẾ ';
+  const accounts=Array.from({length:3},(_,i)=>({...account,id:`a${i}`,accountName:name+i}));
+  const opportunities=Array.from({length:100},(_,i)=>deal(`d${i}`,{accountId:`a${i%3}`,accountName:name+(i%3),nextAction:'',nextActionDate:'',opportunityName:'Cơ hội kiểm tra hồ sơ '+i}));
+  const records=Array.from({length:3},(_,i)=>({...plan,id:`plan${i}`,label:'Một việc cá nhân dài cần giữ nguyên '.repeat(12),linkedOpportunityId:undefined,linkedAccountName:undefined}));
+  const context=buildChatContext(workspace({accounts,opportunities}),'u1',{kind:'all'},'Chuẩn bị plan tuần sau cho tôi',records);
+  assert.equal(context.sources.filter(source=>source.kind==='opportunity').length,5);
+  assert.equal(context.sources.some(source=>source.kind==='plan'),false);
+  assert.match(context.facts.join(' '),/100 active opportunity\/Lead work candidates/);
+  assert.ok(Buffer.byteLength(JSON.stringify(context))<=7200);
+});

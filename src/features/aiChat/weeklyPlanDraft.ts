@@ -36,14 +36,14 @@ export function weeklyPlanDraft(
     date.setDate(date.getDate() + index);
     const suggestedDate = toLocalDateKey(date);
     facts.push(
-      `DRAFT CANDIDATE opportunity:${row.id}: ${row.accountName} · ${row.opportunityName}; task ${row.nextAction?.trim() ? row.nextAction.slice(0, 450) : "Rà soát cơ hội và xác nhận bước tiếp theo"}; original due ${row.nextActionDate || "not recorded"}; suggested date ${suggestedDate}; channel not recorded. Reason: ${!row.nextAction?.trim() ? "no recorded next action; propose a record review to clarify it, not an invented customer promise" : isValidBusinessDate(row.nextActionDate) ? "unfinished current/backlog next action" : "recorded next action missing a due date"}. Proposed work date only, not a confirmed appointment.`,
+      `DRAFT CANDIDATE opportunity:${row.id}: ${row.opportunityName.slice(0, 100)}; task ${row.nextAction?.trim() ? row.nextAction.slice(0, 450) : "Rà soát cơ hội và xác nhận bước tiếp theo"}; original due ${row.nextActionDate || "not recorded"}; suggested date ${suggestedDate}; channel not recorded. Reason: ${!row.nextAction?.trim() ? "no recorded next action; propose a record review to clarify it, not an invented customer promise" : isValidBusinessDate(row.nextActionDate) ? "unfinished current/backlog next action" : "recorded next action missing a due date"}. Proposed work date only, not a confirmed appointment.`,
     );
   }
   return {
     facts,
     preferredIds: listed.map(row => row.id),
     limitations: [
-      "Draft candidates cover unfinished next actions and proposed record reviews where next actions are missing on active opportunities and working Leads, using current Plan completion/backlog rules. Personal Plan tasks are not automatically moved. Do not recreate work already scheduled next week. If candidates exist, provide a dated draft before asking for preferences; do not request the user to re-enter the supplied task details. If none exist, explain the missing actionable work rather than inventing customer commitments.",
+      "Draft candidates cover unfinished next actions and proposed record reviews where next actions are missing on active opportunities and working Leads, using current Plan completion/backlog rules. Existing manually entered Plan tasks are not automatically moved. Do not recreate work already scheduled next week. If candidates exist, provide a dated draft before asking for preferences; do not request the user to re-enter the supplied task details. If none exist, explain the missing actionable work rather than inventing customer commitments.",
     ],
   };
 }

@@ -232,7 +232,7 @@ export function buildChatContext(
       detail: text(detail, 1000),
     });
   };
-  for (const row of selectedAccounts) {
+  for (const row of draftingPlan ? [] : selectedAccounts) {
     add(
       "account",
       row.id,
@@ -250,7 +250,7 @@ export function buildChatContext(
   }
   // Plan item identities allow rescheduling without inventing a second task.
   for (const row of [...scopedPlan]
-    .filter((row) => !row.derivedKey && !row.dismissed)
+    .filter((row) => !draftingPlan && !row.derivedKey && !row.dismissed)
     .sort(
       (a, b) => score(b.label) - score(a.label) || a.date.localeCompare(b.date),
     )
@@ -368,7 +368,7 @@ export function buildChatContext(
     "Only the displayed context and recent conversation are sent. Unselected records and earlier periods are not available.",
     "Sources are browser snapshots; server checks source ownership, not the freshness of every displayed field. Unsynced or changed records may differ.",
   ];
-  for (const row of selectedAccounts) {
+  for (const row of draftingPlan ? [] : selectedAccounts) {
     facts.push(
       `Account ${row.accountName} has ${deals.filter((deal) => deal.accountId === row.id).length} opportunities in this scope; only selected details are shown. An account name alone does not uniquely identify a deal when this count exceeds one.`,
     );
@@ -388,7 +388,7 @@ export function buildChatContext(
     limitations.push(
       "Opportunities without a confirmed account ID are excluded from this account scope.",
     );
-  if (moneySourcesFit) {
+  if (!draftingPlan && moneySourcesFit) {
     for (const row of quotes)
       add(
         "quote",
@@ -450,7 +450,7 @@ export function buildChatContext(
         "Money could not be calculated consistently for these sources. Open Money to inspect the missing or conflicting records; do not infer a total.",
       );
     }
-  } else
+  } else if (!draftingPlan)
     limitations.push(
       "Linked money evidence exceeds the context budget. No order or collection totals were calculated. Narrow to one opportunity.",
     );

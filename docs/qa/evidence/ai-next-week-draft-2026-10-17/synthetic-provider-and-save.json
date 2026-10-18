@@ -81,5 +81,19 @@
     "passed": true,
     "assertionNote": "Accepted dd/MM/YYYY as well as ISO proposal dates; no provider rerun or answer alteration.",
     "answer": "Dưới đây là bản đề xuất kế hoạch cho tuần tới (19/10/2026 – 25/10/2026):\n\n1. **Rà soát cơ hội và xác nhận bước tiếp theo – Lead**\n   - **Ngày đề xuất**: 19/10/2026\n   - **Kênh**: (chưa ghi) – đề xuất là một cuộc rà soát nội bộ, không phải cuộc hẹn đã xác nhận.\n   - **Mô tả**: Xem lại hồ sơ lead “Fictional Acme · lead” để xác định hành động tiếp theo.\n\n2. **Rà soát cơ hội và xác nhận bước tiếp theo – Deal**\n   - **Ngày đề xuất**: 20/10/2026\n   - **Kênh**: (chưa ghi) – đề xuất là một cuộc rà soát nội bộ, không phải cuộc hẹn đã xác nhận.\n   - **Mô tả**: Xem lại hồ sơ deal “Fictional Acme · deal” để xác định hành động tiếp theo.\n\nĐây là bản đề xuất; chưa có bất kỳ cuộc hẹn nào đã được xác nhận. Nếu bạn đồng ý, hãy cho biết để chuyển sang tạo công việc thực tế.\n"
+  },
+  "fiveCandidateDraft": {
+    "status": 200,
+    "passed": true,
+    "sourceKeys": [
+      "analysis:weekly-actions",
+      "opportunity:d0",
+      "opportunity:d1",
+      "opportunity:d2",
+      "opportunity:d3",
+      "opportunity:d4"
+    ],
+    "actionCount": 0,
+    "answer": "Dưới đây là bản đề xuất kế hoạch công việc cho tuần tới (19/10/2026 – 25/10/2026). Mỗi mục là một công việc cần thực hiện, chưa có lịch hẹn xác nhận nào trong tuần này. Bạn có thể xem lại và quyết định lưu vào lịch làm việc của mình.\n\n1. **Rà soát cơ hội và xác nhận bước tiếp theo** – Opportunity: Fictional quality opportunity 0 (opportunity:d0). Đề xuất ngày: 19/10/2026.\n2. **Rà soát cơ hội và xác nhận bước tiếp theo** – Opportunity: Fictional quality opportunity 1 (opportunity:d1). Đề xuất ngày: 20/10/2026.\n3. **Rà soát cơ hội và xác nhận bước tiếp theo** – Opportunity: Fictional quality opportunity 2 (opportunity:d2). Đề xuất ngày: 21/10/2026.\n4. **Rà soát cơ hội và xác nhận bước tiếp theo** – Opportunity: Fictional quality opportunity 3 (opportunity:d3). Đề xuất ngày: 22/10/2026.\n5. **Rà soát cơ hội và xác nhận bước tiếp theo** – Opportunity: Fictional quality opportunity 4 (opportunity:d4). Đề xuất ngày: 23/10/2026.\n\nNếu bạn muốn lưu các công việc này vào lịch, hãy cho tôi biết. Nếu cần điều chỉnh ngày hoặc thêm thông tin, xin vui lòng cho biết.\n"
   }
 }
