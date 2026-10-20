@@ -6,6 +6,7 @@ import { ExportTab } from './ExportTab';
 import { SyncRecoveryPanel } from './SyncRecoveryPanel';
 import { StoragePanel } from './StoragePanel';
 import { NotificationsPanel } from './NotificationsPanel';
+import { AutomationPanel } from './AutomationPanel';
 import { BoundariesTab } from './BoundariesTab';
 import { PendingCurrencyRate } from '../../components/common/PendingCurrencyRate';
 import { ProfileTab } from './ProfileTab';
@@ -42,10 +43,11 @@ import { TopBar } from '../../components/layout/TopBarSlot';
 import { Panel, StatusChip } from '../../components/ui/daylight';
 import { delay, ghostPillClass } from '../../components/ui/daylightStyles';
 
-export type SettingsCategory = 'workspace' | 'profile' | 'billing' | 'boundaries' | 'export';
+export type SettingsCategory = 'workspace' | 'automations' | 'profile' | 'billing' | 'boundaries' | 'export';
 
 const settingsCategories: { value: SettingsCategory; label: string; purpose: string }[] = [
   { value: 'workspace', label: 'Workspace', purpose: 'Money, notifications, storage' },
+  { value: 'automations', label: 'Automations', purpose: 'Background work and run history' },
   { value: 'profile', label: 'Account', purpose: 'Your name and sign-in' },
   { value: 'billing', label: 'Plan & Billing', purpose: 'What you pay for' },
   { value: 'boundaries', label: 'Data & Privacy', purpose: 'What Memoire is, and is not' },
@@ -196,7 +198,7 @@ export function SettingsPage() {
           */}
         <Panel as="div" className="animate-rise p-5 lg:sticky lg:top-24" style={delay(60)}>
           <h2 className="font-display text-base font-bold text-ink">Settings</h2>
-          <p className="mt-1.5 text-[12.5px] leading-[1.55] text-muted">Five tabs, each owning one decision about your workspace.</p>
+          <p className="mt-1.5 text-[12.5px] leading-[1.55] text-muted">Rules, preferences and data for your workspace.</p>
           <div role="tablist" aria-label="Settings" aria-orientation="vertical" className="mt-3.5 flex flex-col gap-1">
             {settingsCategories.map((category) => (
               <TabButton key={category.value} active={activeTab === category.value} onClick={() => selectTab(category.value)}>
@@ -387,6 +389,7 @@ export function SettingsPage() {
           </div>
         </div>
       </>}
+      {activeTab === 'automations' && <AutomationPanel />}
       {activeTab === 'profile' && <ProfileTab />}
       {activeTab === 'billing' && <BillingTab />}
       {activeTab === 'boundaries' && <BoundariesTab onOpenExport={() => selectTab('export')} />}

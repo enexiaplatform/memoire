@@ -114,6 +114,9 @@ function sanitizePlanRecord(value: unknown): PlanRecord | null {
 
   return {
     id: typeof candidate.id === 'string' && candidate.id ? candidate.id : `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    automation: candidate.automation && ['quote-followup', 'commitment-reminder'].includes(candidate.automation.rule)
+      && ['key', 'sourceId', 'dueDate', 'runId'].every(key => typeof candidate.automation?.[key as keyof NonNullable<PlanRecord['automation']>] === 'string')
+      ? { ...candidate.automation } : undefined,
     date,
     label,
     tag: typeof candidate.tag === 'string' ? candidate.tag.trim() : '',

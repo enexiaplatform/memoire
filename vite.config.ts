@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import { aiChatDevPlugin } from './scripts/lib/ai-chat-dev.mjs'
+import { automationDevPlugin } from './scripts/lib/automation-dev.mjs'
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -10,7 +11,7 @@ export default defineConfig(({ mode }) => {
     if (!process.env[name] && serverEnv[name]) process.env[name] = serverEnv[name];
   }
   return {
-  plugins: [react(), aiChatDevPlugin(serverEnv)],
+  plugins: [react(), aiChatDevPlugin(serverEnv), automationDevPlugin(serverEnv)],
   // Only the application entry is prebundled. Local verification fixtures have
   // their own server; scanning them during every SSR test wastes work.
   optimizeDeps: { entries: ['index.html'] },

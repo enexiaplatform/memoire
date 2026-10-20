@@ -56,6 +56,8 @@ export const exportTables = [
   { table: 'action_outcomes', ownerColumn: 'user_id' },
   { table: 'weekly_commitments', ownerColumn: 'user_id' },
   { table: 'plan_items', ownerColumn: 'user_id' },
+  { table: 'memoire_automation_settings', ownerColumn: 'user_id' },
+  { table: 'memoire_automation_runs', ownerColumn: 'user_id' },
   // Commercial Kernel. An export that omitted these would hand the user a
   // backup missing every promise, every thread and the whole event history -
   // which is most of what the product is for.
@@ -136,6 +138,7 @@ export const exportTables = [
 export const exportOrderColumns: Record<string, readonly string[]> = {
   commercial_targets: ['fiscal_year', 'period'],
   commercial_history_coverage: ['user_id'],
+  memoire_automation_settings: ['user_id'],
 };
 
 function orderColumnsFor(table: string) {

@@ -118,6 +118,8 @@ export type PlanPeriod = 'week' | 'month';
 /** A user-authored plan item, and the completion marks for derived ones. */
 export type PlanRecord = {
   id: string;
+  /** Server-created internal reminder; never a completed commercial action. */
+  automation?: { key: string; rule: 'quote-followup' | 'commitment-reminder'; sourceId: string; dueDate: string; runId: string };
   date: string;
   label: string;
   tag: string;

@@ -63,6 +63,7 @@ import { DealQuickLookDrawer } from './DealQuickLookDrawer';
 import { FollowUpImpactPanel } from './FollowUpImpactPanel';
 import { buildFollowUpImpact } from '../../utils/followUpImpact';
 import { MorningBriefCard } from './MorningBriefCard';
+import { AutomationBriefCard } from './AutomationBriefCard';
 import { BusinessCockpitStrip } from './BusinessCockpitStrip';
 import { MoneyInMotionPanel, TodayMetricCards } from './TodayPicture';
 import { loadPlanItemsForWorkspace, PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
@@ -944,6 +945,7 @@ export function TodayPage({ variant = 'today' }: { variant?: 'today' | 'referenc
       />
 
       {pictureReady && <MorningBriefCard brief={morningBrief} />}
+      {pictureReady && <AutomationBriefCard userId={user?.id} sampleDataActive={sampleDataActive} />}
 
       {loadError ? (
         /* An honest failure, not an empty page. Drawing the command tower with

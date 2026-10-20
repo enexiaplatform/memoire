@@ -14,4 +14,4 @@ await build({root,configFile:false,envDir:false,define:{'import.meta.env':'{}'},
   ssr:resolve(root,'api/_commercial.js'),target:'node22',outDir:output,emptyOutDir:true,
   rolldownOptions:{output:{entryFileNames:'commercial.mjs'}},
 }});
-await writeFile(resolve(output,'commercial.d.mts'),"export { createCommercialHandler } from '../api/_commercial.js';\n");
+await writeFile(resolve(output,'commercial.d.mts'),"export { createCommercialHandler, createAutomationHandler, createAutomationWorker, executeAutomationRun } from '../api/_commercial.js';\n");

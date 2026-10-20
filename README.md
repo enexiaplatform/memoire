@@ -61,6 +61,11 @@ Chat is read-only. Suggested plan items require review and confirmation; drafts 
 
 ## Architecture
 
+Opt-in automation Sprint 1 adds a saved Today brief and internal quote/commitment
+reminders, configured in Settings → Automations. Its worker, migration and
+scheduler requirements are documented in [Automation Sprint 1](docs/architecture/automation-sprint-one.md).
+Background execution requires a deployed scheduler; saving rules alone does not verify one.
+
 The **Commercial Kernel** (`src/domain/commercialKernel/`) holds the canonical vocabulary, the state machines, the application commands, and the deterministic policy engine.
 
 - `types.ts` - the eight canonical concepts, the legal state transitions, and the scope object domain rules take instead of a global current user.

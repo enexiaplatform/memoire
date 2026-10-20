@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Memoire — Đề xuất tự động hóa · 20/10/2026</title>
+  <style>
+    :root{--ink:#192b3b;--muted:#536475;--paper:#f6f5f1;--line:#d9dfdf;--green:#236853;--soft:#e9f1eb;--gold:#8b641f;--white:#fff}
+    *{box-sizing:border-box}html{scroll-behavior:smooth;scroll-padding-top:75px}body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.65 system-ui,-apple-system,"Segoe UI",sans-serif}a{color:#205d92;text-underline-offset:3px}a:hover{color:#123951}a:focus-visible,summary:focus-visible{outline:3px solid #bc801f;outline-offset:4px}h1,h2,h3,p{margin-top:0}h1{font-size:clamp(30px,5vw,53px);line-height:1.15;letter-spacing:-1.5px;max-width:900px;margin-bottom:22px}h2{font-size:29px;line-height:1.25;letter-spacing:-.5px}h3{font-size:19px;line-height:1.4;margin-bottom:9px}p{margin-bottom:16px}strong{font-weight:650}small,.muted{color:var(--muted)}header{background:var(--ink);color:#fff;padding:54px max(24px,calc((100vw - 1120px)/2)) 43px}header p{max-width:860px;color:#d8e4ec;font-size:19px}header .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:2px;color:#bbd3c6;margin-bottom:22px}.tag{display:inline-block;padding:4px 11px;border:1px solid #657482;border-radius:20px;font-size:12px;color:#e2ebf0;margin-right:6px;margin-bottom:6px}nav{position:sticky;top:0;z-index:2;display:flex;gap:10px;flex-wrap:wrap;background:#fff;border-bottom:1px solid var(--line);padding:12px max(20px,calc((100vw - 1120px)/2))}nav a{padding:6px 10px;color:var(--ink);font-size:14px;text-decoration:none;border-radius:5px}nav a:hover{background:var(--soft)}main{max-width:1168px;margin:auto;padding:0 24px 60px}section{padding:38px 0 8px;border-bottom:1px solid var(--line)}section:last-child{border:0}.section-no{display:block;font-size:12px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--green);margin-bottom:9px}.lead{font-size:19px;max-width:960px}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin:22px 0}.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}.card{background:#fff;border:1px solid var(--line);border-radius:9px;padding:22px;min-width:0}.card p:last-child{margin-bottom:0}.pill{font-size:12px;color:var(--green);font-weight:650;margin-bottom:12px;display:block}.callout{background:var(--soft);border-left:4px solid var(--green);padding:19px 22px;margin:22px 0;border-radius:0 6px 6px 0}.callout p:last-child{margin-bottom:0}.table-wrap{overflow:auto;margin:20px 0 25px;background:#fff;border:1px solid var(--line);border-radius:8px}table{border-collapse:collapse;width:100%;min-width:700px;font-size:14px}th,td{text-align:left;vertical-align:top;padding:15px 17px;border-bottom:1px solid var(--line)}th{background:#eaf0ef;font-size:12px;text-transform:uppercase;letter-spacing:.5px}tr:last-child td{border:0}td:first-child{font-weight:650}ul,ol{padding-left:22px;margin:10px 0 16px}li{margin-bottom:7px}.flow{display:flex;gap:8px;align-items:stretch;margin:25px 0;flex-wrap:wrap}.flow div{flex:1;min-width:150px;background:#fff;border:1px solid var(--line);border-top:3px solid var(--green);border-radius:5px;padding:15px;font-size:14px}.flow b{display:block;margin-bottom:6px}.flow span{font-size:12px;color:var(--muted)}details{background:#fff;border:1px solid var(--line);border-radius:7px;padding:17px 20px;margin:13px 0}summary{font-weight:650;cursor:pointer}details[open] summary{margin-bottom:13px}.phase{display:grid;grid-template-columns:105px 1fr;gap:20px;margin:22px 0;padding:24px;background:#fff;border:1px solid var(--line);border-radius:9px}.phase-no{font-size:31px;line-height:1;color:var(--green);font-weight:700}.phase-no small{display:block;font-size:12px;font-weight:500;line-height:1.5;margin-top:8px}.phase ul{margin-bottom:10px}.sources li{margin-bottom:14px;font-size:14px;overflow-wrap:anywhere}.sources a{font-weight:650}.note{font-size:13px;color:var(--muted)}.sample{border:1px dashed #80998d;border-radius:7px;padding:20px;background:#f3f7f2}footer{font-size:13px;color:var(--muted);padding-top:25px}.keyline{font-size:21px;color:var(--green);font-weight:650}
+    @media(max-width:720px){body{font-size:15px}header{padding:35px 22px 27px}header p{font-size:17px}main{padding:0 18px 35px}nav{gap:2px;padding:8px 10px;position:static}nav a{padding:7px;font-size:12px}.grid,.grid.three{grid-template-columns:1fr}.card{padding:18px}h2{font-size:25px}.phase{grid-template-columns:1fr;gap:13px;padding:20px}.phase-no{font-size:22px}.phase-no small{display:inline;margin-left:10px}.flow div{min-width:calc(50% - 8px)}section{padding-top:29px}h1{letter-spacing:-.8px}}
+    @media print{nav{position:static}header{background:#fff;color:var(--ink);padding:20px 0}header p,header .eyebrow,.tag{color:var(--ink)}main{padding:0}body{background:#fff;font-size:11pt}.card,.phase,details{break-inside:avoid}.table-wrap{overflow:visible}table{min-width:0;font-size:9pt}a{color:inherit}h1{font-size:30pt}.grid.three{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+<header>
+  <p class="eyebrow">Memoire · Product strategy · 20 tháng 10, 2026</p>
+  <h1>Tự động tiếp nối công việc,<br>từ trao đổi đến thu tiền.</h1>
+  <p>Mục tiêu: người dùng ghi nhận ít hơn, công việc được chuẩn bị và thực hiện đúng lúc, các ngoại lệ cần quyết định xuất hiện rõ ràng.</p>
+  <span class="tag">Đề xuất để thảo luận</span><span class="tag">Dựa trên mã nguồn hiện tại</span><span class="tag">Chưa triển khai</span>
+</header>
+<nav aria-label="Các phần kế hoạch">
+  <a href="#overview">01 · Tổng quan</a><a href="#competitors">02 · Thị trường</a><a href="#guidance">03 · Lộ trình &amp; cách làm</a><a href="#sources">04 · Nguồn &amp; giới hạn</a>
+</nav>
+<main>
+<section id="overview">
+  <span class="section-no">01 · Overview</span>
+  <h2>Đề xuất: biến các năng lực sẵn có thành luồng tự chạy</h2>
+  <p class="lead">Memoire đã có ngữ cảnh thương mại, cam kết, quy tắc phát hiện rủi ro và một số thao tác qua chat. Bước phát triển đáng làm nhất là kết nối <strong>nguồn thông tin → điều kiện kích hoạt → công việc → kết quả được xác nhận</strong>.</p>
+  <div class="grid">
+    <article class="card"><span class="pill">NỀN ĐÃ CÓ · xác nhận bằng đọc mã nguồn</span><h3>Hiểu công việc và hỗ trợ thao tác</h3><p>Commercial Thread, Commitment Ledger, Today và policy engine đã cung cấp ngữ cảnh và khuyến nghị. Chat có các thao tác tạo Plan, sửa Plan, sửa Account và sửa Opportunity theo danh sách trường cho phép. Tạo Plan có thể lưu trực tiếp khi có lệnh rõ ràng; các chỉnh sửa hiện có bước xem xét.</p></article>
+    <article class="card"><span class="pill">KHOẢNG TRỐNG · cần phát triển</span><h3>Đầu vào liên tục và thực thi bền vững</h3><p>Connector đang nhận bản xuất file để xem xét. Agent SDK chủ yếu đọc, đề xuất và nhận quan sát gốc theo quyền giới hạn. Có mã gửi digest và webhook, nhưng các phần đó chưa cấu thành một bộ thực thi workflow tổng quát. Chưa kiểm chứng cấu hình hay vận hành Production trong lần nghiên cứu này.</p></article>
+  </div>
+  <div class="callout"><p><strong>Luận điểm sản phẩm:</strong> “Memoire tự theo dõi điều đang diễn ra, chuẩn bị bước tiếp theo và thực hiện những việc bạn đã giao quyền; đưa bạn vào đúng lúc cần quyết định.” Đây là hướng phát triển đề xuất, chưa phải năng lực hiện tại.</p></div>
+  <h3>Một ngày sử dụng mong muốn</h3>
+  <div class="flow" aria-label="Luồng vận hành mục tiêu">
+    <div><b>1. Nhận thông tin</b><span>Email, lịch, ghi chú hoặc file được cho phép.</span></div>
+    <div><b>2. Nhận diện</b><span>Đúng khách, đúng cơ hội, đúng cam kết; giữ nguồn gốc.</span></div>
+    <div><b>3. Chuẩn bị</b><span>Tóm tắt, việc cần làm, nội dung và thời điểm.</span></div>
+    <div><b>4. Thực hiện</b><span>Theo quy tắc và phạm vi quyền người dùng đã bật.</span></div>
+    <div><b>5. Theo dõi</b><span>Đã lưu, đã gửi, chưa rõ kết quả, phản hồi hoặc cần xử lý.</span></div>
+  </div>
+  <div class="sample"><strong>Ví dụ giả định:</strong> Sau khi gửi báo giá cho khách A, Memoire theo dõi mốc phản hồi đã thống nhất. Đến hạn mà chưa có phản hồi trong các nguồn đã kết nối, app chuẩn bị follow-up và đặt việc vào Plan theo quy tắc đã bật. Nếu khách trả lời hoặc dời cuộc hẹn, bước follow-up đang chờ được đánh giá lại. Khi khách nói “đã chuyển khoản”, app đưa ra việc đối chiếu thanh toán; trạng thái thu tiền chỉ thay đổi sau xác nhận từ nguồn có thẩm quyền.</div>
+</section>
+<section id="competitors">
+  <span class="section-no">02 · Competitors</span>
+  <h2>Những gì nên học từ thị trường</h2>
+  <p>Đối chiếu bốn sản phẩm có chức năng giao nhau với Memoire. Các mô tả dưới đây là tính năng được nhà cung cấp công bố; chưa có thử nghiệm tài khoản trả phí hay so sánh chất lượng thực tế.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Sản phẩm</th><th>Năng lực công bố đã đối chiếu</th><th>Bài học cho Memoire</th><th>Giới hạn kết luận</th></tr></thead>
+    <tbody>
+      <tr><td>Attio</td><td>Workflow theo sự kiện, lịch hoặc webhook; mô tả mục tiêu bằng ngôn ngữ tự nhiên để tạo workflow; có xem lịch sử từng lần chạy. <a href="https://attio.com/help/reference/automations/workflows/overview-of-workflows">Nguồn</a></td><td>Người dùng bật một luồng công việc và kiểm tra được nó đã làm gì.</td><td>Chưa đo độ tin cậy hay chi phí theo khối lượng thực tế.</td></tr>
+      <tr><td>Pipedrive</td><td>Tự tạo hoạt động theo giai đoạn deal, gửi email và trì hoãn bước trong workflow. <a href="https://www.pipedrive.com/en/features/workflow-automation">Nguồn</a></td><td>Luồng nhỏ theo sự kiện có thể giảm đáng kể thao tác lặp lại.</td><td>Tính năng công bố không chứng minh hiệu quả trong chu kỳ B2B của Memoire.</td></tr>
+      <tr><td>folk</td><td>Research, Recap và Follow-up Assistant; theo dõi tương tác để gợi ý follow-up. <a href="https://www.folk.app/sales-ai">Nguồn</a></td><td>Ưu tiên những trợ lý gắn với một công việc cụ thể, dễ thấy giá trị.</td><td>Phạm vi dữ liệu đọc được phụ thuộc nguồn kết nối và quyền.</td></tr>
+      <tr><td>HubSpot</td><td>Prospecting Agent theo dõi tín hiệu, tìm contact và chuẩn bị outreach dựa trên CRM; có chế độ review hoặc tự gửi. <a href="https://www.hubspot.com/products/sales/ai-prospecting-agent">Nguồn</a></td><td>Cho phép tăng mức tự chủ khi quy trình đã chứng minh chất lượng.</td><td>Các tính năng có yêu cầu quyền, gói và credits; chưa phân tích tổng chi phí.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Áp lực cạnh tranh và cơ hội khác biệt</h3>
+  <p><strong>Áp lực rõ nhất:</strong> các sản phẩm trên đã công bố workflow tự thực hiện công việc, nên hỗ trợ hỏi đáp và viết nội dung đơn thuần sẽ khó tạo khác biệt. Memoire cần chứng minh một chuỗi công việc được tiếp nối qua nhiều ngày.</p>
+  <p><strong>Hướng khác biệt cần kiểm nghiệm:</strong> theo sát cam kết ba phía — người bán, khách hàng và nội bộ — xuyên suốt đánh giá kỹ thuật, báo giá, PO, giao hàng và thu tiền. Đây là giả thuyết phù hợp với kiến trúc hiện có; chưa có bằng chứng Memoire làm tốt hơn các sản phẩm trên.</p>
+</section>
+<section id="guidance">
+  <span class="section-no">03 · Guidance</span>
+  <h2>Ưu tiên tám luồng có đầu ra rõ ràng</h2>
+  <p>Bắt đầu bằng bộ mẫu bật/tắt và chỉnh điều kiện. Người dùng có thể nói “báo giá quá hạn phản hồi hai ngày thì chuẩn bị follow-up”; app hiển thị quy tắc để họ bật. Bộ dựng workflow kéo-thả đầy đủ chỉ đáng đầu tư sau khi các mẫu thực tế cho thấy nhu cầu.</p>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Ưu tiên</th><th>Luồng &amp; điều kiện</th><th>Kết quả mong muốn</th><th>Phụ thuộc chính</th></tr></thead>
+    <tbody>
+      <tr><td>P0 · Today hằng ngày</td><td>Đến giờ đã chọn hoặc có thay đổi đáng kể.</td><td>Tổng hợp việc quan trọng, việc mới phát sinh và việc cần quyết định; giới hạn số thông báo.</td><td>Quy tắc hiện có + lịch chạy phía máy chủ; xác minh dữ liệu đã đồng bộ.</td></tr>
+      <tr><td>P0 · Báo giá → follow-up</td><td>Đến mốc phản hồi đã ghi nhận, chưa có phản hồi trong nguồn đã kết nối.</td><td>Tạo một việc follow-up có liên kết và bản nháp; điều chỉnh chuỗi khi có phản hồi.</td><td>Trước mắt dùng dữ liệu app; nhận biết phản hồi cần email connector.</td></tr>
+      <tr><td>P0 · Cam kết → hành động</td><td>Cam kết sắp đến hạn hoặc quá hạn, chưa có việc tương ứng.</td><td>Tự tạo nhắc việc nội bộ theo quy tắc đã bật; nêu người đang được chờ và tác động.</td><td>Ledger + Plan; tránh tạo thêm task cho việc đã được hiển thị hoặc xử lý.</td></tr>
+      <tr><td>P1 · Cuộc hẹn → chuẩn bị</td><td>Trước một cuộc hẹn đã xác nhận.</td><td>Bản tóm tắt khách, tiến triển, vướng mắc và câu hỏi cần làm rõ.</td><td>Một calendar connector; phân biệt cuộc hẹn thật với ngày Plan đề xuất.</td></tr>
+      <tr><td>P1 · Trao đổi → bản cập nhật</td><td>Có email, ghi chú hoặc transcript mới được cho phép.</td><td>Trích xuất đề xuất cập nhật và cam kết kèm đoạn nguồn; xử lý chỗ không rõ trong một lượt.</td><td>Capture + connector; ghép đúng danh tính và giữ nguyên văn nguồn.</td></tr>
+      <tr><td>P1 · Khoản phải thu → đối chiếu</td><td>Sắp đến hạn, quá hạn hoặc có thông báo thanh toán.</td><td>Nhắc đối chiếu, chuẩn bị nội dung nhắc tiền; dừng chuỗi khi thanh toán đã được xác nhận.</td><td>Money engine; ngày, tiền tệ và thanh toán từ nguồn hợp lệ.</td></tr>
+      <tr><td>P2 · Kết thúc việc → bước kế tiếp</td><td>Hoàn thành một mốc có quy trình đã định nghĩa.</td><td>Đề xuất hoặc tạo bước nội bộ tiếp theo theo mẫu đã bật; giữ lịch sử điều chỉnh.</td><td>Mẫu quy trình theo sản phẩm/chu kỳ bán; lệnh thay đổi trạng thái chuẩn.</td></tr>
+      <tr><td>P2 · Review tuần → kế hoạch</td><td>Đến lịch review và có dữ liệu thay đổi.</td><td>Tổng hợp chênh lệch, việc trễ, lý do ghi nhận và đề xuất Plan tuần sau; ghi nhận lợi ích khi người dùng xác nhận.</td><td>Review + Plan hiện có; dữ liệu đủ và có phạm vi rõ.</td></tr>
+    </tbody>
+  </table></div>
+  <h3>Ba mức tự chủ, cấu hình theo từng luồng</h3>
+  <div class="grid three">
+    <article class="card"><span class="pill">MỨC 1 · TỰ CHUẨN BỊ</span><h3>Thu nhận và soạn sẵn</h3><p>Tóm tắt, tìm việc bị quên, chuẩn bị email, đề xuất cập nhật. Hiển thị nguồn và điều chưa chắc.</p></article>
+    <article class="card"><span class="pill">MỨC 2 · TỰ LÀM THEO QUY TẮC</span><h3>Giao quyền một lần</h3><p>Tự nhận dữ liệu trong phạm vi kết nối, tạo nhắc việc và Plan nội bộ phù hợp. Có giới hạn, nhật ký và nút tạm dừng.</p></article>
+    <article class="card"><span class="pill">MỨC 3 · TỰ THỰC HIỆN CÓ GIỚI HẠN</span><h3>Mở sau thử nghiệm</h3><p>Có thể tự gửi loại follow-up đã được cho phép, với đúng nhóm khách, mẫu, giờ và giới hạn. Giá, chiết khấu, xác nhận tiền hay Won/Lost dùng quyền và luồng riêng.</p></article>
+  </div>
+  <p class="note">Các mức trên là quyền mới được đề xuất. Consent gửi dữ liệu AI theo từng lượt hiện tại không tự trở thành consent chạy AI nền. Bật chế độ nền cần giải thích riêng dữ liệu được đọc/gửi, lịch chạy, ngân sách và cách thu hồi quyền.</p>
+  <h3>Lộ trình bốn giai đoạn</h3>
+  <p>Khung tham khảo khoảng <strong>6–8 tuần phát triển</strong> nếu có một người tập trung, một nhà cung cấp email/lịch và phạm vi nhỏ. Đây là ước lượng lập kế hoạch, cần hiệu chỉnh sau thiết kế chi tiết; thời gian duyệt quyền nhà cung cấp có thể kéo dài thêm.</p>
+  <article class="phase"><div class="phase-no">01<small>1–2 tuần</small></div><div><h3>Chạy được công việc nội bộ khi app đóng</h3><p>Rà inventory dữ liệu và hạ tầng lịch chạy; tái sử dụng quy tắc, Plan và cơ chế digest hiện có. Làm Today digest, follow-up theo hạn và nhắc cam kết. Mỗi luồng có phạm vi, múi giờ, giới hạn, trạng thái và lịch sử chạy.</p><p><strong>Nghiệm thu:</strong> chạy được khi không mở trình duyệt; một sự kiện chạy lại không tạo trùng; khởi động lại không mất việc; task đã chỉnh tay được giữ; không đủ hoặc chưa đồng bộ dữ liệu phải hiện giới hạn. Chưa cần AI nền cho các tính toán này.</p></div></article>
+  <article class="phase"><div class="phase-no">02<small>2–3 tuần</small></div><div><h3>Kết nối một hệ email và lịch dùng hằng ngày</h3><p>Chọn Gmail/Google Calendar hoặc Outlook theo nhu cầu thực tế. Nhận dữ liệu tăng dần, giới hạn thư mục/nguồn, giữ cursor và thời điểm đồng bộ; tạo bản chuẩn bị họp và cập nhật đề xuất từ trao đổi.</p><p><strong>Nghiệm thu:</strong> kết nối/thu hồi quyền, token hết hạn, phản hồi muộn, sự kiện đổi lịch và thiếu quyền đều có trạng thái rõ; không ghép bản ghi chỉ vì tên gần giống. Brand vẫn dùng danh tính catalog hoặc Others với nguyên văn.</p></div></article>
+  <article class="phase"><div class="phase-no">03<small>1–2 tuần</small></div><div><h3>Đóng vòng follow-up và nhắc khoản phải thu</h3><p>Chuỗi có điều kiện dừng theo phản hồi, cuộc hẹn mới, trạng thái thương mại hoặc xác nhận thanh toán. Khởi đầu bằng bản nháp; mở gửi tự động cho phạm vi nhỏ đã bật quyền và thử nghiệm đạt yêu cầu.</p><p><strong>Nghiệm thu:</strong> kiểm tra lại nguồn và quyền trước khi gửi; có hạn mức, giờ yên lặng, tạm dừng và xử lý kết quả chưa rõ. Provider báo đã nhận thư khác với khách đã đọc hoặc đã đồng ý.</p></div></article>
+  <article class="phase"><div class="phase-no">04<small>1 tuần + pilot</small></div><div><h3>Tạo quy tắc bằng lời và đo giá trị</h3><p>Cho người dùng mô tả nhu cầu để tạo quy tắc từ những hành động đã hỗ trợ; xem trước trên dữ liệu cũ, chạy thử không tác động, rồi bật. Kết quả review giúp người dùng tinh chỉnh mẫu và ngưỡng.</p><p><strong>Nghiệm thu:</strong> hiểu được “khi nào chạy, làm gì, tác động ai, dừng khi nào”; thay đổi quy tắc có phiên bản. AI không tự tăng phạm vi quyền, giá trị giao dịch hoặc ngân sách.</p></div></article>
+  <details><summary>Nền kỹ thuật cần chốt trước Sprint 1</summary>
+    <ul>
+      <li><strong>Tách quy tắc và thực thi:</strong> policy engine tiếp tục chỉ tính toán. Một lớp orchestration đọc sự kiện, kiểm tra quyền đã bật rồi gọi các command chuẩn; không cho AI ghi trực tiếp vào cơ sở dữ liệu.</li>
+      <li><strong>Inventory trước schema:</strong> đối chiếu Event, Plan, history, webhook queue và digest hiện có. Chỉ bổ sung lưu trữ cần thiết cho cấu hình, lần chạy và trạng thái sau khi xác nhận phần nào có thể tái sử dụng; không tạo bảng trùng chức năng.</li>
+      <li><strong>Đúng người và đúng nguồn:</strong> liên kết theo ID, namespace và version; RLS/owner/sample được kiểm tra phía máy chủ. Dữ liệu ngoài vẫn là quan sát trước khi được chấp nhận thành thông tin thương mại.</li>
+      <li><strong>Chạy bền vững:</strong> lịch theo múi giờ, hàng đợi, lease, khóa chống trùng bền vững, retry có giới hạn và xử lý cạnh tranh khi nhiều worker nhận cùng việc. Kết quả có các trạng thái hoàn thành, một phần, thất bại, hủy hoặc chưa xác định.</li>
+      <li><strong>Gửi ra ngoài:</strong> dùng outbox và khóa chống gửi trùng; chỉ retry khi biết an toàn. Timeout sau khi gửi phải đối chiếu nhà cung cấp hoặc giữ “chưa xác định”, không mặc định gửi lại. Việc đã được nhà cung cấp nhận không thể cam kết thu hồi.</li>
+      <li><strong>Đầu vào và quyền nền:</strong> thông tin email là dữ liệu, không phải chỉ thị cấp quyền cho agent. Token kết nối được quản lý phía máy chủ; thu hồi quyền chặn lần chạy tiếp theo và kiểm tra lại trước dispatch.</li>
+      <li><strong>Chi phí và tính toán:</strong> tiền, thời hạn, chống trùng, điều kiện và ưu tiên dùng engine hiện có. AI tùy chọn cho đọc ngôn ngữ/tóm tắt/soạn nội dung, chỉ xử lý phần mới và có ngân sách. Giới hạn Groq Free Plan hiện tại cần được thử tải trước khi dùng chạy nền.</li>
+      <li><strong>Dữ liệu khi app đóng:</strong> job chỉ được hành động dựa trên dữ liệu cloud đã xác nhận. Thay đổi còn ở trình duyệt chưa sync là giới hạn phải hiển thị và cần chặn hành động khi dữ liệu không đủ mới.</li>
+    </ul>
+  </details>
+  <details><summary>Trải nghiệm trong các màn hình hiện có</summary><p><strong>Settings → Automations:</strong> nguồn kết nối, các mẫu, mức tự chủ, phạm vi, giới hạn, lịch chạy và nhật ký. <strong>Today:</strong> “Đã làm / Chờ bạn / Cần chú ý”, chỉ hiện điều có ý nghĩa. <strong>Account &amp; Opportunity:</strong> chuỗi công việc và nguồn liên quan. <strong>Plan:</strong> task tự tạo được đánh dấu, có sửa/dừng. <strong>Review:</strong> xem hiệu quả và chỉnh quy tắc. Giữ mười điểm đến đã được duyệt trong checkout hiện tại.</p></details>
+  <h3>Đo điều người dùng nhận được</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>Chỉ số</th><th>Cách đo</th><th>Tiêu chí pilot đề xuất</th></tr></thead>
+    <tbody>
+      <tr><td>Thời gian hành chính</td><td>So thời gian ghi nhận, lên Plan và chuẩn bị follow-up trên cùng loại công việc trước/sau.</td><td>Thử mục tiêu giảm 50% sau khi có baseline; chưa phải cam kết hiệu quả.</td></tr>
+      <tr><td>Chất lượng dữ liệu</td><td>Tỷ lệ trích xuất/liên kết được người dùng giữ nguyên, chỉnh hoặc từ chối.</td><td>Quyết định mức tự chủ theo từng loại trường và độ tin cậy đã quan sát.</td></tr>
+      <tr><td>Độ tin cậy thực thi</td><td>Việc chạy đúng hạn, bị trùng, bị bỏ sót, chưa rõ kết quả và lỗi được phục hồi.</td><td>Bộ tình huống retry/restart/đổi quyền/đổi chủ phải đạt; quan sát pilot trước mở rộng.</td></tr>
+      <tr><td>Giá trị thương mại</td><td>Follow-up/cam kết được xử lý và phản hồi “Saved by Memoire”.</td><td>Tách số việc tự động khỏi lợi ích do người dùng xác nhận; không suy ra doanh thu tăng chỉ từ số email gửi.</td></tr>
+    </tbody>
+  </table></div>
+  <div class="callout"><p class="keyline">Bản đầu nên chứng minh: “Tôi đóng Memoire, công việc vẫn được theo dõi và chuẩn bị đúng lúc.”</p><p>Bước tiếp theo phù hợp là đặc tả Sprint 1 cho ba luồng P0: xác định dữ liệu, điều kiện kích hoạt/dừng, hành động được phép, UX và các tình huống nghiệm thu. Sau đó mới quyết định thay đổi schema và mở rộng kết nối.</p></div>
+</section>
+<section id="sources">
+  <span class="section-no">04 · Sources</span>
+  <h2>Căn cứ và giới hạn</h2>
+  <p><strong>Phạm vi:</strong> cá nhân bán hàng B2B theo định vị hiện tại. Căn cứ gồm tài liệu và mã nguồn trong checkout ngày 20/10/2026, cùng tài liệu công khai chính thức của nhà cung cấp. Không đọc email, CRM cá nhân hay dữ liệu khách hàng để lập đề xuất.</p>
+  <ol class="sources">
+    <li><a href="../../README.md">Memoire README</a> và <a href="../positioning.md">Positioning</a>: định vị, operating loop, phạm vi AI và mười điểm đến. Các tuyên bố phát hành cũ trong tài liệu không được xem là kiểm chứng Production của nghiên cứu này.</li>
+    <li><a href="../../src/domain/commercialKernel/policyEngine.ts">Policy engine</a>: khuyến nghị có lý do và nguồn; quy tắc chỉ tính toán.</li>
+    <li><a href="../../src/services/commercialKernel/connectorAdapters.ts">Connector adapters</a> và <a href="../../src/features/dailyCapture/ConnectorExportIntake.tsx">Connector intake</a>: nhận file, xem xét quan sát, chưa kết nối dịch vụ trực tiếp.</li>
+    <li><a href="../../packages/memoire-sdk/src/agent-runtime.ts">Agent runtime</a> và <a href="../architecture/governed-agent-runtime.md">runtime boundary</a>: đề xuất và nhận quan sát theo quyền giới hạn; chưa có bộ thực thi hành động thương mại tổng quát.</li>
+    <li><a href="../../shared/aiChatActions.js">Chat actions</a>, <a href="../../src/features/aiChat/actionBatch.ts">action batch</a> và <a href="../../src/features/aiChat/planWriteIntent.ts">Plan write intent</a>: bốn loại thao tác và cơ chế xác nhận; <a href="../qa/ai-audit-2026-10-18.md">audit 18/10</a> cung cấp bối cảnh kiểm thử trước đây, không thay cho chạy lại hôm nay.</li>
+    <li><a href="../../api/send-digests.ts">Digest endpoint</a>, <a href="../../api/_webhooks.js">webhook implementation</a> và <a href="../../vercel.json">deployment configuration</a>: có các thành phần có thể tái sử dụng. Không kết luận scheduler hay delivery đã được cấu hình hoặc đang hoạt động trên Production.</li>
+    <li><a href="https://attio.com/help/reference/automations/workflows/overview-of-workflows">Attio — Overview of workflows</a>: trigger, bước hành động, tạo bằng ngôn ngữ tự nhiên và run viewer.</li>
+    <li><a href="https://www.pipedrive.com/en/features/workflow-automation">Pipedrive — Workflow automation</a>: tự tạo hoạt động, email và delay.</li>
+    <li><a href="https://www.folk.app/sales-ai">folk — Sales AI</a> và <a href="https://www.folk.app/changelog/ai-follow-ups-are-getting-more-powerful">Follow-up release note</a>: trợ lý theo công việc và phát hiện follow-up từ tương tác.</li>
+    <li><a href="https://www.hubspot.com/products/sales/ai-prospecting-agent">HubSpot — Prospecting Agent</a> và <a href="https://knowledge.hubspot.com/prospecting/use-the-prospecting-agent">setup documentation</a>: research, tín hiệu và outreach; lựa chọn review/tự gửi, quyền và credits.</li>
+  </ol>
+  <p class="note"><strong>Nguồn dùng:</strong> tài liệu/mã nguồn sản phẩm và web chính thức. CRM khách hàng, meeting transcripts, internal messaging và sales intelligence không cần cho phạm vi chiến lược này. Chưa có đo thời gian thao tác thực, kiểm thử workflow đối thủ hay đánh giá chất lượng email; ROI và lợi thế cạnh tranh là giả thuyết cần pilot. Chưa thay đổi ứng dụng, schema, quyền, lịch chạy, kết nối hay dữ liệu Production.</p>
+</section>
+<footer>Đề xuất ngày 20/10/2026 · Mốc thời gian theo Asia/Saigon · Tài liệu lập kế hoạch, không phải bằng chứng đã triển khai.</footer>
+</main>
+</body>
+</html>
