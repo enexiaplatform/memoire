@@ -50,17 +50,17 @@ identity merges, access changes or commercial outcomes.
 
 ### D. Verification and rollout
 
-- [ ] Test the actual migrated schema/RPCs, owner isolation, cycle/day/week
+- [x] Test the actual migrated schema/RPCs, owner isolation, cycle/day/week
   boundaries, races, pause, uncertainty, caps, cross-rule dedupe and tombstones.
-- [ ] Match money/FX and report/dashboard results to canonical engines; preserve
+- [x] Match money/FX and report/dashboard results to canonical engines; preserve
   missing values and source/definition versions.
-- [ ] Exercise Settings and output surfaces on desktop and mobile.
-- [ ] Run the full canonical `npm run check` and relevant focused regressions.
-- [ ] Capture fresh shared-target ledger/catalog, external DB/roles backup,
+- [x] Exercise Settings and output surfaces on desktop and mobile.
+- [x] Run the full canonical `npm run check` and relevant focused regressions.
+- [x] Capture fresh shared-target ledger/catalog, external DB/roles backup,
   isolated restore rehearsal and exact migration dry run before Production DDL.
-- [ ] Publish the verified source, wait for exact-SHA CI and Vercel READY, then
+- [x] Publish the verified source, wait for exact-SHA CI and Vercel READY, then
   verify authenticated API/UI and an actual scheduled isolated-QA run.
-- [ ] Remove QA records and retain a secret-free release receipt.
+- [x] Remove QA records and retain a secret-free release receipt.
 
 ## Acceptance boundaries
 
@@ -72,15 +72,25 @@ and successful scheduled execution are separate states. No account is enabled by
 migration or delivery. This checklist is updated from verification evidence,
 never from intent or the existence of code alone.
 
-## Current checkpoint
+## Completed checkpoint
 
-Implementation completed from source commit `31f454e`; release verification in progress.
+Implemented from `31f454e`; functional Production acceptance is on `ac29871`.
 
-Local verification: canonical check passed, with additional automation regressions
-covering actual SQL, daily caps, missing-money preservation and destination links.
-Controls were exercised at 1440×900 and 390×900 using isolated fictional data.
-Fresh backup restored 188 tables / 18,078 rows, with 709 exact checks re-applied;
-Production apply and authenticated scheduled acceptance remain pending.
-The previous live release has three supported workflows and a 15-minute Cron,
-while execution is still limited to one completed owner/day run. The comprehensive
-review and earlier deployment records remain separate historical artifacts.
+Exact-source CI passed 2,324 tests and the full contract suite. Automation has
+31 focused regression cases. Fresh external backups, restore rehearsals and exact
+dry runs preceded three forward migrations. Large-workspace snapshots and direct
+Production owner isolation were checked.
+
+Scheduled fictional QA created 9 Plan items across all 7 rules and saved 11
+outputs. A later regular 15-minute cycle refreshed the outputs, created no
+duplicates and kept the same 9 items. Browser report, saved result and Dashboard
+agreed on USD 200 outstanding and USD 30 confirmed overdue. A full authenticated
+export included the 11 outputs and 9 Plan items without warnings.
+
+Controls were exercised at 1440×900 and 390×900. Authenticated Production Today,
+Reports and Dashboards were exercised, including a mobile prepared-output view.
+QA cleanup and final state are recorded in the deployment receipt. Preparation
+does not accept evidence, post payments, qualify Leads or complete work.
+
+See `docs/deployment/automation-whole-product-production-2026-10-21.md` for the
+release receipt, supported scope and verification limits.

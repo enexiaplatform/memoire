@@ -3,6 +3,8 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.ts';
 import { hasLocalSampleData } from '../../utils/dataMode.ts';
 import { automationClient, AUTOMATION_UPDATED_EVENT, type AutomationOutput } from '../../services/automationClient.ts';
+import { reportMetricDefinitions, type ReportMetric } from '../../domain/reports/reportDefinition.ts';
+import { measureText } from '../../domain/dashboards/dashboardEngine.ts';
 
 const safeHref = (value: unknown) => typeof value === 'string' && /^\/app\/[a-z][a-z0-9-]*(?:\?[^\r\n]*)?$/.test(value) ? value : null;
 function SourceItems({ value }: {value: any}) {
@@ -32,10 +34,10 @@ export function PreparedOutputView({ payload }: {payload: Record<string, any>}) 
     {payload.reuseCandidates?.length > 0 && <div><strong>Possible asset reuse · review relevance</strong><SourceItems value={{items:payload.reuseCandidates,count:payload.reuseCandidates.length}} /></div>}
     {result?.totals && <div><strong>{result.rows.length} matching row(s) · definition version {payload.definitionVersion}</strong>
       <dl className="mt-2 grid grid-cols-2 gap-2">{Object.entries(result.totals).map(([key, metric]: [string, any]) => <div key={key}>
-        <dt>{key}</dt><dd className="font-semibold text-ink">{metric.value === null ? 'Unavailable' : metric.value}{metric.missing ? ` · ${metric.missing} missing` : ''}</dd></div>)}</dl>
+        <dt>{reportMetricDefinitions[key as ReportMetric]?.label || 'Measure'}</dt><dd className="font-semibold text-ink">{measureText(key as ReportMetric,metric)}</dd></div>)}</dl>
       <p className="mt-2 text-xs">{result.grain}</p></div>}
     {result?.results && <ul>{result.results.map((row: any) => <li key={row.reportId}>
-      <Link className="underline text-brand-blue" to={`/app/reports?report=${encodeURIComponent(row.reportId)}`}>Report {row.reportId}</Link> · version {row.version ?? 'missing'} · {row.error || `${row.run?.rows.length || 0} matching rows`}</li>)}</ul>}
+      <Link className="underline text-brand-blue" to={`/app/reports?report=${encodeURIComponent(row.reportId)}`}>{row.run?.definition.name || 'Source report'}</Link> · version {row.version ?? 'missing'} · {row.error || `${row.run?.rows.length || 0} matching rows`}</li>)}</ul>}
     {payload.sourceCounts && <p>{Object.values(payload.sourceCounts as Record<string, number>).reduce((sum, n) => sum + n, 0)} cloud source row(s) checked. Latest cloud touch: {payload.latestCloudActivity || 'None recorded'}.</p>}
     <p className="text-xs">{payload.limitations?.join(' ')}</p>
     {payload.money && <p className="text-xs">Money basis: {payload.money.currency} · planning FX dated {payload.money.ratesAsOf}.</p>}
@@ -77,7 +79,7 @@ export function AutomationWorkspaceCard() {
     <summary className="cursor-pointer text-sm font-semibold text-ink">Prepared for review · {outputs.length} saved output(s){!state.enabled ? ' · rules paused' : ''}</summary>
     <p className="mt-2 text-xs text-muted">Saved cloud snapshots. Check the date and sources before acting. <Link className="underline text-brand-blue" to="/app/settings?tab=automations">Manage rules</Link></p>
     <ul className="mt-3 grid gap-2 sm:grid-cols-2">{outputs.slice(0, 30).map(row => <li key={row.id}><button className="w-full rounded-lg border border-line p-3 text-left text-sm text-ink" onClick={() => void open(row)}>
-      <strong className="block break-words">{row.title}</strong><span className="text-xs text-muted">{row.period} · prepared {new Date(row.prepared_at).toLocaleString('en')}</span></button></li>)}</ul>
+      <strong className="block break-words">{row.title}</strong><span className="break-words text-xs text-muted">{row.period.slice(0,10)} · prepared {new Date(row.prepared_at).toLocaleString('en')}</span></button></li>)}</ul>
     {error && <p role="alert" className="mt-3 text-sm text-red-800">{error}</p>}
     {selected?.payload && <section className="mt-4 rounded-lg border border-line p-3"><h3 className="font-semibold text-ink">{selected.title}</h3>
       <PreparedOutputView payload={selected.payload} /><Link className="mt-3 inline-block text-sm text-brand-blue underline" to={safeHref(selected.href) || '/app/today'}>Open working page</Link>
