@@ -1,5 +1,5 @@
 import { Outlet, useLocation } from 'react-router-dom';
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { Sidebar } from './Sidebar';
 import { TopNav } from './TopNav';
 import { MobileTabBar } from './MobileTabBar';
@@ -17,6 +17,7 @@ import { PageContainer } from './PageFrame';
 import { RouteErrorBoundary } from '../common/RouteErrorBoundary';
 import { TopBarProvider } from './TopBarSlot';
 import { MemoireChat } from '../../features/aiChat/MemoireChat';
+const AutomationWorkspaceCard = lazy(() => import('../../features/settings/PreparedAutomationOutputs.tsx').then(module => ({default: module.AutomationWorkspaceCard})));
 
 export function AppShell() {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
@@ -136,6 +137,7 @@ export function AppShell() {
               leave the way out of it working. */}
           <RouteErrorBoundary key={pathname} route={pathname}>
             <Suspense fallback={<AppContentLoading />}>
+              <AutomationWorkspaceCard key={user?.id || 'local'} />
               <Outlet />
             </Suspense>
           </RouteErrorBoundary>

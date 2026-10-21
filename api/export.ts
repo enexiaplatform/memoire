@@ -58,6 +58,7 @@ export const exportTables = [
   { table: 'plan_items', ownerColumn: 'user_id' },
   { table: 'memoire_automation_settings', ownerColumn: 'user_id' },
   { table: 'memoire_automation_runs', ownerColumn: 'user_id' },
+  { table: 'memoire_automation_outputs', ownerColumn: 'user_id' },
   // Commercial Kernel. An export that omitted these would hand the user a
   // backup missing every promise, every thread and the whole event history -
   // which is most of what the product is for.

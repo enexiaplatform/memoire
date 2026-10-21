@@ -10,8 +10,8 @@ const config = { ...AUTOMATION_DEFAULTS, enabled: true, timezone: 'UTC', runHour
 const env = { AUTOMATION_ENABLED: 'true', CRON_SECRET: 'fictional-cron-secret', SUPABASE_SERVICE_ROLE_KEY: 'fictional-service-key' };
 const date = new Date().toISOString().slice(0, 10);
 const oldDate = new Date(Date.parse(`${date}T00:00:00Z`) - 10 * 86400000).toISOString().slice(0, 10);
-const tables = new Set(['memoire_automation_settings', 'memoire_automation_runs']);
-const rpcs = new Set(['memoire_save_automation_settings', 'memoire_preview_automation', 'memoire_claim_automation_run', 'memoire_read_automation_run', 'memoire_finish_automation_run', 'memoire_fail_automation_run']);
+const tables = new Set(['memoire_automation_settings', 'memoire_automation_runs', 'memoire_automation_outputs']);
+const rpcs = new Set(['memoire_save_automation_settings', 'memoire_preview_automation', 'memoire_claim_automation_run', 'memoire_read_automation_run', 'memoire_finish_automation_run', 'memoire_finish_automation_cycle', 'memoire_fail_automation_run']);
 async function asOwner() { await db.exec('reset role'); await db.query("select set_config('request.jwt.claim.sub','',false)"); }
 function client(owner) {
   const scope = async () => {
@@ -34,11 +34,11 @@ function client(owner) {
       const query = {
         select(value) { assert.match(value, /^[a-z_,*]+$/); columns = value; return this; },
         eq(key, value) {
-          assert.ok(['user_id', 'config->>enabled'].includes(key));
+          assert.ok(['user_id', 'id', 'config->>enabled'].includes(key));
           filters.push(`${key === 'config->>enabled' ? "config->>'enabled'" : key}=$${values.push(value)}`); return this;
         },
         gt(key, value) { assert.equal(key, 'user_id'); filters.push(`user_id>$${values.push(value)}`); return this; },
-        order(key, options) { assert.ok(['user_id', 'started_at'].includes(key)); order = `order by ${key} ${options.ascending ? 'asc' : 'desc'}`; return this; },
+        order(key, options) { assert.ok(['user_id', 'started_at', 'prepared_at'].includes(key)); order = `order by ${key} ${options.ascending ? 'asc' : 'desc'}`; return this; },
         limit(value) { limit = value; return this; }, maybeSingle() { single = true; return this; },
         then(resolve, reject) { return (async () => {
           await scope();
@@ -148,7 +148,7 @@ test('live leases exclude a second worker, expired leases recover and old worker
 });
 test('uncertain acknowledgement after commit cannot downgrade or duplicate completed work', async () => {
   const settings = await save(), real = client();
-  const uncertain = { ...real, async rpc(name, args) { const result = await real.rpc(name, args); return name === 'memoire_finish_automation_run' ? { data: null, error: new Error('lost acknowledgement') } : result; } };
+  const uncertain = { ...real, async rpc(name, args) { const result = await real.rpc(name, args); return name === 'memoire_finish_automation_cycle' ? { data: null, error: new Error('lost acknowledgement') } : result; } };
   await assert.rejects(executeAutomationRun(uncertain, settings, true), /unconfirmed/);
   assert.equal((await executeAutomationRun(real, settings, true)).status, 'skipped');
   await asOwner(); assert.equal((await db.query('select count(*)::int n from plan_items')).rows[0].n, 2);
@@ -219,4 +219,69 @@ test('scheduled claims respect the saved timezone and start hour while Run now c
   await save({ ...config, timezone: zone, runHour: clock.hour + 1 });
   assert.equal((await client().rpc('memoire_claim_automation_run', { p_owner: OWNER_A, p_revision: 1, p_manual: false })).data, null);
   assert.ok((await client().rpc('memoire_claim_automation_run', { p_owner: OWNER_A, p_revision: 1, p_manual: true })).data);
+});
+
+test('intraday cycles share one daily Plan cap and preserve completed legacy receipts', async () => {
+  const settings=await save({...config,continuous:true,maxPlanItems:1});
+  const first=await executeAutomationRun(client(),settings,true); assert.equal(first.status,'completed');
+  assert.equal(first.summary.createdPlanIds.length,1);
+  await asOwner(); await db.query("update memoire_automation_runs set run_key='previous-slot' where user_id=$1",[OWNER_A]);
+  const second=await executeAutomationRun(client(),settings,true); assert.equal(second.status,'completed');
+  assert.equal(second.summary.createdPlanIds.length,0); assert.equal(second.summary.dailyCreated,1); assert.equal(second.summary.dailyCapDeferred,1);
+  await asOwner(); assert.equal((await db.query('select count(*)::int n from plan_items')).rows[0].n,1);
+  assert.equal((await db.query('select count(*)::int n from memoire_automation_runs')).rows[0].n,2);
+  assert.equal((await executeAutomationRun(client(),settings,true)).status,'skipped');
+});
+
+test('prepared outputs commit with work, isolate owners, export without restore authority and do not replay on acknowledgement', async () => {
+  const settings=await save({...config,weeklyReview:true,preparedOutputs:true});
+  const result=await executeAutomationRun(client(),settings,true); assert.equal(result.status,'completed');
+  const loaded=await callHandler(handler(),{}); assert.equal(loaded.code,200); assert.equal(loaded.body.outputs.length,9);
+  assert.ok(loaded.body.outputs.every(row=>!row.payload));
+  const id=loaded.body.outputs[0].id;
+  const output=await callHandler(handler(),{method:'POST',body:{command:'output',id}});
+  assert.equal(output.code,200); assert.equal(output.body.output.user_id,OWNER_A);
+  const foreign=await callHandler(handler(),{headers:{authorization:'Bearer owner-b'},method:'POST',body:{command:'output',id}});
+  assert.equal(foreign.code,404);
+  await setAuthenticatedOwner(db,OWNER_A);
+  await assert.rejects(db.query("update memoire_automation_outputs set title='Forged' where user_id=$1",[OWNER_A]),/permission denied/);
+  await assert.rejects(db.query("select memoire_finish_automation_cycle(null,null,'x','[]','[]','{}','[]')"),/permission denied/);
+  await asOwner(); await db.exec('set role anon'); await assert.rejects(db.query('select * from memoire_automation_outputs'),/permission denied/);
+});
+
+test('invalid prepared output rolls back the entire Plan batch and an expanded-source race prevents commit', async () => {
+  await save({...config,preparedOutputs:true});
+  const job=await claim(), snapshot=await read(job), work=prepareAutomationWork(snapshot.snapshot,{...config,preparedOutputs:true},snapshot.businessDate);
+  const bad=await client().rpc('memoire_finish_automation_cycle',{p_run:job.id,p_lease:job.lease_token,p_fingerprint:snapshot.fingerprint,
+    p_candidates:work.candidates,p_retire_ids:[],p_summary:{},p_outputs:[{key:'bad',kind:'send-email',title:'Unapproved',href:'/app/today',period:date,payload:{}}]});
+  assert.ok(bad.error);
+  await asOwner(); assert.equal((await db.query('select count(*)::int n from plan_items')).rows[0].n,0);
+  await db.query("insert into supplier_commitments(user_id,id,payload) values($1,'race',$2)",[OWNER_A,JSON.stringify({id:'race',status:'open',dueDate:date,label:'Late source insert'})]);
+  const changed=await client().rpc('memoire_finish_automation_cycle',{p_run:job.id,p_lease:job.lease_token,p_fingerprint:snapshot.fingerprint,
+    p_candidates:work.candidates,p_retire_ids:[],p_summary:{},p_outputs:work.outputs});
+  assert.equal(changed.error,null); assert.equal(changed.data.retryable,true);
+  await asOwner(); assert.equal((await db.query('select count(*)::int n from memoire_automation_outputs')).rows[0].n,0);
+  await db.query("delete from supplier_commitments where user_id=$1 and id='race'",[OWNER_A]);
+});
+
+test('an opted-in supplier rule writes a source-linked Plan item through the real new RPC whitelist', async () => {
+  await asOwner();await db.query('insert into supplier_commitments(user_id,id,payload) values($1,$2,$3)',[OWNER_A,'new-rule',JSON.stringify({status:'open',party:'supplier',kind:'Document',label:'Send source certificate',dueDate:date})]);
+  const settings=await save({...config,quoteFollowup:false,commitmentReminder:false,supplierReminder:true});
+  const run=await executeAutomationRun(client(),settings,true);assert.equal(run.status,'completed');assert.equal(run.summary.createdPlanIds.length,1);
+  await asOwner();const plan=(await db.query('select payload from plan_items')).rows[0].payload;
+  assert.equal(plan.automation.rule,'supplier-reminder');assert.equal(plan.automation.sourceId,'new-rule');assert.equal(plan.done,false);
+  await db.query("delete from supplier_commitments where user_id=$1 and id='new-rule'",[OWNER_A]);
+});
+
+test('large imported notes and private contact fields do not consume the bounded preparation snapshot', async () => {
+  await setAuthenticatedOwner(db,OWNER_A);
+  const account=(await db.query("insert into accounts(user_id,name,account_name,notes,source_file) values($1,'Fictional account','Fictional account',repeat('x',3000000),'import.xlsx') returning id",[OWNER_A])).rows[0].id;
+  // Imported fixture setup is privileged; the actual preview below uses owner authentication.
+  await asOwner();
+  const person=(await db.query("insert into stakeholders(user_id,account_id,account_name,name,email,phone,notes,source_file) values($1,$2,'Fictional account','Fictional contact','fictional@example.test','000',repeat('y',3000000),'import.xlsx') returning id",[OWNER_A,account])).rows[0].id;
+  const result=await client(OWNER_A).rpc('memoire_preview_automation');assert.equal(result.error,null);
+  assert.equal(result.data.accounts[0].id,account);assert.equal(result.data.stakeholders[0].id,person);
+  for(const row of [...result.data.accounts,...result.data.stakeholders]){assert.equal(row.notes,undefined);assert.equal(row.email,undefined);assert.equal(row.phone,undefined);assert.equal(row.source_file,undefined);}
+  assert.ok(JSON.stringify(result.data).length<100000);
+  await asOwner();await db.query('delete from stakeholders where id=$1',[person]);await db.query('delete from accounts where id=$1',[account]);
 });

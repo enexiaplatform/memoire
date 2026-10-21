@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.ts';
 import { hasLocalSampleData } from '../../utils/dataMode.ts';
 import { useWorkspaceSyncStatus } from '../../services/workspaceSyncStatus.ts';
-import { AUTOMATION_DEFAULTS, type AutomationSettings } from '../../../shared/automation.js';
+import { AUTOMATION_DEFAULTS, AUTOMATION_RULES, proposeAutomationSettings, type AutomationSettings } from '../../../shared/automation.js';
+import { PreparedOutputView } from './PreparedAutomationOutputs.tsx';
 import { automationClient, AUTOMATION_UPDATED_EVENT, type AutomationPreview, type AutomationRun, type AutomationState, type AutomationTransport } from '../../services/automationClient.ts';
 
 const fieldClass = 'min-w-0 w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink';
@@ -28,6 +29,8 @@ export function AutomationControls({ ownerId, disabledReason = '', syncWarning =
   const [busy, setBusy] = useState('loading'), [error, setError] = useState(''), [message, setMessage] = useState('');
   const [preview, setPreview] = useState<AutomationPreview | null>(null);
   const [reload, setReload] = useState(0);
+  const [params] = useSearchParams();
+  const [instruction, setInstruction] = useState(params.get('intent')?.slice(0, 500) || '');
   const generation = useRef({ valid: true }), operation = useRef(false);
   useEffect(() => {
     const current = { valid: true }; generation.current = current;
@@ -76,7 +79,7 @@ export function AutomationControls({ ownerId, disabledReason = '', syncWarning =
   return <section aria-label="Automations" className="min-w-0 rounded-panel bg-white p-5 shadow-panel">
     <h2 className="font-display text-xl font-bold text-ink">Automations</h2>
     <p className="mt-1 text-sm text-muted">Prepare Today and create internal reminders from your cloud records, even while Memoire is closed.</p>
-    <p className="mt-2 text-xs text-muted">These rules use recorded quote and commitment states. Email replies are not monitored. No customer messages or financial changes are made.</p>
+    <p className="mt-2 text-xs text-muted">These rules use confirmed cloud records and saved definitions. Email replies are not monitored. No customer messages or financial changes are made.</p>
     {disabledReason && <p role="status" className="mt-4 text-sm text-muted">{disabledReason}</p>}
     {syncWarning && <p role="status" className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900">{syncWarning}</p>}
     {busy === 'loading' && !disabledReason && <p role="status" className="mt-4 text-sm">Loading rules and run history…</p>}
@@ -106,8 +109,20 @@ export function AutomationControls({ ownerId, disabledReason = '', syncWarning =
           <label className="flex items-start gap-3 text-sm"><input className="mt-1" type="checkbox" checked={config.commitmentReminder} onChange={event => change('commitmentReminder', event.target.checked)} /><span><strong className="block">Commitment reminders</strong><span className="text-muted">Create an internal check-in for open promises from you, your customer or your team.</span></span></label>
           <label className="mt-3 flex flex-wrap items-center gap-2 text-sm">Days before due date<input className="w-20 rounded-lg border border-line px-2 py-1" type="number" min="0" max="7" value={config.commitmentLeadDays} onChange={event => change('commitmentLeadDays', Number(event.target.value))} /></label>
         </div>
-        <label className="flex flex-wrap items-center gap-2 text-sm">Maximum new Plan items per run<input className="w-20 rounded-lg border border-line px-2 py-1" type="number" min="1" max="10" value={config.maxPlanItems} onChange={event => change('maxPlanItems', Number(event.target.value))} /></label>
-        <p className="text-xs text-muted">One completed run per local day. Existing dated deal actions and handled reminders are kept. Untouched automatic reminders can be retired when their source ends or moves; your manual edits are preserved.</p>
+        <div className="rounded-lg border border-line p-3"><label className="text-sm font-semibold" htmlFor="automation-instruction">Describe a supported rule</label>
+          <input id="automation-instruction" className={`mt-2 ${fieldClass}`} maxLength={500} value={instruction} onChange={event => setInstruction(event.target.value)} placeholder="Nhắc công nợ và nhà cung cấp trong ngày" />
+          <button type="button" className={`${buttonClass} mt-2`} onClick={() => { const draft = proposeAutomationSettings(instruction, config);
+            if (!draft) { setMessage('No supported rule found. Choose the switches below.'); return; }
+            setConfig(draft.config); setPreview(null); setMessage('Draft switches updated. Review and preview, then Save rules to apply. Background activation is unchanged.'); }}>Prepare rule draft</button>
+        </div>
+        {AUTOMATION_RULES.map(rule => <label key={rule.key} className="flex items-start gap-3 rounded-lg border border-line p-3 text-sm">
+          <input className="mt-1" type="checkbox" checked={config[rule.key] === true} onChange={event => change(rule.key, event.target.checked)} />
+          <span><strong className="block">{rule.label}</strong><span className="text-muted">{rule.detail}</span></span></label>)}
+        <div className="grid gap-3 sm:grid-cols-2">{(['collectionLeadDays','supplierLeadDays'] as const).map(key => <label key={key} className="text-sm">
+          {key === 'collectionLeadDays' ? 'Collection reminder days before due' : 'Supplier reminder days before due'}
+          <input className={`mt-1 ${fieldClass}`} type="number" min="0" max="30" value={config[key]} onChange={event => change(key, Number(event.target.value))} /></label>)}</div>
+        <label className="flex flex-wrap items-center gap-2 text-sm">Maximum new Plan items per local day<input className="w-20 rounded-lg border border-line px-2 py-1" type="number" min="1" max="10" value={config.maxPlanItems} onChange={event => change('maxPlanItems', Number(event.target.value))} /></label>
+        <p className="text-xs text-muted">{config.continuous ? 'Rechecks every 15 minutes after the daily start hour.' : 'One completed run per local day.'} Existing dated deal actions and handled reminders are kept. Untouched automatic reminders can be retired when their source ends or moves; your manual edits are preserved.</p>
       </fieldset>
       <div className="mt-5 flex flex-wrap gap-2">
         <button className={buttonClass} disabled={!!busy} onClick={() => void act('preview')}>{busy === 'preview' ? 'Preparing…' : 'Preview rules'}</button>
@@ -116,8 +131,10 @@ export function AutomationControls({ ownerId, disabledReason = '', syncWarning =
       </div>
       {message && <p role="status" className="mt-3 text-sm text-muted">{message}</p>}
       {preview && <div className="mt-4 rounded-lg border border-line p-4"><h3 className="font-semibold text-ink">Preview · no changes saved</h3>
-        <p className="mt-1 text-sm text-muted">{preview.candidates.length} new reminder(s), {preview.summary.counts?.alreadyHandled || 0} already planned/handled, {preview.summary.counts?.deferred || 0} deferred by your limit; {preview.retiring} untouched reminder(s) can be retired.</p>
+        <p className="mt-1 text-sm text-muted">{preview.candidates.length} new reminder(s), {preview.summary.counts?.alreadyHandled || 0} already planned/handled, {preview.summary.counts?.deferred || 0} deferred by your per-run preview limit; the remaining daily allowance is checked on execution; {preview.retiring} untouched reminder(s) can be retired.</p>
         <ul className="mt-3 space-y-3">{preview.candidates.map(item => <li key={item.key} className="break-words text-sm"><strong>{item.label}</strong><p className="text-xs text-muted">{item.accountName} · {item.reason}</p></li>)}</ul>
+        {!!preview.summary.warnings?.missingMoneyCount && <p className="mt-3 text-sm text-amber-900">{preview.summary.warnings.missingMoneyCount} order(s) have missing amounts or FX. No collection reminder was invented; existing work is kept. Check Money → Collections.</p>}
+        {preview.outputs?.map(output => <details key={output.key} className="mt-3 rounded-lg border border-line p-3"><summary className="cursor-pointer text-sm font-semibold">{output.title} · {output.period}</summary><PreparedOutputView payload={output.payload} /></details>)}
       </div>}
       <div className="mt-6 border-t border-line pt-4"><h3 className="font-semibold text-ink">Run history</h3>
         {!state.runs.length && <p className="mt-2 text-sm text-muted">No run has been confirmed. Saving rules does not prove that a scheduler is active.</p>}
@@ -132,6 +149,9 @@ export function AutomationRunRow({ run }: {run: AutomationRun}) {
     <div className="flex flex-wrap justify-between gap-2"><strong>{run.business_date} · {run.status}</strong><span className="text-xs text-muted">Attempt {run.attempts} / 3</span></div>
     {run.status === 'completed' && <p className="mt-1 text-muted">{run.summary.createdPlanIds?.length || 0} created · {run.summary.retiredPlanIds?.length || 0} retired · {run.summary.counts?.deferred || 0} deferred.
       <Link className="ml-2 text-brand-blue underline" to={`/app/timeline?date=${encodeURIComponent(run.business_date)}`}>Open Plan</Link></p>}
+    {!!run.summary.prepared?.length && <p className="mt-1 text-muted">{run.summary.prepared.length} output(s) prepared · {run.summary.prepared.filter(row => row.status === 'unavailable').length} unavailable. View saved outputs on Today.</p>}
+    {!!run.summary.dailyCapDeferred && <p className="mt-1 text-muted">{run.summary.dailyCapDeferred} reminder(s) deferred by the daily limit.</p>}
+    {!!run.summary.warnings?.missingMoneyCount && <p className="mt-1 text-amber-900">{run.summary.warnings.missingMoneyCount} order(s) have missing amounts or FX. Existing collection work was kept. <Link className="underline" to="/app/revenue?view=collections">Review Collections</Link></p>}
     {run.status === 'running' && <p className="mt-1 text-muted">Processing. An expired run can be recovered by the next scheduled attempt.</p>}
     {run.error_code && <p className="mt-1 text-muted">{run.error_code === 'source_changed' ? 'Records changed before execution. No work was applied; a later attempt can retry.'
       : run.status === 'cancelled' ? 'Rules or business date changed before execution. No work was applied.' : 'The result was not confirmed. Check Plan and retry history before continuing.'}</p>}

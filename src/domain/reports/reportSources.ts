@@ -1,3 +1,4 @@
+import { explicitMoneyContext } from '../../utils/moneyContext.ts';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore.ts';
 import type { QuoteRecord } from '../../services/quoteStore.ts';
 import type { OpportunityOutcomeRecord } from '../../services/opportunityOutcomeStore.ts';
@@ -29,12 +30,13 @@ export function buildReportSources(input: {
     return { id: fact.id, values, fact, references: { businessUnit: fact.businessUnitId, brand: fact.brandId, productGroup: fact.groupId, product: fact.productId },
       href: `/app/opportunities?opportunityId=${encodeURIComponent(fact.id)}` };
   });
+  const moneyContext = explicitMoneyContext(input.money);
   const qualified = new Set(input.facts.filter(row => row.qualified).map(row => row.id));
   const receivables = inScope(input.receivables), milestones = inScope(input.milestones), costs = inScope(input.costs);
   for (const records of [receivables, costs]) if (new Set(records.map(row => row.opportunityId)).size !== records.length) throw new Error('Duplicate order-linked report source. Resolve it before running.');
   const orders = buildOrderBook({ opportunities: opportunities.filter(row => qualified.has(row.id)), quotes: inScope(input.quotes), linkage: 'explicit-id',
-    milestoneRecords: milestones, costRecords: costs, outcomes: inScope(input.outcomes), receivableRecords: receivables, today: input.today }).orders;
-  const money = buildReceivables({ orders, records: receivables, today: input.today });
+    milestoneRecords: milestones, costRecords: costs, outcomes: inScope(input.outcomes), receivableRecords: receivables, today: input.today, money: moneyContext }).orders;
+  const money = buildReceivables({ orders, records: receivables, today: input.today, money: moneyContext });
   if (money.reportingCurrency !== input.money.currency) throw new Error('Reporting currency changed. Run the report again.');
   const cashByOrder = new Map(money.orders.map(row => [row.opportunityId, row]));
   const rowsById = new Map(opportunitiesRows.map(row => [row.id, row]));

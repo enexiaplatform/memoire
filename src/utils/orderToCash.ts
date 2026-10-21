@@ -1,7 +1,7 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { QuoteRecord } from '../services/quoteStore';
 import { compareSafeBusinessDate, isValidBusinessDate, timestampToLocalDateKey, todayDateKey } from './safeDate.ts';
-import { sumMoneyInBase } from './money.ts';
+import { browserMoneyContext, type MoneyContext } from './moneyContext.ts';
 import { parsePaymentTerm } from './paymentTerms.ts';
 import { buildOneReceivable, uniquePaymentReceipts, type OrderReceivableRecord } from './receivables.ts';
 
@@ -252,8 +252,10 @@ export function buildOrderBook(input: {
   outcomes?: OrderOutcomeRecord[];
   receivableRecords?: OrderReceivableRecord[];
   today?: string;
+  money?: MoneyContext;
 }): OrderBook {
   const today = input.today || todayDateKey();
+  const money = input.money || browserMoneyContext();
   const collectionsByOrder = new Map<string, OrderReceivableRecord>();
   for (const record of input.receivableRecords || []) {
     if (record.__deleted) continue;
@@ -301,7 +303,7 @@ export function buildOrderBook(input: {
 
       const amount = freshestQuote ? freshestQuote.amount : opportunity.estimatedValue;
       const currency = freshestQuote?.currency || opportunity.currency || 'VND';
-      const amountBase = typeof amount === 'number' ? sumMoneyInBase([{ amount, currency }]) : 0;
+      const amountBase = typeof amount === 'number' ? money.sum([{ amount, currency }]) : 0;
 
       /**
        * When the order was actually placed.
@@ -350,7 +352,7 @@ export function buildOrderBook(input: {
         const cash = buildOneReceivable({ opportunityId: opportunity.id,
           accountName: opportunity.accountName, orderName: opportunity.opportunityName,
           orderRef: freshestQuote?.quoteId || fallbackOrderRef(opportunity.id), orderDate,
-          amount, currency, amountBase, paymentTerm: term }, collection, today);
+          amount, currency, amountBase, paymentTerm: term }, collection, today, money);
         const depositIds = new Set((collection.installments.length ? collection.installments : parsePaymentTerm(term).installments)
           .filter(part => part.trigger === 'order').map(part => part.id));
         const deposits = cash.installments.filter(part => depositIds.has(part.id));
@@ -424,7 +426,7 @@ export function buildOrderBook(input: {
       || a.doneCount - b.doneCount
       || b.amountBase - a.amountBase);
 
-  const balances = orders.map(order => buildOneReceivable(order, collectionsByOrder.get(order.opportunityId), today));
+  const balances = orders.map(order => buildOneReceivable(order, collectionsByOrder.get(order.opportunityId), today, money));
   return {
     orders,
     totalCount: orders.length,

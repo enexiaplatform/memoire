@@ -1,5 +1,6 @@
 import type { CommittedOrder } from './orderToCash.ts';
-import { getReportingCurrency, hasExchangeRate, sumMoneyInBase, type SupportedCurrency } from './money.ts';
+import type { SupportedCurrency } from './money.ts';
+import { browserMoneyContext, type MoneyContext } from './moneyContext.ts';
 import { sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
 
 /**
@@ -233,17 +234,18 @@ export function buildOrderMargins(input: {
   costRecords: OrderCostRecord[];
   /** The margin to grade against. Defaults to the stated line. */
   targetPct?: number;
+  money?: MoneyContext;
 }): OrderMarginSummary {
   const live = input.costRecords.filter((record) => record.__deleted !== true);
   const costByOrder = new Map(live.map((record) => [record.opportunityId, record]));
-  const reportingCurrency = getReportingCurrency();
+  const reportingCurrency = (input.money || browserMoneyContext()).currency;
   const targetPct = normalizeTargetPct(input.targetPct);
 
   const byOrder = new Map<string, OrderMargin>();
   input.orders.forEach((order) => {
     byOrder.set(
       order.opportunityId,
-      buildOneOrderMargin(order, costByOrder.get(order.opportunityId), reportingCurrency, targetPct),
+      buildOneOrderMargin(order, costByOrder.get(order.opportunityId), reportingCurrency, targetPct, input.money),
     );
   });
 
@@ -304,6 +306,7 @@ function buildOneOrderMargin(
   cost: OrderCostRecord | undefined,
   reportingCurrency: SupportedCurrency,
   targetPct: number,
+  money: MoneyContext = browserMoneyContext(),
 ): OrderMargin {
   const goodsAmount = finiteOrNull(cost?.amount);
   const freightAmount = finiteOrNull(cost?.freightAmount);
@@ -341,16 +344,16 @@ function buildOneOrderMargin(
 
   if (!hasCost) return base;
 
-  const goodsBase = goodsAmount === null ? 0 : sumMoneyInBase([{ amount: goodsAmount, currency: costCurrency }]);
+  const goodsBase = goodsAmount === null ? 0 : money.sum([{ amount: goodsAmount, currency: costCurrency }]);
   const extrasBase = hasExtras
-    ? sumMoneyInBase([{ amount: (freightAmount || 0) + (dutyAmount || 0) + (otherAmount || 0), currency: extrasCurrency }])
+    ? money.sum([{ amount: (freightAmount || 0) + (dutyAmount || 0) + (otherAmount || 0), currency: extrasCurrency }])
     : 0;
   const costBase = goodsBase + extrasBase;
 
   // Asked of the currency, not inferred from a zero: a cost genuinely recorded as
   // nothing is a different fact from one that could not be converted.
-  const costUnavailable = (goodsAmount !== null && !hasExchangeRate(costCurrency))
-    || (hasExtras && !hasExchangeRate(extrasCurrency));
+  const costUnavailable = (goodsAmount !== null && !money.hasRate(costCurrency))
+    || (hasExtras && !money.hasRate(extrasCurrency));
 
   const marginBase = order.amountBase - costBase;
   // An order with no value recorded has no denominator. Reporting 0% or 100%

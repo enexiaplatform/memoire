@@ -29,5 +29,6 @@ export function AutomationBriefCard({ userId, sampleDataActive }: {userId?: stri
     {run.summary.brief?.hasSignal ? <ul className="mt-2 space-y-1 text-sm text-muted">{run.summary.brief.lines.map((line, index) => <li key={index}>{line}</li>)}</ul>
       : <p className="mt-2 text-sm text-muted">No signal was found in the cloud records used by this run.</p>}
     <p className="mt-2 text-sm text-muted">{run.summary.createdPlanIds?.length || 0} Plan item(s) created. <Link className="text-brand-blue underline" to="/app/settings?tab=automations">Rules and run history</Link></p>
+    {!!run.summary.warnings?.missingMoneyCount && <p className="mt-2 text-sm text-amber-900">{run.summary.warnings.missingMoneyCount} order(s) need amount/FX review. Existing collection work was kept. <Link className="underline" to="/app/revenue?view=collections">Open Collections</Link></p>}
   </details>;
 }

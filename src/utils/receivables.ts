@@ -1,9 +1,6 @@
+import { browserMoneyContext, type MoneyContext } from './moneyContext.ts';
 import type { CommittedOrder } from './orderToCash.ts';
 import {
-  convertMoney,
-  getReportingCurrency,
-  hasExchangeRate,
-  sumMoneyInBase,
   type SupportedCurrency,
 } from './money.ts';
 import { sanitizeBusinessDate, todayDateKey } from './safeDate.ts';
@@ -211,13 +208,14 @@ export function buildReceivables(input: {
   orders: CommittedOrder[];
   records: OrderReceivableRecord[];
   today?: string;
+  money?: MoneyContext;
 }): ReceivablesSummary {
-  const reportingCurrency = getReportingCurrency();
+  const reportingCurrency = (input.money || browserMoneyContext()).currency;
   const today = sanitizeBusinessDate(input.today) || todayDateKey();
   const live = (input.records || []).filter((record) => record.__deleted !== true);
   const byOrder = new Map(live.map((record) => [record.opportunityId, record]));
 
-  const orders = (input.orders || []).map((order) => buildOneReceivable(order, byOrder.get(order.opportunityId), today));
+  const orders = (input.orders || []).map((order) => buildOneReceivable(order, byOrder.get(order.opportunityId), today, input.money));
   const open = orders.filter((order) => !order.settled);
 
   // Aged slice by slice, not order by order.
@@ -271,6 +269,7 @@ export function buildOneReceivable(
   order: Pick<CommittedOrder, 'opportunityId' | 'accountName' | 'orderName' | 'orderRef' | 'orderDate' | 'amount' | 'amountBase' | 'currency' | 'paymentTerm'> & Partial<Pick<CommittedOrder, 'milestones'>>,
   record: OrderReceivableRecord | undefined,
   today: string,
+  money: MoneyContext = browserMoneyContext(),
 ): OrderReceivable {
   const parsed = parsePaymentTerm(order.paymentTerm);
   const override = sanitizeInstallments(record?.installments);
@@ -282,8 +281,8 @@ export function buildOneReceivable(
   // genuinely worth nothing is not mistaken for one that cannot be valued.
   const receipts = uniquePaymentReceipts(record?.receipts || []);
   const valueUnavailable = typeof order.amount !== 'number' || !Number.isFinite(order.amount)
-    || !hasExchangeRate(order.currency)
-    || receipts.some(receipt => !hasExchangeRate(receipt.currency || order.currency));
+    || !money.hasRate(order.currency)
+    || receipts.some(receipt => !money.hasRate(receipt.currency || order.currency));
 
   const deliveredOn = sanitizeBusinessDate(record?.deliveredOn) || '';
   const invoicedOn = sanitizeBusinessDate(record?.invoicedOn) || '';
@@ -324,7 +323,7 @@ export function buildOneReceivable(
       // Rounding each reporting-currency projection biases a large book of debt.
       return orderValueBase * (installment.percent || 0) / 100;
     }
-    const converted = convertMoney(installment.amount, order.currency);
+    const converted = money.convert(installment.amount, order.currency);
     // Unconvertible means the order is in a currency nobody has priced. The
     // figure as written is closer to the truth than zero, and zero would drop
     // the slice out of what is owed entirely.
@@ -387,7 +386,7 @@ export function buildOneReceivable(
   // Applied oldest first, so a receipt covers what has been owed longest.
   scheduled.sort((left, right) => compareDueDates(left.dueDate, right.dueDate));
 
-  const receivedBase = sumMoneyInBase(
+  const receivedBase = money.sum(
     receipts
       .filter((receipt) => typeof receipt?.amount === 'number' && Number.isFinite(receipt.amount))
       .filter((receipt) => Boolean(sanitizeBusinessDate(receipt.receivedOn)) && receipt.receivedOn <= today)

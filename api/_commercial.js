@@ -8,6 +8,7 @@ import {commitmentCodec} from '../src/services/commercialKernel/commitmentStore.
 import {evaluateCommercialPolicies} from '../src/domain/commercialKernel/policyEngine.ts';
 export {createAutomationHandler,createAutomationWorker,executeAutomationRun} from './_automation.js';
 export {prepareAutomationWork} from '../src/domain/automation/automationEngine.ts';
+export {PREPARATION_SOURCES, prepareWorkspaceAutomation} from '../src/domain/automation/workspacePreparation.ts';
 
 const bodyKeys=['version','command','observation'];
 function commitmentView(record){return {id:record.id,accountId:record.accountId,opportunityId:record.opportunityId,party:record.commitmentParty,

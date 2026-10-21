@@ -1,15 +1,18 @@
 import { sanitizeBusinessDate } from '../../utils/safeDate.ts';
 import type { AutomationSettings } from '../../../shared/automation.js';
+import { prepareWorkspaceAutomation } from './workspacePreparation.ts';
 
 type Row = Record<string, any>;
 export type AutomationSnapshot = {
+  [key: string]: Row[];
   opportunities: Row[]; quotes: Row[]; commitments: Row[];
   plans: Row[]; activities: Row[]; expenses: Row[];
 };
 export type AutomationCandidate = {
-  key: string; rule: 'quote-followup' | 'commitment-reminder'; sourceId: string;
+  key: string; rule: 'quote-followup' | 'commitment-reminder' | 'collection-reminder' | 'supplier-reminder' | 'lead-followup' | 'order-reminder' | 'opportunity-reminder'; sourceId: string;
   dueDate: string; date: string; label: string; accountName: string;
   opportunityId: string; reason: string;
+  subjectKey?: string;
 };
 const real = (row: Row) => row.isSample !== true && row.is_sample !== true
   && row.source !== 'demo' && row.source_type !== 'demo' && row.__deleted !== true;
@@ -23,7 +26,7 @@ function payloads(rows: Row[]) {
 
 /** Pure preparation. Only the separately authorized server executor can write. */
 export function prepareAutomationWork(snapshot: AutomationSnapshot, settings: AutomationSettings, today: string,
-  isPersistedKey: (key: string) => boolean = () => false) {
+  isPersistedKey: (key: string) => boolean = () => false, capturedAt?: string) {
   if (!sanitizeBusinessDate(today)) throw new Error('invalid_business_date');
   for (const key of ['opportunities', 'quotes', 'commitments', 'plans', 'activities', 'expenses'] as const) {
     if (!Array.isArray(snapshot[key]) || snapshot[key].length > 5000) throw new Error('snapshot_incomplete');
@@ -33,7 +36,8 @@ export function prepareAutomationWork(snapshot: AutomationSnapshot, settings: Au
   const quotes = payloads(snapshot.quotes), plans = payloads(snapshot.plans);
   const commitments = snapshot.commitments.filter(real);
   const commitmentsById = new Map(commitments.map(row => [row.id, row]));
-  const eligible: AutomationCandidate[] = [];
+  const prepared = prepareWorkspaceAutomation(snapshot, settings, today, capturedAt);
+  const eligible: AutomationCandidate[] = [...prepared.candidates];
   const opportunityOpen = (id: string) => {
     if (!id) return true;
     const row = opportunitiesById.get(id);
@@ -64,8 +68,12 @@ export function prepareAutomationWork(snapshot: AutomationSnapshot, settings: Au
   }
   eligible.sort((a, b) => a.dueDate.localeCompare(b.dueDate) || a.key.localeCompare(b.key));
   const keys = new Set(eligible.map(item => item.key));
+  const ruleEnabled = { 'quote-followup': settings.quoteFollowup, 'commitment-reminder': settings.commitmentReminder,
+    'collection-reminder': settings.collectionReminder, 'supplier-reminder': settings.supplierReminder,
+    'lead-followup': settings.leadFollowup, 'order-reminder': settings.orderReminder, 'opportunity-reminder': settings.opportunityReminder };
   const retireIds = plans.filter(plan => plan.automation && !keys.has(plan.automation.key)
-    && (plan.automation.rule === 'quote-followup' ? settings.quoteFollowup : settings.commitmentReminder)
+    && !prepared.retirementProtectedSources.includes(`${plan.automation.rule}:${plan.automation.sourceId}`)
+    && ruleEnabled[plan.automation.rule as keyof typeof ruleEnabled]
     && !plan.done && !plan.dismissed && plan.createdAt === plan.updatedAt).map(plan => plan.id);
   let alreadyHandled = 0;
   const suggestionKeys = new Set(plans.map(plan => plan.suggestionKey));
@@ -73,24 +81,25 @@ export function prepareAutomationWork(snapshot: AutomationSnapshot, settings: Au
   const planIds = new Set(plans.map(plan => plan.id));
   const derivedKeys = new Set(plans.flatMap(plan => [plan.derivedKey, ...(plan.linkedDerivedKeys || [])]));
   const editedSources = new Set(plans.filter(plan => plan.automation && !plan.done && !plan.dismissed
-    && plan.createdAt !== plan.updatedAt).map(plan => `${plan.automation.rule}:${plan.automation.sourceId}`));
+    && plan.createdAt !== plan.updatedAt).map(plan => plan.automation.subjectKey || `${plan.automation.rule}:${plan.automation.sourceId}`));
   const manualWork = new Set(plans.filter(plan => plan.linkedOpportunityId && !plan.done && !plan.dismissed)
     .map(plan => `${plan.linkedOpportunityId}:${text(plan.label).toLowerCase()}`));
   const candidates = eligible.filter(candidate => {
     const opportunity = opportunitiesById.get(candidate.opportunityId);
     const derivedKey = opportunity && `deal:${opportunity.id}:${opportunity.next_action_date}`;
-    const hasDerivedPlan = opportunity?.status === 'Active'
+    const usesDealAction = !['collection-reminder', 'supplier-reminder', 'order-reminder'].includes(candidate.rule);
+    const hasDerivedPlan = usesDealAction && opportunity?.status === 'Active'
       && !!sanitizeBusinessDate(opportunity.next_action_date) && !!text(opportunity.next_action);
     const hasPlan = isPersistedKey(candidate.key) || suggestionKeys.has(`automation:${candidate.key}`)
       || automationKeys.has(candidate.key)
       || candidate.rule === 'commitment-reminder' && planIds.has(commitmentsById.get(candidate.sourceId)?.source_id)
-      || editedSources.has(`${candidate.rule}:${candidate.sourceId}`)
+      || editedSources.has(candidate.subjectKey || `${candidate.rule}:${candidate.sourceId}`)
       || manualWork.has(`${candidate.opportunityId}:${candidate.label.toLowerCase()}`)
-      || derivedKey && derivedKeys.has(derivedKey);
+      || usesDealAction && derivedKey && derivedKeys.has(derivedKey);
     if (hasPlan || hasDerivedPlan) { alreadyHandled++; return false; }
     return true;
   });
-  return { candidates: candidates.slice(0, settings.maxPlanItems), retireIds: retireIds.slice(0, 100),
+  return { candidates: candidates.slice(0, settings.maxPlanItems), retireIds: retireIds.slice(0, 100), outputs: prepared.outputs, warnings:prepared.warnings,
     counts: { eligible: eligible.length, alreadyHandled, deferred: Math.max(0, candidates.length - settings.maxPlanItems) },
     // Reuse the existing server digest; these rows retain the database's authoritative IDs.
     digestInput: { opportunities, activities: snapshot.activities.filter(real), quotes,

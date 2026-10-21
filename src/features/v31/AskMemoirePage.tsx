@@ -1,4 +1,5 @@
 import { normalizeEntityName } from '../../utils/accountIdentity';
+import { AutomationSetupShortcut } from '../settings/AutomationSetupShortcut';
 import { buildKnowledgeGraph } from '../../utils/knowledgeGraph';
 import { matchCommands } from '../../utils/commandRegistry';
 import { interpretAskQuestion } from './askLanguage';
@@ -573,6 +574,7 @@ export function AskMemoirePage() {
 
   return (
     <PageContainer>
+      <AutomationSetupShortcut />
       <TopBar
         lead={(
           <>

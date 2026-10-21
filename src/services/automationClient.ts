@@ -2,11 +2,15 @@ import { supabaseClient } from '../lib/supabaseClient.ts';
 import { captureLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import type { AutomationSettings } from '../../shared/automation.js';
 import type { AutomationCandidate } from '../domain/automation/automationEngine.ts';
+import type { PreparedOutput } from '../domain/automation/workspacePreparation.ts';
 
 export type AutomationSummary = {
   counts?: { eligible: number; alreadyHandled: number; deferred: number };
   commitments?: { due: number }; createdPlanIds?: string[]; retiredPlanIds?: string[];
   businessDate?: string; asOf?: string;
+  dailyLimit?: number; dailyCreated?: number; dailyCapDeferred?: number;
+  prepared?: {key: string; kind: string; title: string; href: string; status: string}[];
+  warnings?: {missingMoneyCount:number; missingMoney:{sourceId:string; href:string; label:string}[]};
   brief?: { lines: string[]; hasSignal: boolean } | null;
 };
 export type AutomationRun = {
@@ -16,13 +20,16 @@ export type AutomationRun = {
 export type AutomationState = {
   config: AutomationSettings; revision: number; workerConfigured: boolean;
   schedulerVerified: boolean; runs: AutomationRun[];
+  outputs?: AutomationOutput[];
 };
-export type AutomationPreview = { candidates: AutomationCandidate[]; retiring: number; summary: AutomationSummary };
+export type AutomationOutput = {id: string; kind: string; title: string; href: string; period: string; prepared_at: string; run_id: string; payload?: Record<string, any>};
+export type AutomationPreview = { candidates: AutomationCandidate[]; retiring: number; summary: AutomationSummary; outputs?: PreparedOutput[] };
 export type AutomationTransport = {
   load(owner: string): Promise<AutomationState>;
   save(owner: string, config: AutomationSettings, revision: number): Promise<{config: AutomationSettings; revision: number}>;
   preview(owner: string, config: AutomationSettings): Promise<AutomationPreview>;
   run(owner: string): Promise<{status: string; summary?: AutomationSummary}>;
+  output?(owner: string, id: string): Promise<{output: AutomationOutput}>;
 };
 const errors: Record<string, string> = {
   automation_storage_unavailable: 'Automation storage is not ready on this deployment. Your rules have not been changed.',
@@ -52,5 +59,6 @@ export const automationClient: AutomationTransport = {
   save: (owner, config, revision) => request(owner, { command: 'save', config, revision }),
   preview: (owner, config) => request(owner, { command: 'preview', config }),
   run: owner => request(owner, { command: 'run' }),
+  output: (owner, id) => request(owner, { command: 'output', id }),
 };
 export const AUTOMATION_UPDATED_EVENT = 'memoire:automations-updated';
