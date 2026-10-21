@@ -285,3 +285,17 @@ test('large imported notes and private contact fields do not consume the bounded
   assert.ok(JSON.stringify(result.data).length<100000);
   await asOwner();await db.query('delete from stakeholders where id=$1',[person]);await db.query('delete from accounts where id=$1',[account]);
 });
+
+test('UUID opportunity sources execute Lead, opportunity, order and installment rules atomically', async () => {
+  await setAuthenticatedOwner(db,OWNER_A);const ids=[];
+  for(const [stage,status] of [['Lead','Active'],['Proposal','Active'],['Won','Won']]){
+    const row=(await db.query("insert into opportunities(user_id,title,opportunity_name,account_name,stage,status,estimated_value,currency,created_at,updated_at) values($1,'Fictional UUID deal','Fictional UUID deal','Fictional buyer',$2,$3,100,'USD',now()-interval '40 days',now()-interval '40 days') returning id",[OWNER_A,stage,status])).rows[0];ids.push(row.id);
+  }
+  const settings=await save({...config,quoteFollowup:false,commitmentReminder:false,leadFollowup:true,opportunityReminder:true,orderReminder:true,collectionReminder:true,maxPlanItems:10});
+  const run=await executeAutomationRun(client(),settings,true);assert.equal(run.status,'completed');
+  await asOwner();const plans=(await db.query('select payload from plan_items')).rows.map(row=>row.payload);
+  const rules=new Set(plans.map(row=>row.automation.rule));
+  for(const rule of ['lead-followup','opportunity-reminder','order-reminder','collection-reminder'])assert.ok(rules.has(rule),rule);
+  assert.ok(plans.every(row=>ids.includes(row.automation.sourceId)));
+  await setAuthenticatedOwner(db,OWNER_A);for(const id of ids)await db.query('delete from opportunities where id=$1',[id]);
+});

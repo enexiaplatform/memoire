@@ -6,7 +6,7 @@ import { reportTemplate } from '../../src/domain/reports/reportDefinition.ts';
 import { changeSavedReport } from '../../src/domain/reports/reportRecord.ts';
 import { changeSavedDashboard } from '../../src/domain/dashboards/dashboardRecord.ts';
 import { newDashboard } from '../../src/domain/dashboards/dashboardDefinition.ts';
-import { explicitMoneyContext } from '../../src/utils/moneyContext.ts';
+import { explicitMoneyContext, browserMoneyContext } from '../../src/utils/moneyContext.ts';
 import { buildOrderBook } from '../../src/utils/orderToCash.ts';
 import { buildReceivables } from '../../src/utils/receivables.ts';
 import { buildReportSources } from '../../src/domain/reports/reportSources.ts';
@@ -19,7 +19,7 @@ function snapshot() {
 function opportunity(id, extra = {}) { return {id,account_name:'Fictional buyer',opportunity_name:`Deal ${id}`,stage:'Proposal',status:'Active',
   estimated_value:100,currency:'USD',created_at:'2026-10-01T00:00:00Z',updated_at:'2026-10-01T00:00:00Z',...extra}; }
 function fixture() {
-  const s = snapshot();
+  const s = snapshot();s.profiles=[{id:'fixture-owner',reporting_currency:'VND'}];
   s.opportunities = [opportunity('order', {stage:'Won',status:'Won'})];
   s.quotes = [row('accepted', {opportunityId:'order',quoteId:'Q-100',quoteDate:'2026-10-01',status:'Accepted',poStatus:'Received',amount:100,currency:'USD',
     paymentTerm:'30% deposit, 70% on delivery',deliveryStatus:'Not scheduled',paymentStatus:'Not due'})];
@@ -136,4 +136,10 @@ test('saved report/dashboard and Plan output links use the actual destination se
   assert.equal(work.outputs.find(row=>row.kind==='saved-report').href,'/app/reports?report=r');
   assert.equal(work.outputs.find(row=>row.kind==='saved-dashboard').href,'/app/dashboards?dashboard=d');
   assert.equal(work.outputs.find(row=>row.kind==='weekly-review').payload.openPlan.items[0].href,`/app/timeline?date=${today}`);
+});
+
+test('a profile without a money preference uses the same reporting default as the application', () => {
+  const work=prepare(snapshot(),{preparedOutputs:true});
+  assert.equal(work.outputs[0].payload.money.currency,browserMoneyContext().currency);
+  assert.equal(work.outputs[0].payload.money.currency,'USD');
 });

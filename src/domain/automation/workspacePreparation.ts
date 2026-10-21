@@ -7,7 +7,7 @@ import { buildOrderMargins } from '../../utils/orderMargin.ts';
 import { activitiesForOpportunityStrict } from '../../utils/activityIndex.ts';
 import { classifyNurture, FIRST_TOUCH_LATE_DAYS } from '../../utils/leadQueue.ts';
 import { findClosablePlanItems } from '../../utils/capturePlanReconciliation.ts';
-import { EXCHANGE_RATES_AS_OF, EXCHANGE_RATES_TO_VND } from '../../utils/money.ts';
+import { DEFAULT_REPORTING_CURRENCY, EXCHANGE_RATES_AS_OF, EXCHANGE_RATES_TO_VND } from '../../utils/money.ts';
 import { explicitMoneyContext } from '../../utils/moneyContext.ts';
 import { buildPortfolioFacts } from '../portfolio/portfolioAnalytics.ts';
 import { buildReportSources } from '../reports/reportSources.ts';
@@ -66,7 +66,7 @@ export function prepareWorkspaceAutomation(snapshot: AutomationSnapshot, setting
   const quotes = json('quotes').map(row => ({...row,createdAt:localDate(row.createdAt)})), records = json('receivables'), costs = json('costs'),
     milestones = json('milestones').map(row => ({...row,doneAt:localDate(row.doneAt)})), outcomes = json('outcomes');
   const profile = raw('profiles')[0];
-  const basis = { currency: text(profile?.reporting_currency) || 'VND', ratesToVnd: { ...EXCHANGE_RATES_TO_VND }, ratesAsOf: EXCHANGE_RATES_AS_OF };
+  const basis = { currency: text(profile?.reporting_currency) || DEFAULT_REPORTING_CURRENCY, ratesToVnd: { ...EXCHANGE_RATES_TO_VND }, ratesAsOf: EXCHANGE_RATES_AS_OF };
   const money = () => explicitMoneyContext(basis);
   let cachedOrders: ReturnType<typeof buildOrderBook> | undefined;
   const orders = () => {
