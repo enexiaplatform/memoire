@@ -21,9 +21,9 @@ export async function createPersonalWorkspace(input: { id: string; name: string;
   if (!supabaseClient) throw new Error('Workspace storage is unavailable.');
   const { data, error } = await supabaseClient.rpc('memoire_create_personal_workspace', {
     p_id: input.id, p_name: input.name, p_source_id: input.sourceId, p_options: input.categories,
-  });
+  }).single();
   if (error?.code === '23505') throw new Error('A workspace already uses this name.');
-  if (error || !data || data.id !== input.id) throw new Error('Workspace creation could not be confirmed. Retry to check the same request.');
+  if (error || !data || typeof data !== 'object' || !('id' in data) || data.id !== input.id) throw new Error('Workspace creation could not be confirmed. Retry to check the same request.');
   return data as PersonalWorkspace;
 }
 

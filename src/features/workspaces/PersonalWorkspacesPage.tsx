@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { BrandWordmark } from '../../components/brand/BrandWordmark';
 import { NoIndex } from '../../components/marketing/PageSeo';
@@ -18,6 +18,7 @@ export function PersonalWorkspacesPage() {
 
 function PersonalWorkspaceDirectory({ userId }: { userId: string }) {
   const [query, setQuery] = useSearchParams();
+  const navigate = useNavigate();
   const [workspaces, setWorkspaces] = useState<PersonalWorkspace[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -56,7 +57,7 @@ function PersonalWorkspaceDirectory({ userId }: { userId: string }) {
           <label className="flex items-center gap-2 text-sm font-semibold">
             <span>Workspace</span>
             <select className={controlClass} aria-label="Workspace" value={active?.id ?? existingWorkspace.id} onChange={event => {
-              if (event.target.value === existingWorkspace.id) setQuery({});
+              if (event.target.value === existingWorkspace.id) navigate('/app/today');
               else setQuery({ workspace: event.target.value });
             }}>
               {choices.map(choice => <option key={choice.id} value={choice.id}>{choice.name}</option>)}
