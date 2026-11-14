@@ -17,6 +17,8 @@ import { hasLocalSampleData } from '../../utils/dataMode';
 import {
   deleteSalesActivity,
   updateSalesActivityLink,
+  updateSalesActivityDetails,
+  type SalesActivityDetailsInput,
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
 import { updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
@@ -261,6 +263,13 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
     setMessage('Activity deleted.');
   };
 
+  const handleEdit = async (activity: SalesActivityRecord, changes: SalesActivityDetailsInput) => {
+    const updated = await updateSalesActivityDetails(activity, changes, dataUserId);
+    setActivities((current) => current.map((item) => item.id === updated.id ? updated : item));
+    setSelectedActivity(updated);
+    setMessage('Activity updated.');
+  };
+
   const handleLinkActivity = async (
     activity: SalesActivityRecord,
     opportunity: CrmLiteOpportunity,
@@ -492,6 +501,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
           onClose={() => setSelectedActivity(null)}
           onCopy={() => handleCopy(selectedActivity)}
           onDelete={() => handleDelete(selectedActivity)}
+          onEdit={(changes) => handleEdit(selectedActivity, changes)}
           opportunities={opportunities}
           onLink={(opportunity, applyUpdates, updateSuggestion) => handleLinkActivity(selectedActivity, opportunity, applyUpdates, updateSuggestion)}
           onIgnore={() => handleUpdateLinkStatus(selectedActivity, 'Ignored')}
@@ -686,6 +696,7 @@ function ActivityDetailModal({
   onClose,
   onCopy,
   onDelete,
+  onEdit,
   opportunities,
   onLink,
   onIgnore,
@@ -700,12 +711,14 @@ function ActivityDetailModal({
   onClose: () => void;
   onCopy: () => void;
   onDelete: () => void;
+  onEdit: (changes: SalesActivityDetailsInput) => Promise<void>;
   opportunities: CrmLiteOpportunity[];
   onLink: (opportunity: CrmLiteOpportunity, applyUpdates: boolean, updateSuggestion: OpportunityUpdateSuggestion) => void;
   onIgnore: () => void;
   onUnlink: () => void;
 }) {
   useEscapeToClose(onClose);
+  const [editing, setEditing] = useState(false);
   const linkedOpportunity = opportunities.find((item) => item.id === activity.linkedOpportunityId) || null;
   const journey = linkedOpportunity
     ? buildCommercialJourneySnapshot({ ...moneyRecords, opportunity: linkedOpportunity, quotes, activities: allActivities, objections })
@@ -722,6 +735,14 @@ function ActivityDetailModal({
             <X className="h-5 w-5" />
           </button>
         </div>
+
+        {editing && (
+          <ActivityEditForm
+            activity={activity}
+            onSave={async (changes) => { await onEdit(changes); setEditing(false); }}
+            onCancel={() => setEditing(false)}
+          />
+        )}
 
         <div className="mt-4 flex flex-wrap gap-2">
           <span className={`rounded-full border px-2.5 py-1 text-xs font-bold ${activityTypeTone[activity.activityType]}`}>
@@ -804,6 +825,15 @@ function ActivityDetailModal({
         </div>
 
         <div className="mt-5 flex flex-wrap justify-end gap-2">
+          {!editing && (
+            <button
+              type="button"
+              onClick={() => setEditing(true)}
+              className="rounded-full border border-line bg-white px-3 py-2 text-sm font-bold text-brand-blue hover:bg-blue-50"
+            >
+              Edit activity
+            </button>
+          )}
           <button
             type="button"
             onClick={onCopy}
@@ -823,6 +853,62 @@ function ActivityDetailModal({
         </div>
       </div>
     </div>
+  );
+}
+
+function ActivityEditForm({ activity, onSave, onCancel }: {
+  activity: SalesActivityRecord;
+  onSave: (changes: SalesActivityDetailsInput) => Promise<void>;
+  onCancel: () => void;
+}) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const fieldClass = 'mt-1 w-full rounded-md border border-line bg-white px-3 py-2 font-normal';
+
+  return (
+    <form className="mt-4 space-y-3 rounded-lg border border-line p-4" onSubmit={async (event) => {
+      event.preventDefault();
+      if (saving) return;
+      const fields = new FormData(event.currentTarget);
+      const activityDate = String(fields.get('date') ?? '');
+      const summary = String(fields.get('summary') ?? '').trim();
+      const rawNote = String(fields.get('note') ?? '').trim();
+      setSaving(true);
+      setError('');
+      try {
+        await onSave({
+          activityDate: activityDate === activity.activityDate ? undefined : activityDate,
+          summary: summary === activity.summary ? undefined : summary,
+          rawNote: rawNote === activity.rawNote ? undefined : rawNote,
+        });
+      } catch (failure) {
+        setError(failure instanceof Error ? failure.message : 'Could not update the activity.');
+      } finally {
+        setSaving(false);
+      }
+    }}>
+      <label className="block text-sm font-semibold text-ink">
+        Activity date
+        <input name="date" type="date" defaultValue={activity.activityDate} required className={fieldClass} />
+      </label>
+      <label className="block text-sm font-semibold text-ink">
+        Summary
+        <input name="summary" defaultValue={activity.summary} required className={fieldClass} />
+      </label>
+      <label className="block text-sm font-semibold text-ink">
+        Note
+        <textarea name="note" defaultValue={activity.rawNote} required rows={3} className={fieldClass} />
+      </label>
+      {error && <p role="alert" className="text-sm font-semibold text-red-700">{error}</p>}
+      <div className="flex gap-2">
+        <button type="submit" disabled={saving} className="rounded-full bg-navy px-4 py-2 text-sm font-bold text-white">
+          {saving ? 'Saving…' : 'Save changes'}
+        </button>
+        <button type="button" onClick={onCancel} disabled={saving} className="rounded-full px-3 py-2 text-sm font-bold text-gray-700">
+          Cancel
+        </button>
+      </div>
+    </form>
   );
 }
 

@@ -10,7 +10,7 @@ import {
   parseIngestionSourceTags,
   type IngestionSourceType,
 } from '../utils/ingestionSource.ts';
-import { writeLocalRecords } from './localWriteGuard.ts';
+import { requireLocalWrite, writeLocalRecords } from './localWriteGuard.ts';
 import type { AnalyticsDataMode } from '../utils/productAnalytics.ts';
 
 export interface SalesActivityRecord extends ClassifiedSalesActivity {
@@ -420,6 +420,9 @@ export async function updateSalesActivityLink(
 }
 
 export type SalesActivityDetailsInput = {
+  activityDate?: string;
+  summary?: string;
+  rawNote?: string;
   nextAction?: string;
   dueDate?: string;
   /**
@@ -465,9 +468,18 @@ export async function updateSalesActivityDetails(
   userId?: string | null
 ): Promise<SalesActivityRecord> {
   const timestamp = new Date().toISOString();
+  const activityDate = changes.activityDate === undefined ? activity.activityDate : sanitizeBusinessDate(changes.activityDate);
+  const summary = changes.summary === undefined ? activity.summary : changes.summary.trim();
+  const rawNote = changes.rawNote === undefined ? activity.rawNote : changes.rawNote.trim();
+  if (changes.activityDate !== undefined && !activityDate) throw new Error('Enter a valid activity date.');
+  if (changes.summary !== undefined && !summary) throw new Error('Enter an activity summary.');
+  if (changes.rawNote !== undefined && !rawNote) throw new Error('Enter an activity note.');
   const linkStatus = changes.linkStatus !== undefined ? changes.linkStatus : activity.linkStatus;
   const updated: SalesActivityRecord = {
     ...activity,
+    activityDate,
+    summary,
+    rawNote,
     nextAction: changes.nextAction !== undefined ? changes.nextAction : activity.nextAction,
     dueDate: changes.dueDate !== undefined ? sanitizeBusinessDate(changes.dueDate) : activity.dueDate,
     nextActions: changes.nextActions !== undefined ? normalizeNextActions(changes.nextActions) : activity.nextActions,
@@ -488,17 +500,20 @@ export async function updateSalesActivityDetails(
     const { data, error } = await supabaseClient!
       .from(TABLE_NAME)
       .update({
-        next_action: updated.nextAction || null,
-        due_date: sanitizeBusinessDate(updated.dueDate) || null,
-        next_actions: normalizeNextActions(updated.nextActions),
-        activity_channel: normalizeActivityChannel(updated.activityChannel) || null,
-        account_name: updated.accountName || null,
-        stakeholder_name: updated.stakeholderName || null,
-        stakeholder_role: updated.stakeholderRole || null,
-        linked_account_name: updated.linkedAccountName || null,
-        linked_opportunity_id: updated.linkedOpportunityId || null,
-        linked_opportunity_name: updated.linkedOpportunityName || null,
-        link_status: updated.linkStatus,
+        ...(changes.activityDate === undefined ? {} : { activity_date: activityDate }),
+        ...(changes.summary === undefined ? {} : { summary }),
+        ...(changes.rawNote === undefined ? {} : { raw_note: rawNote }),
+        ...(changes.nextAction === undefined ? {} : { next_action: updated.nextAction || null }),
+        ...(changes.dueDate === undefined ? {} : { due_date: updated.dueDate || null }),
+        ...(changes.nextActions === undefined ? {} : { next_actions: normalizeNextActions(updated.nextActions) }),
+        ...(changes.activityChannel === undefined ? {} : { activity_channel: updated.activityChannel || null }),
+        ...(changes.accountName === undefined ? {} : { account_name: updated.accountName || null }),
+        ...(changes.stakeholderName === undefined ? {} : { stakeholder_name: updated.stakeholderName || null }),
+        ...(changes.stakeholderRole === undefined ? {} : { stakeholder_role: updated.stakeholderRole || null }),
+        ...(changes.linkedAccountName === undefined ? {} : { linked_account_name: updated.linkedAccountName || null }),
+        ...(changes.linkedOpportunityId === undefined ? {} : { linked_opportunity_id: updated.linkedOpportunityId || null }),
+        ...(changes.linkedOpportunityName === undefined ? {} : { linked_opportunity_name: updated.linkedOpportunityName || null }),
+        ...(changes.linkStatus === undefined ? {} : { link_status: updated.linkStatus }),
         updated_at: timestamp,
       })
       .eq('id', activity.id)
@@ -511,7 +526,8 @@ export async function updateSalesActivityDetails(
     return rowToRecord(data as SalesActivityRow);
   }
 
-  saveLocalActivityRecord({ ...updated, storageMode: 'local' });
+  if (activity.storageMode === 'cloud') throw new Error('Reconnect to update this cloud activity.');
+  requireLocalWrite(saveLocalActivityRecord(updated));
   invalidateWorkspaceCollection('activities');
   return { ...updated, storageMode: 'local' };
 }
@@ -573,9 +589,7 @@ function loadLocalActivities(): SalesActivityRecord[] {
 
 function saveLocalActivityRecord(record: SalesActivityRecord) {
   const next = [record, ...loadLocalActivities().filter((item) => item.id !== record.id)];
-  if (typeof localStorage !== 'undefined') {
-    writeLocalRecords(SALES_ACTIVITY_STORAGE_KEY, next.sort(sortNewestFirst));
-  }
+  return writeLocalRecords(SALES_ACTIVITY_STORAGE_KEY, next.sort(sortNewestFirst));
 }
 
 function deleteLocalActivity(activityId: string) {
