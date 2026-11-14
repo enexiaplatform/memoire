@@ -58,6 +58,7 @@ export function AccountMenu({ variant = 'bar' }: {
   // Each row names the Settings tab it opens, so the menu is a table of
   // contents for administration rather than a second place it is configured.
   const items = [
+    ...(import.meta.env.VITE_ENABLE_PERSONAL_WORKSPACES === 'true' && user && !demoActive ? [{ to: '/app/workspaces', label: 'Workspaces' }] : []),
     { to: '/app/settings?tab=profile', label: 'Profile' },
     { to: '/app/settings', label: 'Settings' },
     { to: '/app/settings?tab=billing', label: 'Plan & billing' },

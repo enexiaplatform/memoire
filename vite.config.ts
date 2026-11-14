@@ -12,6 +12,14 @@ export default defineConfig(({ mode }) => {
   }
   return {
   plugins: [react(), aiChatDevPlugin(serverEnv), automationDevPlugin(serverEnv)],
+  define: {
+    'import.meta.env.VITE_ENABLE_WORKSPACE_PREVIEW': JSON.stringify(
+      serverEnv.VITE_ENABLE_WORKSPACE_PREVIEW || (
+        serverEnv.VERCEL_ENV === 'preview' && serverEnv.VERCEL_GIT_COMMIT_REF === 'codex/memoire-workspace-copy-preview'
+          ? 'true' : 'false'
+      ),
+    ),
+  },
   // Only the application entry is prebundled. Local verification fixtures have
   // their own server; scanning them during every SSR test wastes work.
   optimizeDeps: { entries: ['index.html'] },

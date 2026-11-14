@@ -7,6 +7,8 @@ import { WebAnalytics } from './lib/webAnalytics';
 import { LibraryGate } from './features/library/LibraryGate';
 import { PageContainer } from './components/layout/PageFrame';
 
+const WorkspacePreviewPage = lazy(() => import('./features/workspaces/WorkspacePreviewPage').then((module) => ({ default: module.WorkspacePreviewPage })));
+const PersonalWorkspacesPage = lazy(() => import('./features/workspaces/PersonalWorkspacesPage').then((module) => ({ default: module.PersonalWorkspacesPage })));
 const AppShell = lazy(() => import('./components/layout/AppShell').then((module) => ({ default: module.AppShell })));
 const LandingPage = lazy(() => import('./pages/LandingPage').then((module) => ({ default: module.LandingPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
@@ -94,6 +96,9 @@ function App() {
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
+          {import.meta.env.VITE_ENABLE_WORKSPACE_PREVIEW === 'true' && (
+            <Route path="/preview/workspaces" element={<WorkspacePreviewPage />} />
+          )}
           <Route path="/login" element={<LoginPage />} />
           <Route path="/signup" element={<SignupPage />} />
           <Route path="/verify-email" element={<VerifyEmailPage />} />
@@ -146,6 +151,10 @@ function App() {
               </ProtectedRoute>
             }
           />
+
+          {import.meta.env.VITE_ENABLE_PERSONAL_WORKSPACES === 'true' && (
+            <Route path="/app/workspaces" element={<ProtectedRoute><PersonalWorkspacesPage /></ProtectedRoute>} />
+          )}
 
           {/* Protected app routes */}
           <Route
