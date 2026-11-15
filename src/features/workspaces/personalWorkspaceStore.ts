@@ -3,9 +3,13 @@ import { fetchAllRows } from '../../services/supabasePaging';
 import type { CopyCategory } from './workspaceCopy';
 
 export type PersonalWorkspace = { id: string; name: string; created_at: string };
+export type CommercialRecordCategory = 'opportunities' | 'quotes' | 'orders' | 'activities';
+export type WorkspaceRecordCategory = CopyCategory | CommercialRecordCategory;
+
 export type PersonalWorkspaceRecord = {
   id: string;
-  category: CopyCategory;
+  category: WorkspaceRecordCategory;
+  account_id: string | null;
   name: string;
   details: Record<string, unknown>;
 };
@@ -31,15 +35,29 @@ export async function loadPersonalWorkspaceRecords(userId: string, workspaceId: 
   const client = supabaseClient;
   if (!client) throw new Error('Workspace storage is unavailable.');
   return fetchAllRows<PersonalWorkspaceRecord>((from, to) => client.from('memoire_personal_workspace_records')
-    .select('id, category, name, details').eq('user_id', userId).eq('workspace_id', workspaceId)
+    .select('id, category, account_id, name, details').eq('user_id', userId).eq('workspace_id', workspaceId)
     .order('category').order('name').order('id').range(from, to).setHeader('x-memoire-workspace', workspaceId) as never);
 }
 
-export async function renamePersonalWorkspaceRecord(userId: string, workspaceId: string, id: string, name: string) {
+export async function savePersonalWorkspaceRecord(
+  userId: string, workspaceId: string,
+  record: Omit<PersonalWorkspaceRecord, 'id'>, id: string, editing: boolean,
+) {
   if (!supabaseClient) throw new Error('Workspace storage is unavailable.');
-  const { data, error } = await supabaseClient.from('memoire_personal_workspace_records')
-    .update({ name: name.trim() }).eq('user_id', userId).eq('workspace_id', workspaceId).eq('id', id)
-    .select('id, category, name, details').setHeader('x-memoire-workspace', workspaceId).single();
-  if (error || !data) throw new Error('The change could not be saved.');
-  return data as PersonalWorkspaceRecord;
+  const table = supabaseClient.from('memoire_personal_workspace_records');
+  const values = { name: record.name.trim(), details: record.details, account_id: record.account_id };
+  const write = editing
+    ? table.update(values).eq('user_id', userId).eq('workspace_id', workspaceId).eq('id', id)
+    : table.upsert({ ...values, id, user_id: userId, workspace_id: workspaceId, category: record.category }, { onConflict: 'id', ignoreDuplicates: true });
+  const result = await write.select('id, category, account_id, name, details')
+    .setHeader('x-memoire-workspace', workspaceId).maybeSingle();
+  if (result.error) throw new Error('The change could not be saved.');
+  if (result.data) return result.data as PersonalWorkspaceRecord;
+  if (!editing) {
+    const { data, error } = await supabaseClient.from('memoire_personal_workspace_records')
+      .select('id, category, account_id, name, details').eq('user_id', userId).eq('workspace_id', workspaceId)
+      .eq('id', id).setHeader('x-memoire-workspace', workspaceId).single();
+    if (!error && data?.category === record.category) return data as PersonalWorkspaceRecord;
+  }
+  throw new Error('The change could not be confirmed.');
 }

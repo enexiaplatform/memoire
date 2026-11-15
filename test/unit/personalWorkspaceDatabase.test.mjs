@@ -76,6 +76,22 @@ test('copies only selected records, reattaches contacts and leaves source refere
   assert.deepEqual((await db.query('SELECT name, category FROM memoire_personal_workspace_records')).rows, [{ name: 'Edited copy', category: 'accounts' }]);
 });
 
+test('commercial entries can be created and edited in the selected workspace only', async () => {
+  await setWorkspace(emptyId);
+  const account = await db.query("INSERT INTO memoire_personal_workspace_records(workspace_id,category,name) VALUES($1,'accounts','New research lab') RETURNING id", [emptyId]);
+  const accountId = account.rows[0].id;
+  for (const [category, status] of [['opportunities','qualified'],['quotes','sent'],['orders','invoiced']]) {
+    await db.query('INSERT INTO memoire_personal_workspace_records(workspace_id,category,name,account_id,details) VALUES($1,$2,$2,$3,$4)', [emptyId,category,accountId,{ status, currency:'VND', amount:500000, date:'2026-11-14' }]);
+  }
+  await db.query("INSERT INTO memoire_personal_workspace_records(workspace_id,category,name,account_id,details) VALUES($1,'activities','Call',$2,$3)", [emptyId,accountId,{ date:'2026-11-14' }]);
+  await assert.rejects(db.query("INSERT INTO memoire_personal_workspace_records(workspace_id,category,name) VALUES($1,'orders','Invalid amount')", [emptyId]), /check constraint/);
+  assert.equal((await db.query("UPDATE memoire_personal_workspace_records SET name='Edited quote' WHERE category='quotes' RETURNING name")).rows[0].name,'Edited quote');
+  await setWorkspace(copyId);
+  assert.deepEqual((await db.query("SELECT name FROM memoire_personal_workspace_records WHERE category IN ('opportunities','quotes','orders','activities')")).rows,[]);
+  assert.equal((await db.query('SELECT id FROM opportunities')).rows[0].id, originalDeal);
+  assert.equal((await db.query('SELECT id FROM quotes')).rows[0].id, 'original-quote');
+});
+
 test('other accounts, anonymous requests and missing workspace selectors cannot read scoped records', async () => {
   await setWorkspace(null);
   assert.deepEqual((await db.query('SELECT id FROM memoire_personal_workspace_records')).rows, []);

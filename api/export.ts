@@ -121,6 +121,8 @@ export const exportTables = [
   // imported, and which rows the importer refused, was absent from their backup.
   { table: 'import_batches', ownerColumn: 'user_id' },
   { table: 'import_row_results', ownerColumn: 'user_id' },
+  { table: 'memoire_personal_workspaces', ownerColumn: 'user_id' },
+  { table: 'memoire_personal_workspace_records', ownerColumn: 'user_id' },
 ] as const;
 
 /**
@@ -216,8 +218,24 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     { global: { headers: { Authorization: `Bearer ${authToken}` } } },
   );
 
+  const workspaces = await fetchAllRows((from, to) => supabase.from('memoire_personal_workspaces')
+    .select('*').eq('user_id', userId).order('id').range(from, to)).catch(() => null);
   const results = await Promise.all(exportTables.map(async ({ table, ownerColumn }) => {
     try {
+      if (table === 'memoire_personal_workspaces' || table === 'memoire_personal_workspace_records') {
+        if (!workspaces) throw new Error('Could not confirm the workspace list.');
+        const data = [...workspaces];
+        if (table === 'memoire_personal_workspace_records') {
+          data.length = 0;
+          for (const workspace of workspaces) {
+            const id = (workspace as { id?: unknown }).id;
+            if (typeof id !== 'string') throw new Error('Invalid workspace identity.');
+            data.push(...await fetchAllRows((from, to) => supabase.from(table).select('*')
+              .eq('user_id', userId).eq('workspace_id', id).order('id').range(from, to).setHeader('x-memoire-workspace', id)));
+          }
+        }
+        return { table, ownerColumn, data, warning: '' };
+      }
       return {
         table,
         ownerColumn,

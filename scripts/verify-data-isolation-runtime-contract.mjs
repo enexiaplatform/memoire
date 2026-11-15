@@ -108,6 +108,8 @@ const expectedTables = [
   // named, and nothing warned because a missing table cannot raise a warning.
   ['import_batches', 'user_id'],
   ['import_row_results', 'user_id'],
+  ['memoire_personal_workspaces', 'user_id'],
+  ['memoire_personal_workspace_records', 'user_id'],
 ];
 
 /**

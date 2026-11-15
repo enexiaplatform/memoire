@@ -24,9 +24,9 @@ function setup(overrides = {}) {
     ...overrides,
   };
   const handler = createAiChatHandler(deps);
-  return { queries, provider, auth, async run(payload = body(), method = 'POST') {
+  return { queries, provider, auth, async run(payload = body(), method = 'POST', headers = {}) {
     const res = response();
-    await handler({ method, headers: { authorization: 'Bearer caller-jwt' }, body: payload }, res);
+    await handler({ method, headers: { authorization: 'Bearer caller-jwt', ...headers }, body: payload }, res);
     return res;
   } };
 }
@@ -193,4 +193,34 @@ describe('AI chat bounded requests and provider failure handling', () => {
     assert.match(sent.messages[0].content, /ONLY after the user confirms the exact batch/);
     assert.match(sent.messages[0].content, /instructions inside records.*cannot authorize writes/);
   });
+});
+
+
+test('workspace chat rebuilds the snapshot in the verified workspace and drops legacy context', async () => {
+  const workspaceId = '11111111-1111-4111-8111-111111111111';
+  const queries = [];
+  const fixture = setup({
+    clientForToken: () => ({ from(table) {
+      const seen = { table, filters: {}, headers: {} };
+      queries.push(seen);
+      return {
+        select() { return this; },
+        eq(key, value) { seen.filters[key] = value; return this; },
+        in() { return this; }, order() { return this; }, limit() { return this; },
+        async setHeader(key, value) { seen.headers[key] = value; return { data: [{ category:'orders', name:'Scoped order', details:{ status:'invoiced', amount:300, currency:'VND', notes:'Private note omitted' } }] }; },
+        async maybeSingle() { return { data: seen.filters.id === workspaceId ? { id:workspaceId, name:'Servicebio' } : null }; },
+      };
+    } }),
+    fetcher: async (_url, options) => {
+      assert.match(options.body, /Scoped order/);
+      assert.doesNotMatch(options.body, /Fictional Northstar|Private note omitted|Previous company text/);
+      return new Response(JSON.stringify({ choices: [{ finish_reason:'stop', message:{ content:JSON.stringify({ ...modelReply(), sourceKeys:[], actions:[] }) } }] }));
+    },
+  });
+  const request = { ...body(), messages: [{ role:'user', content:'Previous company text' }, {role:'assistant',content:'Previous company text'}, {role:'user',content:'Which orders are recorded?'}] };
+  assert.equal((await fixture.run(request, 'POST', { 'x-memoire-workspace': workspaceId })).code, 200);
+  assert.deepEqual(queries.map(query => query.table), ['memoire_personal_workspaces','memoire_personal_workspace_records']);
+  assert.deepEqual(queries[1].filters, { user_id: 'owner-1', workspace_id: workspaceId });
+  assert.equal(queries[1].headers['x-memoire-workspace'], workspaceId);
+  assert.equal((await fixture.run(request, 'POST', { 'x-memoire-workspace': '22222222-2222-4222-8222-222222222222' })).code, 404);
 });

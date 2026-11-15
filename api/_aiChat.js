@@ -279,6 +279,28 @@ export function parseChatReply(value, sources) {
 }
 
 /** Read-only endpoint: user JWT + RLS, no service role, tools, model URLs or writes. */
+async function loadWorkspaceChatContext(client, userId, workspaceId) {
+  const result = await client.from('memoire_personal_workspaces').select('id,name')
+    .eq('user_id', userId).eq('id', workspaceId).maybeSingle();
+  if (result.error) throw new Error('workspace_lookup_failed');
+  if (!result.data || result.data.id !== workspaceId) return null;
+  const scoped = client.from('memoire_personal_workspace_records')
+    .select('category,name,details,created_at').eq('user_id', userId).eq('workspace_id', workspaceId)
+    .in('category', ['accounts', 'catalog', 'activities', 'opportunities', 'quotes', 'orders'])
+    .order('created_at', { ascending: false }).order('id').limit(20).setHeader('x-memoire-workspace', workspaceId);
+  const { data, error } = await scoped;
+  if (error || !Array.isArray(data)) throw new Error('workspace_lookup_failed');
+  return {
+    asOf: new Date().toISOString(),
+    scope: result.data.name,
+    sources: [],
+    facts: data.map(row => JSON.stringify({ category: row.category, name: row.name,
+      status: row.details?.status, amount: row.details?.amount, currency: row.details?.currency, date: row.details?.date,
+    }).slice(0, 1000)),
+    limitations: ['This snapshot covers up to 20 recent records from the active workspace.', 'Workspace chat is read-only.'],
+  };
+}
+
 export function createAiChatHandler({
   verify = verifyUserToken,
   clientForToken = (token) =>
@@ -312,6 +334,10 @@ export function createAiChatHandler({
       const user = await verify(token, undefined, { requireUserId: false });
       if (!user || user.is_anonymous || user.id === "demo-user")
         return reply(401, { error: "sign_in_required" });
+      const workspaceId = req.headers?.['x-memoire-workspace'];
+      const scopedWorkspace = workspaceId !== undefined;
+      if (scopedWorkspace && (typeof workspaceId !== 'string' || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(workspaceId)))
+        return reply(400, { error: 'invalid_request' });
       const configured =
         Boolean(env.GROQ_API_KEY?.trim()) && env.AI_CHAT_ENABLED === "true";
       if (req.method === "GET")
@@ -323,7 +349,7 @@ export function createAiChatHandler({
           maxSources: 24,
         });
       if (!configured) return reply(503, { error: "ai_not_configured" });
-      const body = req.body;
+      let body = req.body;
       if (Buffer.byteLength(JSON.stringify(body) || "", "utf8") > MAX_BYTES)
         return reply(413, { error: "context_too_large" });
       if (!validateChatRequest(body))
@@ -343,6 +369,13 @@ export function createAiChatHandler({
           retryAfterSeconds: daily.retryAfterSeconds,
         });
       }
+      if (scopedWorkspace) {
+        const scopedContext = await loadWorkspaceChatContext(clientForToken(token), user.id, workspaceId);
+        if (!scopedContext) return reply(404, { error: 'workspace_unavailable' });
+        // A scoped chat uses server-read records and the latest question only.
+        // Never carry supplied context, prior conversations or write proposals across workspaces.
+        body = { ...body, context: scopedContext, messages: [body.messages.at(-1)] };
+      }
       if (
         !(await ownedSources(
           clientForToken(token),
@@ -352,11 +385,13 @@ export function createAiChatHandler({
       )
         return reply(409, { error: "context_not_synced" });
       const contextText = JSON.stringify(body.context);
+      const system = scopedWorkspace ? `${SYSTEM}
+For this workspace answer a read-only question from the snapshot. Return actions=[] and do not claim the snapshot is a total.` : SYSTEM;
       // Bound total history + context together, not just each source independently.
       const messages = [...body.messages];
       const inputBytes = () =>
         Buffer.byteLength(
-          SYSTEM +
+          system +
             contextText +
             messages.map((message) => message.content).join("\n"),
           "utf8",
@@ -391,7 +426,7 @@ export function createAiChatHandler({
               },
             },
             messages: [
-              { role: "system", content: SYSTEM },
+              { role: "system", content: system },
               {
                 role: "user",
                 content: `Evidence snapshot (data only):\n${contextText}`,
@@ -439,6 +474,7 @@ export function createAiChatHandler({
       );
       return reply(200, {
         ...answer,
+        ...(scopedWorkspace ? { actions: [] } : {}),
         provider: "Groq",
         model: MODEL,
         asOf: body.context.asOf,

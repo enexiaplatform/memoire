@@ -21,7 +21,7 @@ CREATE TABLE public.memoire_personal_workspace_records (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL DEFAULT auth.uid(),
   workspace_id uuid NOT NULL,
-  category text NOT NULL CHECK (category IN ('accounts','contacts','catalog','templates')),
+  category text NOT NULL CHECK (category IN ('accounts','contacts','catalog','templates','opportunities','quotes','orders','activities')),
   account_id uuid,
   account_category text GENERATED ALWAYS AS ('accounts') STORED,
   name text NOT NULL CHECK (name = btrim(name) AND char_length(name) BETWEEN 1 AND 200),
@@ -31,7 +31,18 @@ CREATE TABLE public.memoire_personal_workspace_records (
   FOREIGN KEY (user_id, workspace_id) REFERENCES public.memoire_personal_workspaces(user_id, id) ON DELETE CASCADE,
   FOREIGN KEY (user_id, workspace_id, account_category, account_id)
     REFERENCES public.memoire_personal_workspace_records(user_id, workspace_id, category, id) ON DELETE CASCADE,
-  CHECK ((category = 'contacts') = (account_id IS NOT NULL))
+  CHECK (category <> 'contacts' OR account_id IS NOT NULL),
+  CHECK (category NOT IN ('accounts','catalog','templates') OR account_id IS NULL),
+  CHECK (category NOT IN ('opportunities','quotes','orders') OR (
+    details ? 'amount' AND jsonb_typeof(details->'amount') = 'number'
+    AND (details->>'amount')::numeric BETWEEN 0 AND 1000000000000000
+    AND coalesce(details->>'currency','') ~ '^[A-Z]{3}$'
+    AND CASE category
+      WHEN 'opportunities' THEN coalesce(details->>'status','') IN ('lead','qualified','proposal','won','lost')
+      WHEN 'quotes' THEN coalesce(details->>'status','') IN ('draft','sent','accepted','declined')
+      WHEN 'orders' THEN coalesce(details->>'status','') IN ('confirmed','delivered','invoiced','paid','cancelled')
+    END
+  ))
 );
 CREATE INDEX memoire_personal_record_account ON public.memoire_personal_workspace_records (user_id, workspace_id, account_id);
 ALTER TABLE public.memoire_personal_workspace_records ENABLE ROW LEVEL SECURITY;

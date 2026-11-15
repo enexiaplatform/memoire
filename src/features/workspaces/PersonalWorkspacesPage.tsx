@@ -5,14 +5,15 @@ import { BrandWordmark } from '../../components/brand/BrandWordmark';
 import { NoIndex } from '../../components/marketing/PageSeo';
 import { controlClass, ghostPillClass, primaryPillClass } from '../../components/ui/daylightStyles';
 import { WorkspaceCreateDialog } from './WorkspaceCreateDialog';
-import { createPersonalWorkspace, listPersonalWorkspaces, loadPersonalWorkspaceRecords, renamePersonalWorkspaceRecord, type PersonalWorkspace, type PersonalWorkspaceRecord } from './personalWorkspaceStore';
-import { workspaceCopyOptions, type CopyCategory } from './workspaceCopy';
+import { createPersonalWorkspace, listPersonalWorkspaces, type PersonalWorkspace } from './personalWorkspaceStore';
+import type { CopyCategory } from './workspaceCopy';
+import { WorkspaceRecords } from './WorkspaceRecords';
 
 const existingWorkspace = { id: 'legacy', name: 'Personal workspace' };
 
 export function PersonalWorkspacesPage() {
   const { user } = useAuth();
-  if (!user) return null;
+  if (!user) return <main className="mx-auto max-w-lg p-6"><p>Sign in to manage your workspaces.</p><Link to="/login" className={ghostPillClass}>Sign in</Link></main>;
   return <PersonalWorkspaceDirectory key={user.id} userId={user.id} />;
 }
 
@@ -77,58 +78,6 @@ function PersonalWorkspaceDirectory({ userId }: { userId: string }) {
         {!loading && !activeId && <Link to="/app/today" className={ghostPillClass}>Open your existing workspace</Link>}
       </main>
       {creating && <WorkspaceCreateDialog workspaces={choices} sourceId={active?.id ?? existingWorkspace.id} onClose={close} onCreate={create} />}
-    </div>
-  );
-}
-
-function WorkspaceRecords({ userId, workspaceId }: { userId: string; workspaceId: string }) {
-  const [records, setRecords] = useState<PersonalWorkspaceRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [editing, setEditing] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  useEffect(() => {
-    let current = true;
-    void loadPersonalWorkspaceRecords(userId, workspaceId).then(result => { if (current) setRecords(result); })
-      .catch(() => { if (current) setError('Workspace records could not be loaded.'); })
-      .finally(() => { if (current) setLoading(false); });
-    return () => { current = false; };
-  }, [userId, workspaceId]);
-
-  if (loading) return <p role="status" className="text-sm text-muted">Loading workspace records…</p>;
-  return (
-    <div className="space-y-4">
-      <p className="rounded-lg border border-line bg-white px-4 py-3 text-sm text-muted">Workspace setup. Commercial modules are available in your existing workspace.</p>
-      {error && <p role="alert" className="text-sm text-tint-red-solid">{error}</p>}
-      {workspaceCopyOptions.map(option => {
-        const rows = records.filter(record => record.category === option.key);
-        return <section key={option.key} className="rounded-panel bg-white px-5 py-4 shadow-panel" aria-label={option.label}>
-          <h2 className="mb-2 font-display font-bold">{option.label} <span className="text-sm font-normal text-muted">{rows.length}</span></h2>
-          {rows.length === 0 && <p className="text-sm text-muted">None yet</p>}
-          <ul className="divide-y divide-line">{rows.map(record => <li key={record.id} className="py-2 text-sm">
-            {editing === record.id ? <form className="flex flex-wrap gap-2" onSubmit={async event => {
-              event.preventDefault();
-              if (saving) return;
-              const name = String(new FormData(event.currentTarget).get('name') ?? '').trim();
-              if (!name) return;
-              setSaving(true);
-              setError('');
-              try {
-                const changed = await renamePersonalWorkspaceRecord(userId, workspaceId, record.id, name);
-                setRecords(current => current.map(row => row.id === changed.id ? changed : row));
-                setEditing(null);
-              } catch (failure) {
-                setError(failure instanceof Error ? failure.message : 'The change could not be saved.');
-              } finally { setSaving(false); }
-            }}>
-              <input aria-label="Record name" name="name" className={`${controlClass} flex-1`} defaultValue={record.name} maxLength={200} required disabled={saving} />
-              <button className={primaryPillClass} disabled={saving}>{saving ? 'Saving…' : 'Save'}</button>
-              <button type="button" className={ghostPillClass} disabled={saving} onClick={() => setEditing(null)}>Cancel</button>
-            </form> : <div className="flex items-center justify-between gap-2"><span>{record.name}</span><button type="button" className={ghostPillClass} onClick={() => setEditing(record.id)} aria-label={`Rename ${record.name}`}>Rename</button></div>}
-          </li>)}</ul>
-        </section>;
-      })}
     </div>
   );
 }

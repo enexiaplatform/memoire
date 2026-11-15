@@ -69,6 +69,7 @@ export async function sendAiChat(
   messages: { role: "user" | "assistant"; content: string }[],
   context: ChatContext,
   signal: AbortSignal,
+  workspaceId?: string,
 ): Promise<ChatReply> {
   const token = await tokenForUser(userId);
   if (signal.aborted) throw new DOMException("Aborted", "AbortError");
@@ -77,6 +78,7 @@ export async function sendAiChat(
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
+      ...(workspaceId ? { "x-memoire-workspace": workspaceId } : {}),
     },
     body: JSON.stringify({ consent: true, messages, context }),
     signal: AbortSignal.any([signal, AbortSignal.timeout(35000)]),
