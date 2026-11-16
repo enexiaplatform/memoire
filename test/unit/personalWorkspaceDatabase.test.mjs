@@ -103,3 +103,32 @@ test('other accounts, anonymous requests and missing workspace selectors cannot 
   await db.exec('RESET ROLE; SET ROLE anon');
   await assert.rejects(db.query('SELECT id FROM memoire_personal_workspace_records'), /permission denied/);
 });
+
+test('copies production-sized legacy contacts by unique account name and preserves explicit links', async () => {
+  await setAuthenticatedOwner(db, OWNER_A);
+  await db.query(`INSERT INTO accounts(user_id, account_name, name)
+    SELECT $1, 'Scale Lab ' || n, 'Scale Lab ' || n FROM generate_series(1, 2500) n`, [OWNER_A]);
+  await db.query(`INSERT INTO stakeholders(user_id, account_name, name)
+    SELECT $1, ' scale lab ' || (1 + (n - 1) % 2500) || ' ', 'Scale Contact ' || n
+    FROM generate_series(1, 4000) n`, [OWNER_A]);
+  await db.query(`INSERT INTO accounts(user_id, account_name, name)
+    VALUES ($1,'Ambiguous Lab','Ambiguous first'), ($1,' ambiguous lab ','Ambiguous second')`, [OWNER_A]);
+  await db.query(`INSERT INTO stakeholders(user_id, account_name, name)
+    VALUES ($1,'Ambiguous Lab','Ambiguous contact'), ($1,'Missing Lab','Unmatched contact')`, [OWNER_A]);
+  await db.query(`INSERT INTO stakeholders(user_id, account_id, account_name, name)
+    VALUES ($1,$2,'Stale account name','Explicit contact')`, [OWNER_A, sourceAccount]);
+
+  const largeCopy = 'aaaaaaaa-6666-4666-8666-666666666666';
+  await db.exec("SET statement_timeout = '8s'");
+  try {
+    await create(largeCopy, 'Production-sized copy', null, ['accounts', 'contacts', 'templates']);
+  } finally {
+    await db.exec('RESET statement_timeout');
+  }
+  await setWorkspace(largeCopy);
+  const { rows: counts } = await db.query('SELECT category, count(*)::int AS total FROM memoire_personal_workspace_records GROUP BY category ORDER BY category');
+  assert.deepEqual(counts, [{ category: 'accounts', total: 2503 }, { category: 'contacts', total: 4002 }, { category: 'templates', total: 2 }]);
+  const { rows: links } = await db.query(`SELECT c.name, a.name AS account FROM memoire_personal_workspace_records c
+    JOIN memoire_personal_workspace_records a ON a.id=c.account_id WHERE c.name IN ('Explicit contact','Scale Contact 2501') ORDER BY c.name`);
+  assert.deepEqual(links, [{ name: 'Explicit contact', account: 'Alpha Lab' }, { name: 'Scale Contact 2501', account: 'Scale Lab 1' }]);
+});
