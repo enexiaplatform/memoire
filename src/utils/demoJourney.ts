@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 import { trackProductEvent } from './productAnalytics';
 
 export const DEMO_JOURNEY_PROGRESS_KEY = 'memoire.demoJourney.progress';
@@ -84,7 +85,7 @@ export function getDemoJourneyProgress(): DemoJourneyProgress {
   if (typeof window === 'undefined') return { completedStepIds: [], completion: null };
 
   try {
-    const raw = window.localStorage.getItem(DEMO_JOURNEY_PROGRESS_KEY);
+    const raw = getWorkspaceBrowserStorage(true).getItem(DEMO_JOURNEY_PROGRESS_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as Partial<DemoJourneyProgress>;
       const completedStepIds = Array.isArray(parsed.completedStepIds)
@@ -122,9 +123,9 @@ export function markDemoJourneyStepComplete(stepId: DemoJourneyStepId, reason: s
   const progress = { completedStepIds, completion };
 
   try {
-    window.localStorage.setItem(DEMO_JOURNEY_PROGRESS_KEY, JSON.stringify(progress));
+    getWorkspaceBrowserStorage(true).setItem(DEMO_JOURNEY_PROGRESS_KEY, JSON.stringify(progress));
     if (completion) {
-      window.localStorage.setItem(DEMO_JOURNEY_COMPLETED_KEY, JSON.stringify(completion));
+      getWorkspaceBrowserStorage(true).setItem(DEMO_JOURNEY_COMPLETED_KEY, JSON.stringify(completion));
     }
     window.dispatchEvent(new CustomEvent(DEMO_JOURNEY_UPDATED_EVENT));
   } catch {
@@ -146,7 +147,7 @@ function getLegacyDemoJourneyCompletion(): DemoJourneyCompletion | null {
   if (typeof window === 'undefined') return null;
 
   try {
-    const raw = window.localStorage.getItem(DEMO_JOURNEY_COMPLETED_KEY);
+    const raw = getWorkspaceBrowserStorage(true).getItem(DEMO_JOURNEY_COMPLETED_KEY);
     if (!raw) return null;
     return normalizeCompletion(JSON.parse(raw) as Partial<DemoJourneyCompletion>);
   } catch {
@@ -166,8 +167,8 @@ export function clearDemoJourneyCompletion() {
   if (typeof window === 'undefined') return;
 
   try {
-    window.localStorage.removeItem(DEMO_JOURNEY_PROGRESS_KEY);
-    window.localStorage.removeItem(DEMO_JOURNEY_COMPLETED_KEY);
+    getWorkspaceBrowserStorage(true).removeItem(DEMO_JOURNEY_PROGRESS_KEY);
+    getWorkspaceBrowserStorage(true).removeItem(DEMO_JOURNEY_COMPLETED_KEY);
     window.dispatchEvent(new CustomEvent(DEMO_JOURNEY_UPDATED_EVENT));
   } catch {
     // Ignore local cleanup failures.

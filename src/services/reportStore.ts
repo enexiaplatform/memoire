@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
 import { requireLocalWrite, writeLocalRecords } from './localWriteGuard.ts';
@@ -12,7 +13,7 @@ export function assertReportScope(scope: PortfolioScope) {
   if (!scope.sampleDataActive && getLocalWorkspaceOwner() !== scope.userId) throw new Error('The workspace account changed. Reload before using reports.');
 }
 function readAll(): SavedReport[] {
-  const raw: unknown = JSON.parse(window.localStorage.getItem(REPORT_STORAGE_KEY) || '[]');
+  const raw: unknown = JSON.parse(getWorkspaceBrowserStorage(true).getItem(REPORT_STORAGE_KEY) || '[]');
   if (!Array.isArray(raw)) throw new Error('Saved reports are unreadable. Restore a verified workspace backup before editing.');
   const records = raw.map(parseSavedReport);
   if (new Set(records.map(record => `${record.isSample}:${record.id}`)).size !== records.length) throw new Error('Duplicate saved report identity.');

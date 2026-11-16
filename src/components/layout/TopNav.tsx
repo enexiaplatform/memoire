@@ -1,3 +1,4 @@
+import { WorkspaceSwitcher } from '../../features/workspaces/WorkspaceSwitcher';
 import { useEffect, useState } from 'react';
 import { useAuthContext } from '../../auth/authContext';
 import { Link, useLocation } from 'react-router-dom';
@@ -104,6 +105,7 @@ export function TopNav({ onOpenMenu }: { onOpenMenu: () => void }) {
           * aside for it. An unhealthy one never does: "your records are not
           * reaching the cloud" outranks anything a page has to say.
           */}
+        <WorkspaceSwitcher />
         <DataModePill
           compact
           quietWhenSynced={page.hasStatus}

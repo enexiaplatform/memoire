@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import {
   claimLocalCollectionForUser,
   loadCloudJsonCollection,
@@ -69,7 +70,7 @@ export type AccountMergeRecord = {
 export function loadAccountMerges(includeDeleted = false): AccountMergeRecord[] {
   if (!canUseStorage()) return [];
   try {
-    const raw = window.localStorage.getItem(ACCOUNT_MERGE_STORAGE_KEY);
+    const raw = getWorkspaceBrowserStorage(true).getItem(ACCOUNT_MERGE_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -192,7 +193,7 @@ function sanitize(value: unknown): AccountMergeRecord | null {
 }
 
 function canUseStorage() {
-  return typeof window !== 'undefined' && Boolean(window.localStorage);
+  return typeof window !== 'undefined' && Boolean(getWorkspaceBrowserStorage());
 }
 
 /**

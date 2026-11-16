@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 import { CONDITION_STORAGE_KEY } from '../services/commercialKernel/conditionStore';
 import { REQUIREMENT_STORAGE_KEY } from '../services/commercialKernel/requirementStore';
 import { DEPENDENCY_STORAGE_KEY } from '../services/commercialKernel/dependencyStore';
@@ -115,7 +116,7 @@ export type SampleDataset = {
 export function isSampleDataLoaded() {
   if (typeof window === 'undefined') return false;
   try {
-    return window.localStorage.getItem(SAMPLE_DATA_FLAG_KEY) === 'true';
+    return getWorkspaceBrowserStorage(true).getItem(SAMPLE_DATA_FLAG_KEY) === 'true';
   } catch {
     return false;
   }
@@ -124,7 +125,7 @@ export function isSampleDataLoaded() {
 export function markSampleDataLoaded() {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(SAMPLE_DATA_FLAG_KEY, 'true');
+    getWorkspaceBrowserStorage(true).setItem(SAMPLE_DATA_FLAG_KEY, 'true');
     window.dispatchEvent(new CustomEvent(SAMPLE_DATA_UPDATED_EVENT));
   } catch {
     // Sample flag is best-effort only.
@@ -134,7 +135,7 @@ export function markSampleDataLoaded() {
 export function clearSampleDataFlag() {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.removeItem(SAMPLE_DATA_FLAG_KEY);
+    getWorkspaceBrowserStorage(true).removeItem(SAMPLE_DATA_FLAG_KEY);
     window.dispatchEvent(new CustomEvent(SAMPLE_DATA_UPDATED_EVENT));
   } catch {
     // Ignore localStorage cleanup failures.
@@ -1543,7 +1544,7 @@ function markSampleRecord<T extends object>(record: T): T {
 function writeLocalArray<T extends { id: string }>(key: string, records: T[]) {
   if (typeof window === 'undefined') return;
   let existing: T[];
-  try { const value: unknown = JSON.parse(window.localStorage.getItem(key) || '[]'); if (!Array.isArray(value)) throw new Error(); existing = value; }
+  try { const value: unknown = JSON.parse(getWorkspaceBrowserStorage(true).getItem(key) || '[]'); if (!Array.isArray(value)) throw new Error(); existing = value; }
   catch { throw new Error('Existing browser data could not be read. Export a backup before loading the demo.'); }
   requireLocalWrite(writeLocalRecords(key, [...records, ...existing.filter(item => !isSampleRecord(item as SampleRecord))]));
 }
@@ -1551,8 +1552,8 @@ function writeLocalArray<T extends { id: string }>(key: string, records: T[]) {
 function removeSampleRecords(key: string) {
   if (typeof window === 'undefined') return;
   try {
-    const existing = JSON.parse(window.localStorage.getItem(key) || '[]') as SampleRecord[];
-    window.localStorage.setItem(key, JSON.stringify(existing.filter((item) => !isSampleRecord(item))));
+    const existing = JSON.parse(getWorkspaceBrowserStorage(true).getItem(key) || '[]') as SampleRecord[];
+    getWorkspaceBrowserStorage(true).setItem(key, JSON.stringify(existing.filter((item) => !isSampleRecord(item))));
   } catch {
     // Keep user data untouched if parsing fails.
   }
@@ -1561,8 +1562,8 @@ function removeSampleRecords(key: string) {
 function removeLegacySampleRecords(key: string) {
   if (typeof window === 'undefined') return;
   try {
-    const existing = JSON.parse(window.localStorage.getItem(key) || '[]') as SampleRecord[];
-    window.localStorage.setItem(key, JSON.stringify(existing.filter((item) => !containsLegacySampleTerm(item))));
+    const existing = JSON.parse(getWorkspaceBrowserStorage(true).getItem(key) || '[]') as SampleRecord[];
+    getWorkspaceBrowserStorage(true).setItem(key, JSON.stringify(existing.filter((item) => !containsLegacySampleTerm(item))));
   } catch {
     // Keep local data untouched if parsing fails.
   }
@@ -1581,7 +1582,7 @@ function isSampleRecord(record: SampleRecord) {
 function hasLegacySampleTerms() {
   if (typeof window === 'undefined') return false;
   return SAMPLE_ARRAY_STORAGE_KEYS.some((key) => {
-    const value = window.localStorage.getItem(key);
+    const value = getWorkspaceBrowserStorage(true).getItem(key);
     return value ? containsLegacySampleTerm(value) : false;
   });
 }

@@ -1,3 +1,5 @@
+import { getActiveWorkspaceScope } from './activeWorkspaceScope.ts';
+
 export type WorkspaceBrowserScope = Readonly<{ ownerId: string; workspaceId: string }>;
 
 const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
@@ -23,4 +25,12 @@ export function resolveWorkspaceStorage(scope?: WorkspaceBrowserScope): Storage 
     removeItem(key) { storage.removeItem(prefix + key); },
     clear() { keys().forEach(key => storage.removeItem(key)); },
   };
+}
+
+export function getWorkspaceBrowserStorage(required: true): Storage;
+export function getWorkspaceBrowserStorage(): Storage | undefined;
+export function getWorkspaceBrowserStorage(required?: true): Storage | undefined {
+  const storage = resolveWorkspaceStorage(getActiveWorkspaceScope() ?? undefined);
+  if (required && !storage) throw new Error('Workspace browser storage is unavailable.');
+  return storage ?? undefined;
 }

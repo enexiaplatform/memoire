@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../../services/workspaceBrowserStorage.ts';
 import {ContractObligationReadings} from './ContractObligationReadings';
 import {useEffect,useState} from 'react';
 import {X} from 'lucide-react';
@@ -46,7 +47,7 @@ export function HistoricalOpportunityDrawer({opportunityId,scope,cutoff,sampleDa
     if(!Number.isFinite(instant)||instant>Date.now()+1000){setError('Choose a valid date and time no later than now.');setLoading(false);return()=>{active=false;};}
     const timeZone=Intl.DateTimeFormat().resolvedOptions().timeZone;
     void (async()=>{
-      const sources=scope==='guest'?getLocalHistoricalSourcesAt(scope,cutoff,window.localStorage)
+      const sources=scope==='guest'?getLocalHistoricalSourcesAt(scope,cutoff,getWorkspaceBrowserStorage(true))
         :await getCloudHistoricalSourcesAt(scope,cutoff);
       // A pre-coverage/gap answer must not depend on today's Decision table.
       const decisions=sources.status==='verified'&&sources.records.opportunities.some(row=>row.id===opportunityId)

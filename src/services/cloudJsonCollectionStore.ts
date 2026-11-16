@@ -1,3 +1,5 @@
+import { dataOwnerForLogin } from './activeWorkspaceScope.ts';
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { fetchAllRows } from './supabasePaging.ts';
 import { reportClientOperationalEvent } from './clientTelemetry.ts';
@@ -209,7 +211,7 @@ export function mergeCloudJsonRecords<T extends CloudJsonRecord>(local: T[], clo
 export function claimLocalCollectionForUser(table: CloudJsonCollectionTable, userId: string) {
   if (typeof window === 'undefined') return false;
   const key = getOwnerKey(table);
-  const owner = window.localStorage.getItem(key);
+  const owner = getWorkspaceBrowserStorage(true).getItem(key);
   if (owner && owner !== userId) return false;
   writeLocalCollection(key, userId);
   return true;
@@ -227,7 +229,7 @@ async function getCurrentUserId() {
   if (!supabaseClient) return null;
   const { data, error } = await supabaseClient.auth.getUser();
   if (error) throw new Error(error.message);
-  return data.user?.id || null;
+  return dataOwnerForLogin(data.user?.id) || null;
 }
 
 function setLocalCollectionOwner(table: CloudJsonCollectionTable, userId: string) {

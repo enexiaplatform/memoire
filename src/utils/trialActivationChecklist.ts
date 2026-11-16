@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { SalesAssetRecord } from '../services/salesAssetStore';
@@ -34,7 +35,7 @@ const defaultState: TrialActivationChecklistState = {
 export function loadTrialActivationChecklistState(): TrialActivationChecklistState {
   if (typeof window === 'undefined') return defaultState;
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(TRIAL_ACTIVATION_CHECKLIST_KEY) || 'null') as Partial<TrialActivationChecklistState> | null;
+    const parsed = JSON.parse(getWorkspaceBrowserStorage(true).getItem(TRIAL_ACTIVATION_CHECKLIST_KEY) || 'null') as Partial<TrialActivationChecklistState> | null;
     if (!parsed || typeof parsed !== 'object') return defaultState;
     return {
       manualCompleted: normalizeManualCompleted(parsed.manualCompleted),
@@ -54,7 +55,7 @@ export function saveTrialActivationChecklistState(state: TrialActivationChecklis
   };
   if (typeof window !== 'undefined') {
     try {
-      window.localStorage.setItem(TRIAL_ACTIVATION_CHECKLIST_KEY, JSON.stringify(nextState));
+      getWorkspaceBrowserStorage(true).setItem(TRIAL_ACTIVATION_CHECKLIST_KEY, JSON.stringify(nextState));
     } catch {
       // Checklist state is convenience-only.
     }

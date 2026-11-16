@@ -1,3 +1,5 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+
 import { reportClientOperationalEvent } from './clientTelemetry.ts';
 import { writeLocalCollection } from './localWriteGuard.ts';
 
@@ -51,6 +53,7 @@ export const LOCAL_WORKSPACE_PURGED_EVENT = 'memoire:local-workspace-purged';
  */
 const DEVICE_SCOPED_PREFIXES = [
   'memoire.supabase.',
+  'memoire.workspace.v1.',
   'memoire.analytics.',
   'memoire.pipelineDefenseAuthRedirect.',
   LOCAL_WORKSPACE_OWNER_KEY,
@@ -152,9 +155,5 @@ function purgeWorkspaceKeys(storage: Storage): string[] {
 }
 
 function resolveStorage(): Storage | null {
-  if (typeof globalThis === 'undefined') return null;
-  const scoped = (globalThis as { window?: { localStorage?: Storage } }).window?.localStorage;
-  if (scoped) return scoped;
-  const bare = (globalThis as { localStorage?: Storage }).localStorage;
-  return bare || null;
+  return getWorkspaceBrowserStorage() ?? null;
 }

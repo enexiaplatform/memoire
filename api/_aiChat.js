@@ -1,3 +1,4 @@
+import { resolveWorkspaceServerScope, workspaceDataHeaders } from './_workspaceScope.js';
 import { createClient } from "@supabase/supabase-js";
 import { getBearerToken, verifyUserToken } from "./_auth.js";
 import { getSupabaseAnonKey, getSupabaseUrl } from "./_env.js";
@@ -303,9 +304,9 @@ async function loadWorkspaceChatContext(client, userId, workspaceId) {
 
 export function createAiChatHandler({
   verify = verifyUserToken,
-  clientForToken = (token) =>
+  clientForToken = (token, workspaceId) =>
     createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
-      global: { headers: { Authorization: `Bearer ${token}` } },
+      global: { headers: { Authorization: `Bearer ${token}`, ...workspaceDataHeaders(workspaceId) } },
       auth: { persistSession: false, autoRefreshToken: false },
     }),
   rateLimit = enforceRateLimit,
@@ -338,6 +339,8 @@ export function createAiChatHandler({
       const scopedWorkspace = workspaceId !== undefined;
       if (scopedWorkspace && (typeof workspaceId !== 'string' || !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(workspaceId)))
         return reply(400, { error: 'invalid_request' });
+      const scope = await resolveWorkspaceServerScope(req.headers, token, user.id, clientForToken);
+      if (!scope) return reply(404, { error: 'workspace_unavailable' });
       const configured =
         Boolean(env.GROQ_API_KEY?.trim()) && env.AI_CHAT_ENABLED === "true";
       if (req.method === "GET")
@@ -370,7 +373,7 @@ export function createAiChatHandler({
         });
       }
       if (scopedWorkspace) {
-        const scopedContext = await loadWorkspaceChatContext(clientForToken(token), user.id, workspaceId);
+        const scopedContext = await loadWorkspaceChatContext(scope.client, user.id, workspaceId);
         if (!scopedContext) return reply(404, { error: 'workspace_unavailable' });
         // A scoped chat uses server-read records and the latest question only.
         // Never carry supplied context, prior conversations or write proposals across workspaces.
@@ -378,8 +381,8 @@ export function createAiChatHandler({
       }
       if (
         !(await ownedSources(
-          clientForToken(token),
-          user.id,
+          scope.client,
+          scope.ownerId,
           body.context.sources,
         ))
       )

@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 export const COHORT_FUNNEL_KEY = 'memoire.cohortFunnel.v1';
 
 /**
@@ -134,7 +135,7 @@ export function evaluateCohortStopGo(input: CohortFunnelInput): CohortStopGo {
 export function loadCohortFunnelInput(): CohortFunnelInput {
   if (typeof window === 'undefined') return defaultCohortFunnelInput;
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(COHORT_FUNNEL_KEY) || 'null');
+    const parsed = JSON.parse(getWorkspaceBrowserStorage(true).getItem(COHORT_FUNNEL_KEY) || 'null');
     if (!parsed || typeof parsed !== 'object') return defaultCohortFunnelInput;
     return { ...defaultCohortFunnelInput, ...normalizeFunnelInput(parsed) };
   } catch {
@@ -146,7 +147,7 @@ export function saveCohortFunnelInput(input: CohortFunnelInput): CohortFunnelInp
   const next = normalizeFunnelInput(input);
   if (typeof window !== 'undefined') {
     try {
-      window.localStorage.setItem(COHORT_FUNNEL_KEY, JSON.stringify(next));
+      getWorkspaceBrowserStorage(true).setItem(COHORT_FUNNEL_KEY, JSON.stringify(next));
     } catch {
       // Convenience-only persistence.
     }

@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 export const CAPTURE_CORRECTION_STORAGE_KEY = 'memoire.captureCorrections.v1';
 export const CAPTURE_ACCOUNT_ALIAS_STORAGE_KEY = 'memoire.captureAccountAliases.v1';
@@ -135,9 +136,9 @@ export function deleteCaptureAccountAlias(aliasId: string, userId?: string) {
 }
 
 export function clearLocalCaptureCorrectionMemory(userId?: string) {
-  if (typeof localStorage === 'undefined') return;
-  localStorage.removeItem(correctionKey(userId));
-  localStorage.removeItem(aliasKey(userId));
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return;
+  getWorkspaceBrowserStorage(true).removeItem(correctionKey(userId));
+  getWorkspaceBrowserStorage(true).removeItem(aliasKey(userId));
 }
 
 function saveAliases(aliases: CaptureAccountAlias[], userId?: string) {
@@ -186,9 +187,9 @@ function dedupeCorrections(events: CaptureCorrectionEvent[]) {
 }
 
 function readLocal<T>(key: string): T[] {
-  if (typeof localStorage === 'undefined') return [];
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return [];
   try {
-    const value = JSON.parse(localStorage.getItem(key) || '[]');
+    const value = JSON.parse(getWorkspaceBrowserStorage(true).getItem(key) || '[]');
     return Array.isArray(value) ? value as T[] : [];
   } catch {
     return [];
@@ -196,7 +197,7 @@ function readLocal<T>(key: string): T[] {
 }
 
 function writeLocal(key: string, value: unknown) {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return;
   writeLocalRecords(key, value);
 }
 

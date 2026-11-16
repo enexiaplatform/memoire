@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 import { writeLocalCollection } from '../services/localWriteGuard.ts';
 
 export const SUPPORTED_CURRENCIES = [
@@ -207,9 +208,9 @@ export const EXCHANGE_RATES_CHANGED_EVENT = 'memoire:exchange-rates-changed';
  * and is a migration rather than a code change.
  */
 export function getExchangeRateOverrides(): Record<string, number> {
-  if (typeof localStorage === 'undefined') return {};
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return {};
   try {
-    const parsed = JSON.parse(localStorage.getItem(RATE_OVERRIDE_KEY) || '{}');
+    const parsed = JSON.parse(getWorkspaceBrowserStorage(true).getItem(RATE_OVERRIDE_KEY) || '{}');
     if (!parsed || typeof parsed !== 'object') return {};
     const out: Record<string, number> = {};
     for (const [currency, rate] of Object.entries(parsed as Record<string, unknown>)) {
@@ -243,7 +244,7 @@ export function isExchangeRateOverridden(currency: SupportedCurrency | string): 
 
 /** Passing `null` restores the shipped rate for that currency. */
 export function setExchangeRateOverride(currency: SupportedCurrency | string, rate: number | null): boolean {
-  if (typeof localStorage === 'undefined' || currency === BASE_CURRENCY) return false;
+  if (typeof getWorkspaceBrowserStorage() === 'undefined' || currency === BASE_CURRENCY) return false;
   const overrides = getExchangeRateOverrides();
   if (rate === null) delete overrides[currency];
   else if (Number.isFinite(rate) && rate > 0) overrides[currency] = rate;
@@ -292,8 +293,8 @@ export const DEFAULT_REPORTING_CURRENCY: SupportedCurrency = 'USD';
  */
 export function getReportingCurrency(): SupportedCurrency {
   try {
-    if (typeof localStorage === 'undefined') return DEFAULT_REPORTING_CURRENCY;
-    const stored = normalizeCurrency(localStorage.getItem(REPORTING_CURRENCY_KEY));
+    if (typeof getWorkspaceBrowserStorage() === 'undefined') return DEFAULT_REPORTING_CURRENCY;
+    const stored = normalizeCurrency(getWorkspaceBrowserStorage(true).getItem(REPORTING_CURRENCY_KEY));
     // A rate, not the shipped list: an operator who priced their own currency
     // reports in it. One that has lost its rate falls back rather than
     // denominating every total in something nothing converts into.
@@ -326,7 +327,7 @@ export function setReportingCurrency(currency: string): boolean {
   // denominated in a currency with no arithmetic behind it.
   if (!hasExchangeRate(normalized)) return false;
   try {
-    localStorage.setItem(REPORTING_CURRENCY_KEY, normalized);
+    getWorkspaceBrowserStorage(true).setItem(REPORTING_CURRENCY_KEY, normalized);
   } catch {
     return false;
   }

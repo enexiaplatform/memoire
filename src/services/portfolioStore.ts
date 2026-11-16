@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
 import { requireLocalWrite, writeLocalRecords } from './localWriteGuard.ts';
@@ -22,7 +23,7 @@ function checkScope(scope: PortfolioScope) {
 }
 function readAll(): PortfolioRecord[] {
   if (typeof window === 'undefined') throw new Error('Local storage is unavailable.');
-  const parsed: unknown = JSON.parse(window.localStorage.getItem(PORTFOLIO_STORAGE_KEY) || '[]');
+  const parsed: unknown = JSON.parse(getWorkspaceBrowserStorage(true).getItem(PORTFOLIO_STORAGE_KEY) || '[]');
   if (!Array.isArray(parsed)) throw new Error('The portfolio catalog is unreadable. Restore a verified backup before editing.');
   return parsed.map(parsePortfolioRecord);
 }
@@ -95,14 +96,14 @@ export async function savePortfolio(scope: PortfolioScope, input: { id: string; 
 }
 
 export async function prepareOpportunityBrand(scope: PortfolioScope, input: { brand?: string; brandCatalogId?: string }, opportunityId?: string, previousBrand?: string) {
-  if (!input.brand?.trim() && !input.brandCatalogId && (!opportunityId || !window.localStorage.getItem(PORTFOLIO_STORAGE_KEY))) return { brand: '', node: null, others: false, cloudState:'local' as const };
+  if (!input.brand?.trim() && !input.brandCatalogId && (!opportunityId || !getWorkspaceBrowserStorage(true).getItem(PORTFOLIO_STORAGE_KEY))) return { brand: '', node: null, others: false, cloudState:'local' as const };
   const catalog = await loadPortfolio(scope);
   return {...resolveBrandSelection(catalog.records, input, opportunityId, previousBrand),cloudState:catalog.cloud};
 }
 
 /** Re-read at commit time to preserve independent product/BU classifications. */
 export async function linkOpportunityBrand(scope: PortfolioScope, opportunity: CrmLiteOpportunity, selection: ReturnType<typeof resolveBrandSelection> & { preserveOriginal?: boolean }) {
-  if (!selection.brand && !window.localStorage.getItem(PORTFOLIO_STORAGE_KEY)) return null;
+  if (!selection.brand && !getWorkspaceBrowserStorage(true).getItem(PORTFOLIO_STORAGE_KEY)) return null;
   let records = readPortfolio(scope);
   const old = portfolioAssignments(records).find(row => row.opportunityId === opportunity.id);
   if (!selection.brand && !old) return null;

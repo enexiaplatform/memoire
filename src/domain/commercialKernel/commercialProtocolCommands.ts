@@ -1,10 +1,11 @@
+import { getWorkspaceBrowserStorage } from '../../services/workspaceBrowserStorage.ts';
 import type {CommercialScope,CommercialEvent} from './types.ts';
 import {verifyCommercialProtocol,commercialProtocolObservation,protocolFromCrossCompanyState} from './commercialProtocol.ts';
 import {isCrossCompanyPublication} from './crossCompanyState.ts';
 import {eventCodec,EVENT_STORAGE_KEY} from '../../services/commercialKernel/eventStore.ts';
 import {receiveExternalObservation} from './externalObservationCommands.ts';
 import {observationIdentity,normalizeExternalObservation} from './externalObservation.ts';
-function history(){const rows:unknown=JSON.parse(window.localStorage.getItem(EVENT_STORAGE_KEY)||'[]');if(!Array.isArray(rows)||rows.some(r=>!eventCodec.sanitize(r)))throw new Error('Event history is unreadable. Preserve a backup.');return rows as CommercialEvent[];}
+function history(){const rows:unknown=JSON.parse(getWorkspaceBrowserStorage(true).getItem(EVENT_STORAGE_KEY)||'[]');if(!Array.isArray(rows)||rows.some(r=>!eventCodec.sanitize(r)))throw new Error('Event history is unreadable. Preserve a backup.');return rows as CommercialEvent[];}
 export async function exportCommercialProtocol(scope:CommercialScope,eventId:string){
  const event=history().find(e=>e.id===eventId&&e.userId===scope.userId&&Boolean(e.isSample)===Boolean(scope.sampleDataActive));if(!event||!isCrossCompanyPublication(event))throw new Error('Select an issued public assessment in this owner scope.');
  return protocolFromCrossCompanyState(event.structuredPayload);

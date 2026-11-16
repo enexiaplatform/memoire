@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../workspaceBrowserStorage.ts';
 import { conditionReferenceIndex } from '../../domain/commercialKernel/conditionReferences.ts';
 import { loadCommercialEvidence } from './evidenceStore.ts';
 import { isCommercialCondition, type CommercialCondition } from '../../domain/commercialKernel/commercialCondition.ts';
@@ -33,7 +34,7 @@ export function saveCommercialCondition(record: CommercialCondition) {
 /** Legacy browser fallback for non-UI callers; the Opportunity UI passes its loaded canonical anchors. */
 export function localConditionReferenceIndex() {
   const read = (key: string) => {
-    const rows: unknown = JSON.parse(window.localStorage.getItem(key) || '[]');
+    const rows: unknown = JSON.parse(getWorkspaceBrowserStorage(true).getItem(key) || '[]');
     if (!Array.isArray(rows)) throw new Error('Workspace references are unreadable.');
     return rows;
   };

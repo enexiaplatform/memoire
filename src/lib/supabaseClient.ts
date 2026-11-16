@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { getActiveWorkspaceScope, NATIVE_WORKSPACE_HEADER } from '../services/activeWorkspaceScope.ts';
 
 // `import.meta.env` is a Vite construct. Outside the bundler - Node running the
 // domain tests, or any future server-side render - it is undefined, and reading
@@ -22,7 +23,7 @@ declare global {
   var __memoireSupabaseClient: SupabaseClient | null | undefined;
 }
 
-export const supabaseClient: SupabaseClient | null = isPipelineSupabaseConfigured
+export const supabaseAccountClient: SupabaseClient | null = isPipelineSupabaseConfigured
   ? (globalThis.__memoireSupabaseClient ||= createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         autoRefreshToken: true,
@@ -32,3 +33,28 @@ export const supabaseClient: SupabaseClient | null = isPipelineSupabaseConfigure
       },
     }))
   : null;
+
+export function workspaceApiClient(workspaceId: string): SupabaseClient {
+  const accountClient = supabaseAccountClient;
+  if (!accountClient) throw new Error('Cloud workspace service is unavailable.');
+  return createClient(supabaseUrl, supabaseAnonKey, {
+    accessToken: async () => {
+      const { data, error } = await accountClient.auth.getSession();
+      if (error || !data.session) throw new Error('Cloud workspace session is unavailable.');
+      return data.session.access_token;
+    },
+    global: { headers: { [NATIVE_WORKSPACE_HEADER]: workspaceId } },
+  });
+}
+
+let scopedClient: SupabaseClient | null = null;
+export const supabaseClient: SupabaseClient | null = supabaseAccountClient && new Proxy(supabaseAccountClient, {
+  get(accountClient, property) {
+    const scope = getActiveWorkspaceScope();
+    const target = scope && (property === 'from' || property === 'rpc')
+      ? (scopedClient ??= workspaceApiClient(scope.workspaceId))
+      : accountClient;
+    const value = Reflect.get(target, property);
+    return typeof value === 'function' ? value.bind(target) : value;
+  },
+});

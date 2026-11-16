@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import {
   supplierCommitmentKinds,
   supplierCommitmentParties,
@@ -25,7 +26,7 @@ export const SUPPLIER_COMMITMENT_STORAGE_KEY = 'memoire.supplierCommitments.v1';
 export function loadSupplierCommitments(): SupplierCommitmentRecord[] {
   if (!canUseStorage()) return [];
   try {
-    const raw = window.localStorage.getItem(SUPPLIER_COMMITMENT_STORAGE_KEY);
+    const raw = getWorkspaceBrowserStorage(true).getItem(SUPPLIER_COMMITMENT_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -116,5 +117,5 @@ function isUserRecord(record: SupplierCommitmentRecord) {
 }
 
 function canUseStorage() {
-  return typeof window !== 'undefined' && Boolean(window.localStorage);
+  return typeof window !== 'undefined' && Boolean(getWorkspaceBrowserStorage());
 }

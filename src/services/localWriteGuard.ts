@@ -1,6 +1,6 @@
 import { isRestoreInProgress } from './restoreJournal.ts';
 import { reportClientOperationalEvent } from './clientTelemetry.ts';
-import { resolveWorkspaceStorage, type WorkspaceBrowserScope } from './workspaceBrowserStorage.ts';
+import { getWorkspaceBrowserStorage, resolveWorkspaceStorage, type WorkspaceBrowserScope } from './workspaceBrowserStorage.ts';
 
 /**
  * The one place a record collection is written to this browser.
@@ -63,8 +63,8 @@ export function getLastLocalWriteFailure(): LocalWriteFailure | null {
  */
 export function writeLocalCollection(key: string, payload: string, scope?: WorkspaceBrowserScope): LocalWriteResult {
   try {
-    const storage = resolveWorkspaceStorage(scope);
-    if (isRestoreInProgress(scope ? storage : undefined)) return { ok: false, reason: 'unavailable', message: 'Workspace restore is in progress. Wait before saving changes.' };
+    const storage = scope ? resolveWorkspaceStorage(scope) : getWorkspaceBrowserStorage();
+    if (isRestoreInProgress(storage)) return { ok: false, reason: 'unavailable', message: 'Workspace restore is in progress. Wait before saving changes.' };
     if (!storage) return { ok: false, reason: 'unavailable', message: 'This browser has no local storage available.' };
     storage.setItem(key, payload);
     if (lastFailure) {
@@ -121,7 +121,7 @@ export function measureLocalStorageUsage(): StorageUsage {
   const byKey: StorageUsage['byKey'] = [];
   let memoireBytes = 0;
 
-  const storage = resolveWorkspaceStorage();
+  const storage = getWorkspaceBrowserStorage();
   if (storage) {
     for (let index = 0; index < storage.length; index += 1) {
       const key = storage.key(index);

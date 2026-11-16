@@ -1,4 +1,5 @@
-import { supabaseClient } from '../../lib/supabaseClient';
+import { nativeWorkspacesEnabled } from '../../services/activeWorkspaceScope';
+import { supabaseAccountClient as supabaseClient } from '../../lib/supabaseClient';
 import { fetchAllRows } from '../../services/supabasePaging';
 import type { CopyCategory } from './workspaceCopy';
 
@@ -23,7 +24,7 @@ export async function listPersonalWorkspaces(userId: string) {
 
 export async function createPersonalWorkspace(input: { id: string; name: string; sourceId: string | null; categories: CopyCategory[] }) {
   if (!supabaseClient) throw new Error('Workspace storage is unavailable.');
-  const { data, error } = await supabaseClient.rpc('memoire_create_personal_workspace', {
+  const { data, error } = await supabaseClient.rpc(nativeWorkspacesEnabled ? 'memoire_create_native_workspace' : 'memoire_create_personal_workspace', {
     p_id: input.id, p_name: input.name, p_source_id: input.sourceId, p_options: input.categories,
   }).single();
   if (error?.code === '23505') throw new Error('A workspace already uses this name.');

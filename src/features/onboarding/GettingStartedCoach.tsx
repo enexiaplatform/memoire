@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../../services/workspaceBrowserStorage.ts';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { ArrowRight, Check, ChevronDown, PartyPopper, X } from 'lucide-react';
@@ -281,7 +282,7 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
 function readCollapsed() {
   if (typeof window === 'undefined') return false;
   try {
-    return window.localStorage.getItem(COLLAPSED_KEY) === 'true';
+    return getWorkspaceBrowserStorage(true).getItem(COLLAPSED_KEY) === 'true';
   } catch {
     return false;
   }
@@ -290,7 +291,7 @@ function readCollapsed() {
 function writeCollapsed(value: boolean) {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(COLLAPSED_KEY, String(value));
+    getWorkspaceBrowserStorage(true).setItem(COLLAPSED_KEY, String(value));
   } catch {
     // A collapse preference that will not persist is a minor annoyance; a
     // storage exception thrown out of a click handler is a broken button.

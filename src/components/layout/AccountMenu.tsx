@@ -1,3 +1,4 @@
+import { getActiveWorkspaceScope } from '../../services/activeWorkspaceScope';
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Settings } from 'lucide-react';
@@ -108,7 +109,7 @@ export function AccountMenu({ variant = 'bar' }: {
           <div className="border-b border-gray-100 px-3 py-2">
             <p className="truncate text-sm font-semibold text-navy" title={displayName}>{displayName}</p>
             <p className="truncate text-xs text-gray-500">
-              {demoActive ? 'Local sample data' : 'Personal workspace'}
+              {demoActive ? 'Local sample data' : getActiveWorkspaceScope()?.name ?? 'Personal workspace'}
             </p>
           </div>
 

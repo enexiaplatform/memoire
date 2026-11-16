@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { applyLocalRestore } from './restoreJournal.ts';
 import { decodeHistoricalStorage, encodeHistoricalStorage } from './historicalStorageCodec.ts';
 
@@ -44,7 +45,7 @@ const parse=<T,>(storage:Storage,key:string,fallback:T):T=>{const raw=storage.ge
   return raw?JSON.parse(key===HISTORICAL_REVISIONS_KEY?decodeHistoricalStorage(raw):raw) as T:fallback;};
 const storedRevisions=(rows:StateRevision[])=>encodeHistoricalStorage(JSON.stringify(rows));
 const browserStorage=():Storage=>{
-  const storage=(typeof window!=='undefined'?window.localStorage:undefined)||(typeof localStorage!=='undefined'?localStorage:undefined);
+  const storage = getWorkspaceBrowserStorage();
   if(!storage)throw new Error('This browser has no local storage available for historical state.');
   return storage;
 };

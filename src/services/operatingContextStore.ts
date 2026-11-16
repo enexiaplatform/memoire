@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
@@ -292,9 +293,9 @@ function localStorageKey(userId: string) {
 }
 
 function loadLocalOperatingContext(userId: string): OperatingContextRecord[] {
-  if (typeof localStorage === 'undefined') return [];
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return [];
   try {
-    const raw = localStorage.getItem(localStorageKey(userId));
+    const raw = getWorkspaceBrowserStorage(true).getItem(localStorageKey(userId));
     if (!raw) return [];
     const records = JSON.parse(raw) as OperatingContextRecord[];
     return Array.isArray(records)
@@ -306,13 +307,13 @@ function loadLocalOperatingContext(userId: string): OperatingContextRecord[] {
 }
 
 function saveLocalOperatingContext(record: OperatingContextRecord, userId: string) {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return;
   const next = [record, ...loadLocalOperatingContext(userId).filter((item) => item.id !== record.id)];
   writeLocalRecords(localStorageKey(userId), next.sort(sortNewestFirst));
 }
 
 function deleteLocalOperatingContext(recordId: string, userId: string) {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return;
   const next = loadLocalOperatingContext(userId).filter((item) => item.id !== recordId);
   writeLocalRecords(localStorageKey(userId), next);
 }

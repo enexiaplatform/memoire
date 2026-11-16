@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 /**
  * The Monday that owns the current week, and the weekly prep the operator does
  * before it.
@@ -110,7 +111,7 @@ const createEmptyState = (date = new Date()): PipelineReviewHabitState => ({
   lastUpdatedAt: date.toISOString(),
 });
 
-const canUseStorage = () => typeof window !== 'undefined' && Boolean(window.localStorage);
+const canUseStorage = () => typeof window !== 'undefined' && Boolean(getWorkspaceBrowserStorage());
 
 const normalizeState = (state?: Partial<PipelineReviewHabitState> | null): PipelineReviewHabitState => {
   const now = new Date();
@@ -136,16 +137,16 @@ export const loadPipelineReviewHabitState = (): PipelineReviewHabitState => {
   }
 
   try {
-    const raw = window.localStorage.getItem(PIPELINE_REVIEW_HABIT_STORAGE_KEY);
+    const raw = getWorkspaceBrowserStorage(true).getItem(PIPELINE_REVIEW_HABIT_STORAGE_KEY);
     if (!raw) {
       const initial = createEmptyState();
-      window.localStorage.setItem(PIPELINE_REVIEW_HABIT_STORAGE_KEY, JSON.stringify(initial));
+      getWorkspaceBrowserStorage(true).setItem(PIPELINE_REVIEW_HABIT_STORAGE_KEY, JSON.stringify(initial));
       return initial;
     }
 
     const parsed = normalizeState(JSON.parse(raw));
     if (parsed.currentWeekId !== JSON.parse(raw).currentWeekId) {
-      window.localStorage.setItem(PIPELINE_REVIEW_HABIT_STORAGE_KEY, JSON.stringify(parsed));
+      getWorkspaceBrowserStorage(true).setItem(PIPELINE_REVIEW_HABIT_STORAGE_KEY, JSON.stringify(parsed));
     }
     return parsed;
   } catch {
@@ -190,7 +191,7 @@ const persistPipelineReviewHabitState = (state: PipelineReviewHabitState) => {
     return state;
   }
 
-  window.localStorage.setItem(PIPELINE_REVIEW_HABIT_STORAGE_KEY, JSON.stringify(state));
+  getWorkspaceBrowserStorage(true).setItem(PIPELINE_REVIEW_HABIT_STORAGE_KEY, JSON.stringify(state));
   window.dispatchEvent(new CustomEvent(PIPELINE_REVIEW_HABIT_UPDATED_EVENT, { detail: state }));
   return state;
 };

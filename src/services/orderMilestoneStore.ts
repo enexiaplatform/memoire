@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import {
   createOrderMilestoneRecord,
   orderMilestoneKeys,
@@ -25,7 +26,7 @@ export const ORDER_MILESTONE_STORAGE_KEY = 'memoire.orderMilestones.v1';
 export function loadOrderMilestones(): OrderMilestoneRecord[] {
   if (!canUseStorage()) return [];
   try {
-    const raw = window.localStorage.getItem(ORDER_MILESTONE_STORAGE_KEY);
+    const raw = getWorkspaceBrowserStorage(true).getItem(ORDER_MILESTONE_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -112,5 +113,5 @@ function isUserRecord(record: OrderMilestoneRecord) {
 }
 
 function canUseStorage() {
-  return typeof window !== 'undefined' && Boolean(window.localStorage);
+  return typeof window !== 'undefined' && Boolean(getWorkspaceBrowserStorage());
 }

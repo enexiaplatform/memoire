@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
@@ -272,8 +273,8 @@ export function accountToFormInput(account: AccountMemoryRecord): AccountFormInp
 }
 
 function loadLocalAccounts(): AccountMemoryRecord[] {
-  if (typeof localStorage === 'undefined') return [];
-  const raw = localStorage.getItem(ACCOUNT_STORAGE_KEY);
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return [];
+  const raw = getWorkspaceBrowserStorage(true).getItem(ACCOUNT_STORAGE_KEY);
   if (!raw) return [];
 
   try {
@@ -324,20 +325,20 @@ function loadLocalAccounts(): AccountMemoryRecord[] {
 }
 
 function saveLocalAccountRecord(record: AccountMemoryRecord) {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return;
   const next = [record, ...loadLocalAccounts().filter((item) => item.id !== record.id)];
   writeLocalRecords(ACCOUNT_STORAGE_KEY, next.sort(sortNewestFirst));
 }
 
 function saveLocalAccountRecords(records: AccountMemoryRecord[]) {
-  if (typeof localStorage === 'undefined' || records.length === 0) return null;
+  if (typeof getWorkspaceBrowserStorage() === 'undefined' || records.length === 0) return null;
   const ids = new Set(records.map((record) => record.id));
   const next = [...records, ...loadLocalAccounts().filter((item) => !ids.has(item.id))];
   return writeLocalRecords(ACCOUNT_STORAGE_KEY, next.sort(sortNewestFirst));
 }
 
 function deleteLocalAccount(accountId: string) {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return;
   const next = loadLocalAccounts().filter((item) => item.id !== accountId);
   writeLocalRecords(ACCOUNT_STORAGE_KEY, next);
 }

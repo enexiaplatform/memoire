@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { createOrderCostRecord, type OrderCostRecord } from '../utils/orderMargin';
 import {
   claimLocalCollectionForUser,
@@ -36,7 +37,7 @@ export const ORDER_COST_STORAGE_KEY = 'memoire.orderCosts.v1';
 export function loadOrderCosts(): OrderCostRecord[] {
   if (!canUseStorage()) return [];
   try {
-    const raw = window.localStorage.getItem(ORDER_COST_STORAGE_KEY);
+    const raw = getWorkspaceBrowserStorage(true).getItem(ORDER_COST_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -172,5 +173,5 @@ function isUserRecord(record: OrderCostRecord) {
 }
 
 function canUseStorage() {
-  return typeof window !== 'undefined' && Boolean(window.localStorage);
+  return typeof window !== 'undefined' && Boolean(getWorkspaceBrowserStorage());
 }

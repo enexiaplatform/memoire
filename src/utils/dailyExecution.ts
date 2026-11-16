@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 export const DAILY_EXECUTION_STORAGE_PREFIX = 'memoire.dailyExecution.v1';
 
 export type DailyExecutionStatus = 'Done' | 'Deferred';
@@ -81,10 +82,10 @@ export function loadDailyExecutionState(scope: string, date = new Date()): Daily
 
   try {
     const state = normalizeDailyExecutionState(
-      JSON.parse(window.localStorage.getItem(key) || 'null'),
+      JSON.parse(getWorkspaceBrowserStorage(true).getItem(key) || 'null'),
       date,
     );
-    window.localStorage.setItem(key, JSON.stringify(state));
+    getWorkspaceBrowserStorage(true).setItem(key, JSON.stringify(state));
     return state;
   } catch {
     return createDailyExecutionState(date);
@@ -117,7 +118,7 @@ export function clearDailyExecutionDecision(
 export function clearDailyExecutionState(scope: string) {
   if (!canUseStorage()) return;
   try {
-    window.localStorage.removeItem(getStorageKey(scope));
+    getWorkspaceBrowserStorage(true).removeItem(getStorageKey(scope));
   } catch {
     // Daily execution state is convenience-only.
   }
@@ -142,13 +143,13 @@ function getStorageKey(scope: string) {
 }
 
 function canUseStorage() {
-  return typeof window !== 'undefined' && Boolean(window.localStorage);
+  return typeof window !== 'undefined' && Boolean(getWorkspaceBrowserStorage());
 }
 
 function persistState(scope: string, state: DailyExecutionState) {
   if (!canUseStorage()) return;
   try {
-    window.localStorage.setItem(getStorageKey(scope), JSON.stringify(state));
+    getWorkspaceBrowserStorage(true).setItem(getStorageKey(scope), JSON.stringify(state));
   } catch {
     // Daily execution state is convenience-only; source records remain untouched.
   }

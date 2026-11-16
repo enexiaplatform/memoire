@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 /**
  * The two timestamps Sync & Recovery reports: when the workspace last reached
  * the cloud, and when the user last took a backup out of it.
@@ -42,7 +43,7 @@ export function readLastBackupExport() {
 
 function read(key: string) {
   try {
-    return window.localStorage.getItem(key) || '';
+    return getWorkspaceBrowserStorage(true).getItem(key) || '';
   } catch {
     return '';
   }

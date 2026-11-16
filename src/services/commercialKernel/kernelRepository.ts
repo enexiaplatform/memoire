@@ -1,3 +1,5 @@
+import { dataOwnerForLogin } from '../activeWorkspaceScope.ts';
+import { getWorkspaceBrowserStorage } from '../workspaceBrowserStorage.ts';
 import { supabaseClient } from '../../lib/supabaseClient.ts';
 import { fetchAllRows } from '../supabasePaging.ts';
 import { reportClientOperationalEvent } from '../clientTelemetry.ts';
@@ -113,13 +115,13 @@ function workspaceCollectionForTable(table: KernelTable) {
 // ------------------------------------------------------------------ local
 
 function canUseStorage() {
-  return typeof window !== 'undefined' && Boolean(window.localStorage);
+  return typeof window !== 'undefined' && Boolean(getWorkspaceBrowserStorage());
 }
 
 export function readLocal<T extends KernelRecord>(codec: KernelCodec<T>): T[] {
   if (!canUseStorage()) return [];
   try {
-    const raw = window.localStorage.getItem(codec.storageKey);
+    const raw = getWorkspaceBrowserStorage(true).getItem(codec.storageKey);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -163,7 +165,7 @@ export function writeLocal<T extends KernelRecord>(codec: KernelCodec<T>, record
   }
 
   const serialized = JSON.stringify(sanitized);
-  if (window.localStorage.getItem(codec.storageKey) === serialized) return sanitized;
+  if (getWorkspaceBrowserStorage(true).getItem(codec.storageKey) === serialized) return sanitized;
 
   if(requireDurable&&codec.table in historicalSources){
     commitLocalHistoricalCollection(codec.table as HistoricalSource,sanitized as KernelRecord[] as {id:string;userId?:string|null;isSample?:boolean}[]);
@@ -382,7 +384,7 @@ async function currentUserId() {
   if (!supabaseClient) return null;
   const { data, error } = await supabaseClient.auth.getUser();
   if (error) throw new Error(error.message);
-  return data.user?.id || null;
+  return dataOwnerForLogin(data.user?.id) || null;
 }
 
 function updatedAt(record: KernelRecord) {

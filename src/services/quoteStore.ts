@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import {
   claimLocalCollectionForUser,
   deleteCloudJsonRecordForCurrentUser,
@@ -128,7 +129,7 @@ export const emptyQuoteInput: QuoteInput = {
 export function loadQuotes(): QuoteRecord[] {
   if (typeof window === 'undefined') return [];
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(QUOTE_STORAGE_KEY) || '[]');
+    const parsed = JSON.parse(getWorkspaceBrowserStorage(true).getItem(QUOTE_STORAGE_KEY) || '[]');
     if (!Array.isArray(parsed)) return [];
     return parsed.map(sanitizeQuote).filter(Boolean) as QuoteRecord[];
   } catch {

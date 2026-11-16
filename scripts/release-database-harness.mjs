@@ -31,15 +31,24 @@ export async function createSupabaseCompatibleDatabase() {
   await db.exec(`
     CREATE ROLE anon;
     CREATE ROLE authenticated;
+    CREATE ROLE authenticator;
     CREATE ROLE service_role;
     CREATE SCHEMA auth;
     CREATE TABLE auth.users (
       id uuid PRIMARY KEY,
       email text,
+      email_confirmed_at timestamptz,
+      aud text,
+      role text,
+      banned_until timestamptz,
+      raw_app_meta_data jsonb DEFAULT '{}'::jsonb,
+      created_at timestamptz,
+      updated_at timestamptz,
       raw_user_meta_data jsonb DEFAULT '{}'::jsonb
     );
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
-      SELECT NULLIF(current_setting('request.jwt.claim.sub', true), '')::uuid
+      SELECT coalesce(NULLIF(current_setting('request.jwt.claim.sub', true), ''),
+        nullif(current_setting('request.jwt.claims', true), '')::jsonb->>'sub')::uuid
     $$;
     GRANT USAGE ON SCHEMA public, auth TO anon, authenticated, service_role;
   `);

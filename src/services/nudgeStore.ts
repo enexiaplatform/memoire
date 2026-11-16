@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import {
   claimLocalCollectionForUser,
   loadCloudJsonCollection,
@@ -72,9 +73,9 @@ export type NudgeInput = Omit<NudgeRecord, 'createdAt' | 'updatedAt' | 'storageM
 };
 
 export function loadNudges(userId?: string): NudgeRecord[] {
-  if (typeof localStorage === 'undefined') return [];
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return [];
   try {
-    const parsed = JSON.parse(localStorage.getItem(storageKey(userId)) || '[]');
+    const parsed = JSON.parse(getWorkspaceBrowserStorage(true).getItem(storageKey(userId)) || '[]');
     if (!Array.isArray(parsed)) return [];
     return parsed.map(sanitizeNudge).filter((item): item is NudgeRecord => Boolean(item));
   } catch {
@@ -142,7 +143,7 @@ export function clearAllNudges(userId?: string) {
 }
 
 function persistNudges(nudges: NudgeRecord[], userId: string | undefined, syncCloud: boolean) {
-  if (typeof localStorage === 'undefined') return false;
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return false;
   try {
     const sanitized = nudges.map(sanitizeNudge).filter((item): item is NudgeRecord => Boolean(item));
     writeLocalRecords(storageKey(userId), sanitized);

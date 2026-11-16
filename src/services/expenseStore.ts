@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { sanitizeBusinessDate, todayDateKey } from '../utils/safeDate.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
@@ -93,7 +94,7 @@ export const emptyExpenseInput: ExpenseInput = {
 export function loadExpenses(): ExpenseRecord[] {
   if (typeof window === 'undefined') return [];
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(EXPENSE_STORAGE_KEY) || '[]');
+    const parsed = JSON.parse(getWorkspaceBrowserStorage(true).getItem(EXPENSE_STORAGE_KEY) || '[]');
     if (!Array.isArray(parsed)) return [];
     return parsed
       .map(sanitizeExpense)

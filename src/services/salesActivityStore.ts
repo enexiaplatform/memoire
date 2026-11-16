@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { fetchAllRows } from './supabasePaging.ts';
 import type { ClassifiedSalesActivity, SalesActivityType } from '../utils/salesActivityClassifier.ts';
@@ -517,8 +518,8 @@ export async function updateSalesActivityDetails(
 }
 
 function loadLocalActivities(): SalesActivityRecord[] {
-  if (typeof localStorage === 'undefined') return [];
-  const raw = localStorage.getItem(SALES_ACTIVITY_STORAGE_KEY);
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return [];
+  const raw = getWorkspaceBrowserStorage(true).getItem(SALES_ACTIVITY_STORAGE_KEY);
   if (!raw) return [];
 
   try {
@@ -573,13 +574,13 @@ function loadLocalActivities(): SalesActivityRecord[] {
 
 function saveLocalActivityRecord(record: SalesActivityRecord) {
   const next = [record, ...loadLocalActivities().filter((item) => item.id !== record.id)];
-  if (typeof localStorage !== 'undefined') {
+  if (typeof getWorkspaceBrowserStorage() !== 'undefined') {
     writeLocalRecords(SALES_ACTIVITY_STORAGE_KEY, next.sort(sortNewestFirst));
   }
 }
 
 function deleteLocalActivity(activityId: string) {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return;
   const next = loadLocalActivities().filter((item) => item.id !== activityId);
   writeLocalRecords(SALES_ACTIVITY_STORAGE_KEY, next);
 }

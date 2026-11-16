@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import type { OpportunityRecommendedAction } from '../utils/opportunityActionPlan';
 import { todayDateKey } from '../utils/safeDate.ts';
 import {
@@ -60,7 +61,7 @@ export const actionOutcomeTypes: ActionOutcomeType[] = [
 export function loadActionOutcomes() {
   if (typeof window === 'undefined') return [];
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(ACTION_OUTCOME_STORAGE_KEY) || '[]');
+    const parsed = JSON.parse(getWorkspaceBrowserStorage(true).getItem(ACTION_OUTCOME_STORAGE_KEY) || '[]');
     if (!Array.isArray(parsed)) return [];
     return parsed.map(sanitizeOutcome).filter(Boolean) as ActionOutcomeRecord[];
   } catch {

@@ -1,6 +1,7 @@
 import { readFileSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import ts from 'typescript';
 
 const failures = [];
@@ -24,7 +25,8 @@ async function loadCloudJsonModule() {
   });
   const dir = mkdtempSync(join(tmpdir(), 'memoire-cloud-json-contract-'));
   const file = join(dir, `cloud-json-${Date.now()}.mjs`);
-  writeFileSync(file, transpiled.outputText, 'utf8');
+  const storage = pathToFileURL(resolve('src/services/workspaceBrowserStorage.ts')).href;
+  writeFileSync(file, `import { getWorkspaceBrowserStorage } from ${JSON.stringify(storage)};\n${transpiled.outputText}`, 'utf8');
   const mod = await import(`file:///${file.replaceAll('\\', '/')}`);
   return {
     mod,

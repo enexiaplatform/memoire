@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../../services/workspaceBrowserStorage.ts';
 import type {CommercialScope,CommercialEvent} from './types.ts';
 import {normalizeFederatedThreadExchange,verifyFederatedThreadExchange,type FederatedThreadExchange} from './federatedThread.ts';
 import {createTrustCapsule,verifyTrustCapsule} from './trustCapsule.ts';
@@ -5,7 +6,7 @@ import {eventCodec,EVENT_STORAGE_KEY,appendEvent} from '../../services/commercia
 import {loadThreads,threadCodec,THREAD_STORAGE_KEY} from '../../services/commercialKernel/threadStore.ts';
 import {receiveExternalObservation} from './externalObservationCommands.ts';
 import {exchangeSourceNamespace} from './externalObservation.ts';
-function history(){const rows:unknown=JSON.parse(window.localStorage.getItem(EVENT_STORAGE_KEY)||'[]');if(!Array.isArray(rows)||rows.some(row=>!eventCodec.sanitize(row)))throw new Error('Event history is unreadable. Preserve a backup.');return rows as CommercialEvent[];}
+function history(){const rows:unknown=JSON.parse(getWorkspaceBrowserStorage(true).getItem(EVENT_STORAGE_KEY)||'[]');if(!Array.isArray(rows)||rows.some(row=>!eventCodec.sanitize(row)))throw new Error('Event history is unreadable. Preserve a backup.');return rows as CommercialEvent[];}
 export async function availableFederationCapsules(scope:CommercialScope){
  const capsules=[];for(const event of history().filter(row=>row.userId===scope.userId&&Boolean(row.isSample)===Boolean(scope.sampleDataActive))){try{
   if(event.eventType==='shared_commitment_issued')capsules.push({eventId:event.id,capsule:await createTrustCapsule(event.structuredPayload)});
@@ -14,7 +15,7 @@ export async function availableFederationCapsules(scope:CommercialScope){
  return capsules;
 }
 export async function previewFederatedThread(scope:CommercialScope,input:{threadId:string;reference:string;objective:string;issuer:{reference:string;label:string};recipient:{reference:string;label:string};eventIds:string[]}){
- const raw:unknown=JSON.parse(window.localStorage.getItem(THREAD_STORAGE_KEY)||'[]');if(!Array.isArray(raw)||raw.some(row=>!threadCodec.sanitize(row)))throw new Error('Thread storage is unreadable.');
+ const raw:unknown=JSON.parse(getWorkspaceBrowserStorage(true).getItem(THREAD_STORAGE_KEY)||'[]');if(!Array.isArray(raw)||raw.some(row=>!threadCodec.sanitize(row)))throw new Error('Thread storage is unreadable.');
  const thread=loadThreads().find(row=>row.id===input.threadId&&row.userId===scope.userId&&Boolean(row.isSample)===Boolean(scope.sampleDataActive));if(!thread)throw new Error('Select a canonical thread in this owner scope.');
  if(new Set(input.eventIds).size!==input.eventIds.length)throw new Error('Select unique source statements.');const available=await availableFederationCapsules(scope),capsules=input.eventIds.map(id=>{const item=available.find(row=>row.eventId===id);if(!item)throw new Error('Source statement is outside this owner scope or unavailable.');return item.capsule;});
  const exchange=normalizeFederatedThreadExchange({format:'memoire.federated-thread',version:1,exchangeId:crypto.randomUUID(),issuedAt:new Date().toISOString(),issuer:input.issuer,recipient:input.recipient,thread:{reference:input.reference,objective:input.objective},capsules,sample:Boolean(scope.sampleDataActive),authority:{kind:'issuer-declaration',recipientAccepted:false}});

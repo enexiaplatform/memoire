@@ -1,3 +1,4 @@
+import { dataOwnerForLogin } from './activeWorkspaceScope.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
 import { isRestoreInProgress } from './restoreJournal.ts';
@@ -97,6 +98,7 @@ export function triggerReceivableSync(io: ReceivableLocalIO) {
   if (!supabaseClient || isRestoreInProgress()) return;
   void supabaseClient.auth.getUser().then(({ data, error }) => {
     if (error) throw new Error(error.message);
-    if (data.user) return flushPendingReceivables(data.user.id, io);
+    const dataOwner = dataOwnerForLogin(data.user?.id);
+    if (dataOwner) return flushPendingReceivables(dataOwner, io);
   }).catch(() => reportWorkspaceSyncError());
 }

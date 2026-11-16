@@ -1,7 +1,8 @@
+import { getActiveWorkspaceScope } from '../services/activeWorkspaceScope.ts';
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import type { UserProfile } from '../types';
-import { pipelineSupabaseConfigMessage, supabaseClient } from '../lib/supabaseClient.ts';
+import { pipelineSupabaseConfigMessage, supabaseAccountClient as supabaseClient } from '../lib/supabaseClient.ts';
 import { clearDemoWorkspaceForAccount, clearDemoWorkspaceMode } from '../lib/demoMode';
 import { claimLocalWorkspace } from '../services/localWorkspaceOwner.ts';
 import { AuthContext, type AuthContextValue } from './authContext';
@@ -30,7 +31,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // records, they go now - see localWorkspaceOwner. Synchronous on purpose:
     // an await here is a window in which a page renders somebody else's
     // customers.
-    if (nextSession?.user?.id) claimLocalWorkspace(nextSession.user.id);
+    const scope = getActiveWorkspaceScope();
+    if (scope && nextSession?.user?.id !== scope.ownerId) {
+      window.location.replace(nextSession?.user ? '/app/today' : '/login');
+      return;
+    }
+    if (nextSession?.user?.id) claimLocalWorkspace(scope?.dataOwnerId ?? nextSession.user.id);
 
     setSession(nextSession);
     setUser(nextSession?.user ?? null);

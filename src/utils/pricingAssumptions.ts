@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 import { DEFAULT_TARGET_MARGIN_PCT, normalizeTargetPct } from './orderMargin.ts';
 import { DEFAULT_FINANCING_ANNUAL_RATE_PCT, normalizeRatePct } from './quotePricing.ts';
 
@@ -57,7 +58,7 @@ export function setFinancingRatePct(value: unknown): boolean {
 function readNumber(key: string, fallback: number, normalize: (value: unknown) => number): number {
   if (typeof window === 'undefined') return fallback;
   try {
-    const raw = window.localStorage.getItem(key);
+    const raw = getWorkspaceBrowserStorage(true).getItem(key);
     if (raw === null) return fallback;
     return normalize(raw);
   } catch {
@@ -68,7 +69,7 @@ function readNumber(key: string, fallback: number, normalize: (value: unknown) =
 function writeNumber(key: string, normalized: number, eventName: string): boolean {
   if (typeof window === 'undefined') return false;
   try {
-    window.localStorage.setItem(key, String(normalized));
+    getWorkspaceBrowserStorage(true).setItem(key, String(normalized));
     window.dispatchEvent(new CustomEvent(eventName, { detail: normalized }));
     return true;
   } catch {

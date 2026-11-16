@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 import type { AccountMemoryRecord } from '../services/accountStore';
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
 import type { SalesActivityRecord } from '../services/salesActivityStore';
@@ -89,9 +90,9 @@ export function isDefaultAccountStatus(status: AccountEngagementStatus) {
 }
 
 export function loadAccountHygienePreferences(userId?: string): AccountHygienePreference[] {
-  if (typeof localStorage === 'undefined') return [];
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return [];
   try {
-    const parsed = JSON.parse(localStorage.getItem(preferenceKey(userId)) || '[]');
+    const parsed = JSON.parse(getWorkspaceBrowserStorage(true).getItem(preferenceKey(userId)) || '[]');
     return Array.isArray(parsed) ? parsed.filter((item) => item?.accountId) : [];
   } catch {
     return [];
@@ -116,7 +117,7 @@ function savePreference(accountId: string, patch: Partial<Pick<AccountHygienePre
     updatedAt: new Date().toISOString(),
   };
   const next = [nextPreference, ...current.filter((item) => item.accountId !== accountId)];
-  if (typeof localStorage !== 'undefined') localStorage.setItem(preferenceKey(userId), JSON.stringify(next));
+  if (typeof getWorkspaceBrowserStorage() !== 'undefined') getWorkspaceBrowserStorage(true).setItem(preferenceKey(userId), JSON.stringify(next));
   return next;
 }
 

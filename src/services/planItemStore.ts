@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import type { PlanRecord } from '../utils/weeklyPlan';
 import {
   claimLocalCollectionForUser,
@@ -24,7 +25,7 @@ export function loadPlanItems(): PlanRecord[] {
   if (!canUseStorage()) return [];
 
   try {
-    const raw = window.localStorage.getItem(PLAN_ITEM_STORAGE_KEY);
+    const raw = getWorkspaceBrowserStorage(true).getItem(PLAN_ITEM_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -150,5 +151,5 @@ function isUserRecord(record: PlanRecord) {
 }
 
 function canUseStorage() {
-  return typeof window !== 'undefined' && Boolean(window.localStorage);
+  return typeof window !== 'undefined' && Boolean(getWorkspaceBrowserStorage());
 }

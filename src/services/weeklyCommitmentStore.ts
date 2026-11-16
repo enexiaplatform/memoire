@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import type { WeeklyCommitmentSnapshot } from '../utils/weeklyCommitment';
 import {
   claimLocalCollectionForUser,
@@ -22,7 +23,7 @@ export function loadWeeklyCommitments(): WeeklyCommitmentSnapshot[] {
   if (!canUseStorage()) return [];
 
   try {
-    const raw = window.localStorage.getItem(WEEKLY_COMMITMENT_STORAGE_KEY);
+    const raw = getWorkspaceBrowserStorage(true).getItem(WEEKLY_COMMITMENT_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -158,5 +159,5 @@ function normalizeString(value: unknown) {
 }
 
 function canUseStorage() {
-  return typeof window !== 'undefined' && Boolean(window.localStorage);
+  return typeof window !== 'undefined' && Boolean(getWorkspaceBrowserStorage());
 }

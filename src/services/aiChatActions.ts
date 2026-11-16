@@ -1,3 +1,4 @@
+import { dataOwnerForLogin } from './activeWorkspaceScope.ts';
 import {
   loadAccounts,
   accountToFormInput,
@@ -38,8 +39,8 @@ export async function executeChatActions(
   const { data, error } = await client.auth.getUser();
   if (
     error ||
-    data.user?.id !== batch.userId ||
-    data.user.is_anonymous ||
+    dataOwnerForLogin(data.user?.id) !== batch.userId ||
+    data.user?.is_anonymous ||
     !owns()
   )
     throw new Error("Phiên đăng nhập đã đổi. Chưa áp dụng thay đổi.");

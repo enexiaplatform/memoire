@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 import type { QuoteRecord } from '../services/quoteStore.ts';
 import type { ExpenseRecord, ExpenseCategory } from '../services/expenseStore.ts';
 import { expenseCategories } from '../services/expenseStore.ts';
@@ -125,8 +126,8 @@ export function buildCashPosition(input: CashPositionInput): CashPositionModel {
 
 export function getOpeningCashBalance(): number | null {
   try {
-    if (typeof localStorage === 'undefined') return null;
-    const raw = localStorage.getItem(OPENING_BALANCE_KEY);
+    if (typeof getWorkspaceBrowserStorage() === 'undefined') return null;
+    const raw = getWorkspaceBrowserStorage(true).getItem(OPENING_BALANCE_KEY);
     if (raw === null || raw.trim() === '') return null;
     const parsed = Number(raw);
     return Number.isFinite(parsed) ? parsed : null;
@@ -144,12 +145,12 @@ export function getOpeningCashBalance(): number | null {
  */
 export function setOpeningCashBalance(value: number | null): boolean {
   try {
-    if (typeof localStorage === 'undefined') return false;
+    if (typeof getWorkspaceBrowserStorage() === 'undefined') return false;
     if (value === null || !Number.isFinite(value)) {
-      localStorage.removeItem(OPENING_BALANCE_KEY);
+      getWorkspaceBrowserStorage(true).removeItem(OPENING_BALANCE_KEY);
       return true;
     }
-    localStorage.setItem(OPENING_BALANCE_KEY, String(value));
+    getWorkspaceBrowserStorage(true).setItem(OPENING_BALANCE_KEY, String(value));
     return true;
   } catch {
     return false;

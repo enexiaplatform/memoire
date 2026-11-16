@@ -1,3 +1,5 @@
+import { activeWorkspaceHeaders } from '../../services/activeWorkspaceScope';
+import { getWorkspaceBrowserStorage } from '../../services/workspaceBrowserStorage.ts';
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { Modal } from '../../components/ui/Modal';
 import JSZip from 'jszip';
@@ -124,7 +126,7 @@ export function ExportTab() {
 
     try {
       const localData = collectLocalMemoireData();
-      const localBrowserRawData = Object.fromEntries(Object.keys(localData).map(key => [key, window.localStorage.getItem(key)!]));
+      const localBrowserRawData = Object.fromEntries(Object.keys(localData).map(key => [key, getWorkspaceBrowserStorage(true).getItem(key)!]));
       let cloudData: unknown = null;
       let cloudWarning = '';
 
@@ -132,9 +134,9 @@ export function ExportTab() {
         const { data: { session } } = await supabase.auth.getSession();
         const response = await fetch('/api/export', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...activeWorkspaceHeaders() },
           body: JSON.stringify({
-            userId: user.id,
+            userId: session?.user.id,
             authToken: session?.access_token,
           }),
         });
@@ -216,7 +218,7 @@ export function ExportTab() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: user.id,
+          userId: session?.user.id,
           authToken: session?.access_token,
         }),
       });
@@ -519,10 +521,10 @@ function friendlyStoreName(key: string) {
 // the ones that never learned about the underscored preference keys.
 function collectLocalMemoireData() {
   const data: Record<string, unknown> = {};
-  for (let index = 0; index < window.localStorage.length; index += 1) {
-    const key = window.localStorage.key(index);
+  for (let index = 0; index < getWorkspaceBrowserStorage(true).length; index += 1) {
+    const key = getWorkspaceBrowserStorage(true).key(index);
     if (!key || !isRestorableWorkspaceKey(key)) continue;
-    const value = window.localStorage.getItem(key);
+    const value = getWorkspaceBrowserStorage(true).getItem(key);
     if (value === null) continue;
     try {
       data[key] = JSON.parse(key === HISTORICAL_REVISIONS_KEY ? decodeHistoricalStorage(value) : value);
@@ -535,11 +537,11 @@ function collectLocalMemoireData() {
 
 function clearMemoireLocalData() {
   const keys: string[] = [];
-  for (let index = 0; index < window.localStorage.length; index += 1) {
-    const key = window.localStorage.key(index);
+  for (let index = 0; index < getWorkspaceBrowserStorage(true).length; index += 1) {
+    const key = getWorkspaceBrowserStorage(true).key(index);
     if (key && isWorkspaceKey(key)) keys.push(key);
   }
-  keys.forEach((key) => window.localStorage.removeItem(key));
+  keys.forEach((key) => getWorkspaceBrowserStorage(true).removeItem(key));
 }
 
 function downloadBlob(content: Blob, filename: string) {

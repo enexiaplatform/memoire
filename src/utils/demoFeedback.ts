@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 export const DEMO_FEEDBACK_STORAGE_KEY = 'memoire.demoFeedback.v1';
 
 export type DemoFeedbackContext =
@@ -69,7 +70,7 @@ export const defaultDemoFeedbackInput: DemoFeedbackInput = {
 export function loadDemoFeedback(): DemoFeedbackRecord[] {
   if (typeof window === 'undefined') return [];
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(DEMO_FEEDBACK_STORAGE_KEY) || '[]');
+    const parsed = JSON.parse(getWorkspaceBrowserStorage(true).getItem(DEMO_FEEDBACK_STORAGE_KEY) || '[]');
     if (!Array.isArray(parsed)) return [];
     return parsed.map(normalizeFeedbackRecord).filter(Boolean) as DemoFeedbackRecord[];
   } catch {
@@ -80,7 +81,7 @@ export function loadDemoFeedback(): DemoFeedbackRecord[] {
 export function saveDemoFeedback(records: DemoFeedbackRecord[]) {
   if (typeof window === 'undefined') return false;
   try {
-    window.localStorage.setItem(DEMO_FEEDBACK_STORAGE_KEY, JSON.stringify(records.map(normalizeFeedbackRecord).filter(Boolean)));
+    getWorkspaceBrowserStorage(true).setItem(DEMO_FEEDBACK_STORAGE_KEY, JSON.stringify(records.map(normalizeFeedbackRecord).filter(Boolean)));
     return true;
   } catch {
     return false;

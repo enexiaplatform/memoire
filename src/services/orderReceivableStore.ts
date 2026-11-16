@@ -1,3 +1,5 @@
+import { dataOwnerForLogin } from './activeWorkspaceScope.ts';
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import {
   createOrderReceivableRecord,
   sanitizeReceipts,
@@ -45,7 +47,7 @@ export const ORDER_RECEIVABLE_STORAGE_KEY = 'memoire.orderReceivables.v1';
 export function loadOrderReceivables(): OrderReceivableRecord[] {
   if (!canUseStorage()) return [];
   try {
-    const raw = window.localStorage.getItem(ORDER_RECEIVABLE_STORAGE_KEY);
+    const raw = getWorkspaceBrowserStorage(true).getItem(ORDER_RECEIVABLE_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -182,8 +184,8 @@ const localIO = { load: loadOrderReceivables, save: (records: OrderReceivableRec
 export async function resolveOrderReceivableTerms(opportunityId: string, keepDevice: boolean) {
   if (!supabaseClient) throw new Error('Sign in before resolving account changes.');
   const { data, error } = await supabaseClient.auth.getUser();
-  if (error || !data.user || getLocalWorkspaceOwner() !== data.user.id) throw new Error('Sign in to this workspace before resolving its changes.');
-  const userId = data.user.id;
+  const userId = dataOwnerForLogin(data.user?.id);
+  if (error || !userId || getLocalWorkspaceOwner() !== userId) throw new Error('Sign in to this workspace before resolving its changes.');
   const initial = loadOrderReceivables().find(record => record.opportunityId === opportunityId);
   if (!initial) throw new Error('This collection is unavailable.');
   const remote = await makeReceivableCloudAdapter(userId).read(initial.id);
@@ -257,5 +259,5 @@ function isUserRecord(record: OrderReceivableRecord) {
 }
 
 function canUseStorage() {
-  return typeof window !== 'undefined' && Boolean(window.localStorage);
+  return typeof window !== 'undefined' && Boolean(getWorkspaceBrowserStorage());
 }

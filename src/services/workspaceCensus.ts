@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { writeLocalCollection } from './localWriteGuard.ts';
 
 /**
@@ -109,8 +110,8 @@ export function describeLocalShortfall(userId: string, local: Record<string, unk
 }
 
 function readCensusFile(): CensusFile {
-  if (typeof localStorage === 'undefined') return {};
-  const raw = localStorage.getItem(CENSUS_STORAGE_KEY);
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return {};
+  const raw = getWorkspaceBrowserStorage(true).getItem(CENSUS_STORAGE_KEY);
   if (!raw) return {};
   try {
     const parsed = JSON.parse(raw) as CensusFile;

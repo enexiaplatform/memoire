@@ -1,3 +1,5 @@
+import { dataOwnerForLogin } from '../activeWorkspaceScope.ts';
+import { getWorkspaceBrowserStorage } from '../workspaceBrowserStorage.ts';
 import { FORECAST_QUARTERS, type ForecastQuarter } from '../../domain/commercialKernel/forecast.ts';
 import { supabaseClient } from '../../lib/supabaseClient.ts';
 import { reportWorkspaceSyncError } from '../workspaceSyncStatus.ts';
@@ -20,7 +22,7 @@ export type CommercialTarget = {
 };
 
 function canUseStorage() {
-  return typeof window !== 'undefined' && Boolean(window.localStorage);
+  return typeof window !== 'undefined' && Boolean(getWorkspaceBrowserStorage());
 }
 
 function sanitize(value: unknown): CommercialTarget | null {
@@ -59,7 +61,7 @@ const keyOf = (target: Pick<CommercialTarget, 'fiscalYear' | 'period' | 'isSampl
 export function loadTargets(): CommercialTarget[] {
   if (!canUseStorage()) return [];
   try {
-    const raw = window.localStorage.getItem(TARGET_STORAGE_KEY);
+    const raw = getWorkspaceBrowserStorage(true).getItem(TARGET_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -85,7 +87,7 @@ function persist(targets: CommercialTarget[], requireDurable = true): Commercial
   }
 
   const serialized = JSON.stringify(sorted);
-  if (window.localStorage.getItem(TARGET_STORAGE_KEY) === serialized) return sorted;
+  if (getWorkspaceBrowserStorage(true).getItem(TARGET_STORAGE_KEY) === serialized) return sorted;
 
   const result = writeLocalCollection(TARGET_STORAGE_KEY, serialized);
   if (requireDurable) requireLocalWrite(result);
@@ -156,7 +158,7 @@ async function syncTarget(target: CommercialTarget) {
   try {
     const { data, error: authError } = await supabaseClient.auth.getUser();
     if (authError) throw new Error(authError.message);
-    const userId = data.user?.id;
+    const userId = dataOwnerForLogin(data.user?.id);
     if (!userId) return;
 
     const { error } = await supabaseClient.from('commercial_targets').upsert({

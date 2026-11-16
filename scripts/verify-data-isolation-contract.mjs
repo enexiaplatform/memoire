@@ -52,9 +52,10 @@ const exportApi = read('api/export.ts');
 requireIncludes(exportApi, 'export const exportTables', 'export table contract must be exported for runtime verification');
 requireIncludes(exportApi, 'export function findExportContamination', 'export contamination guard must be exported for runtime verification');
 requireIncludes(exportApi, "verifyUserToken(authToken, userId)", 'export API must verify the token belongs to the requested user');
+requireIncludes(exportApi, 'resolveWorkspaceServerScope(req.headers, authToken, userId', 'export API must resolve the data owner from the signed-in account');
 requireIncludes(exportApi, 'getSupabaseAnonKey()', 'export API must query through the authenticated anon client for RLS');
-requireIncludes(exportApi, '.eq(ownerColumn, userId)', 'export API must filter every table by owner column');
-requireIncludes(exportApi, 'findExportContamination(results, userId)', 'export API must run contamination guard before responding');
+requireIncludes(exportApi, '.eq(ownerColumn, ownerId)', 'export API must filter every table by owner column');
+requireIncludes(exportApi, 'findExportContamination(results, ownerId)', 'export API must run contamination guard before responding');
 // An unbounded select stops at `db-max-rows` and still answers 200, so a backup
 // that is missing rows looks identical to a complete one. The export must page.
 requireIncludes(exportApi, 'await fetchAllRows((from, to) =>', 'export API must page every table rather than reading the first db-max-rows rows');
@@ -101,7 +102,7 @@ for (const marker of [
   'window.localStorage.removeItem(PIPELINE_AUTH_REDIRECT_KEY)',
   // Records left by a previous account are removed before the new session is
   // published to React, because every store reads the browser synchronously.
-  'if (nextSession?.user?.id) claimLocalWorkspace(nextSession.user.id);',
+  'if (nextSession?.user?.id) claimLocalWorkspace(scope?.dataOwnerId ?? nextSession.user.id);',
 ]) {
   requireIncludes(authProvider, marker, `auth provider missing demo/account cleanup marker: ${marker}`);
 }

@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 export type DataMode = 'synced' | 'local-only' | 'sync-error' | 'demo-local' | 'loading';
 
 export type DataModeInfo = {
@@ -68,7 +69,7 @@ export function getDataModeInfo(input: DataModeInput): DataModeInfo {
 export function hasLocalSampleData() {
   if (typeof window === 'undefined') return false;
   try {
-    return window.localStorage.getItem('memoire.sampleData.loaded') === 'true';
+    return getWorkspaceBrowserStorage(true).getItem('memoire.sampleData.loaded') === 'true';
   } catch {
     return false;
   }

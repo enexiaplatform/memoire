@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache';
 import {
   claimLocalCollectionForUser,
@@ -85,7 +86,7 @@ export const emptySalesAssetInput: SalesAssetInput = {
 export function loadSalesAssets(): SalesAssetRecord[] {
   if (typeof window === 'undefined') return [];
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(SALES_ASSET_STORAGE_KEY) || '[]');
+    const parsed = JSON.parse(getWorkspaceBrowserStorage(true).getItem(SALES_ASSET_STORAGE_KEY) || '[]');
     if (!Array.isArray(parsed)) return [];
     return parsed.map(sanitizeAsset).filter(Boolean) as SalesAssetRecord[];
   } catch {
@@ -175,7 +176,7 @@ export function saveSalesAssetDraft(input: SalesAssetInput) {
 export function loadSalesAssetDraft(): SalesAssetInput | null {
   if (typeof window === 'undefined') return null;
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(SALES_ASSET_DRAFT_STORAGE_KEY) || 'null');
+    const parsed = JSON.parse(getWorkspaceBrowserStorage(true).getItem(SALES_ASSET_DRAFT_STORAGE_KEY) || 'null');
     if (!parsed || typeof parsed !== 'object') return null;
     const asset = sanitizeAsset({
       ...emptySalesAssetInput,
@@ -198,7 +199,7 @@ export function loadSalesAssetDraft(): SalesAssetInput | null {
 export function clearSalesAssetDraft() {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.removeItem(SALES_ASSET_DRAFT_STORAGE_KEY);
+    getWorkspaceBrowserStorage(true).removeItem(SALES_ASSET_DRAFT_STORAGE_KEY);
   } catch {
     // Draft cleanup is best-effort only.
   }

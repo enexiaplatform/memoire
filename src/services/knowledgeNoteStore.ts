@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import {
   sanitizeKnowledgeRecord,
   type KnowledgeRecord,
@@ -30,7 +31,7 @@ export const KNOWLEDGE_NOTE_STORAGE_KEY = 'memoire.knowledgeNotes.v1';
 export function loadKnowledgeNotes(): KnowledgeRecord[] {
   if (!canUseStorage()) return [];
   try {
-    const raw = window.localStorage.getItem(KNOWLEDGE_NOTE_STORAGE_KEY);
+    const raw = getWorkspaceBrowserStorage(true).getItem(KNOWLEDGE_NOTE_STORAGE_KEY);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -95,5 +96,5 @@ function isUserRecord(record: KnowledgeRecord) {
 }
 
 function canUseStorage() {
-  return typeof window !== 'undefined' && Boolean(window.localStorage);
+  return typeof window !== 'undefined' && Boolean(getWorkspaceBrowserStorage());
 }

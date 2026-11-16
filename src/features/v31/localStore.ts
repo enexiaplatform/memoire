@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../../services/workspaceBrowserStorage.ts';
 import type { Account, Contact, Interaction, Objection, Opportunity, SalesAction, StructuredSalesCapture } from '../../types/v31';
 import { toLocalDateKey } from '../../utils/safeDate.ts';
 import { normalizeEntityName } from '../../utils/accountIdentity.ts';
@@ -44,7 +45,7 @@ function now() {
 }
 
 export function readLocalMemory(): LocalMemory {
-  const raw = localStorage.getItem(KEY);
+  const raw = getWorkspaceBrowserStorage(true).getItem(KEY);
   if (!raw) {
     return emptyMemory();
   }
@@ -74,7 +75,7 @@ function emptyMemory(): LocalMemory {
 }
 
 function writeLocalMemory(memory: LocalMemory) {
-  localStorage.setItem(KEY, JSON.stringify(memory));
+  getWorkspaceBrowserStorage(true).setItem(KEY, JSON.stringify(memory));
 }
 
 /** The canonical fold - see accountIdentity.ts. Matches both account names and
@@ -756,9 +757,9 @@ export function loadInteractiveDemoWorkspace() {
     loadedAt: timestamp,
   };
   writeLocalMemory(memory);
-  localStorage.setItem(DEMO_AUTH_KEY, 'demo@memoire.local');
-  localStorage.setItem(DEMO_WORKSPACE_KEY, 'interactive-demo');
-  localStorage.setItem('memoire.sampleData.loaded', 'true');
+  getWorkspaceBrowserStorage(true).setItem(DEMO_AUTH_KEY, 'demo@memoire.local');
+  getWorkspaceBrowserStorage(true).setItem(DEMO_WORKSPACE_KEY, 'interactive-demo');
+  getWorkspaceBrowserStorage(true).setItem('memoire.sampleData.loaded', 'true');
   return memory.demoWorkspace;
 }
 

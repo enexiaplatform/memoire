@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { canonicalContracts, contractForKey, isSampleRecord, type RecordData } from './canonicalDurability.ts';
 import { applyLocalRestore, beginRestore, endRestore, RESTORE_JOURNAL_KEY } from './restoreJournal.ts';
@@ -46,7 +47,7 @@ export async function restoreWorkspace(
   if (options.clearFirst === false && plan.writes.some(write => write.key === HISTORICAL_REVISIONS_KEY ||
     write.key === HISTORICAL_COVERAGE_KEY || Object.values(historicalSources).some(source => source.key === write.key)))
     throw new Error('Historical restore must replace the covered browser workspace so its revision chain remains complete. Nothing was changed.');
-  if (typeof window === 'undefined' || !window.localStorage) throw new Error('Browser storage is unavailable. Nothing was changed.');
+  if (typeof window === 'undefined' || !getWorkspaceBrowserStorage()) throw new Error('Browser storage is unavailable. Nothing was changed.');
   assertNoPendingRestore();
   const cloud = envelope.cloudData as { user_id?: string; data?: Record<string, RecordData[]> } | undefined;
   if (options.userId && cloud?.user_id && cloud.user_id !== options.userId) throw new Error('This backup belongs to another account. Sign in to its original account before restoring.');
@@ -86,7 +87,7 @@ export async function restoreWorkspace(
   });
   beginRestore();
   try {
-    applyLocalRestore(window.localStorage, desired);
+    applyLocalRestore(getWorkspaceBrowserStorage(true), desired);
     const collections: RestoreCollectionResult[] = plan.writes.map(write => ({ key: write.key,
       before: countRecords(snapshot[write.key]), after: countRecords(write.value), localWritten: true,
       cloudPushed: null, message: '' }));
@@ -102,7 +103,7 @@ export async function restoreWorkspace(
         const current=snapshotWorkspace();
         const rollback:Record<string,string|null>=Object.fromEntries(Object.keys(current).map(key=>[key,null]));
         for(const [key,value] of Object.entries(snapshot))rollback[key]=value;
-        try{applyLocalRestore(window.localStorage,rollback);}
+        try{applyLocalRestore(getWorkspaceBrowserStorage(true),rollback);}
         catch{throw new Error('Account history restore failed and browser rollback needs recovery. Reload before retrying; keep the backup.');}
         throw error;
       }
@@ -154,7 +155,7 @@ export function undoRestore(snapshot: Record<string, string>): boolean {
     const current = snapshotWorkspace();
     const desired: Record<string, string | null> = Object.fromEntries(Object.keys(current).map(key => [key, null]));
     for (const [key, value] of Object.entries(snapshot)) if (isRestorableWorkspaceKey(key)) desired[key] = value;
-    applyLocalRestore(window.localStorage, desired);
+    applyLocalRestore(getWorkspaceBrowserStorage(true), desired);
     invalidateWorkspaceDataCache();
     return true;
   } catch { return false; }
@@ -162,10 +163,10 @@ export function undoRestore(snapshot: Record<string, string>): boolean {
 
 export function snapshotWorkspace(): Record<string, string> {
   const snapshot: Record<string, string> = {};
-  if (typeof window === 'undefined' || !window.localStorage) return snapshot;
-  for (let i = 0; i < window.localStorage.length; i++) {
-    const key = window.localStorage.key(i);
-    if (key && isRestorableWorkspaceKey(key)) snapshot[key] = window.localStorage.getItem(key) || '';
+  if (typeof window === 'undefined' || !getWorkspaceBrowserStorage()) return snapshot;
+  for (let i = 0; i < getWorkspaceBrowserStorage(true).length; i++) {
+    const key = getWorkspaceBrowserStorage(true).key(i);
+    if (key && isRestorableWorkspaceKey(key)) snapshot[key] = getWorkspaceBrowserStorage(true).getItem(key) || '';
   }
   return snapshot;
 }
@@ -177,5 +178,5 @@ function countRecords(value: string | undefined): number | null {
 }
 
 function assertNoPendingRestore() {
-  if (window.localStorage.getItem(RESTORE_JOURNAL_KEY)) throw new Error('Reload to recover the interrupted restore before trying another restore or undo. Keep your backup and do not clear browser data.');
+  if (getWorkspaceBrowserStorage(true).getItem(RESTORE_JOURNAL_KEY)) throw new Error('Reload to recover the interrupted restore before trying another restore or undo. Keep your backup and do not clear browser data.');
 }

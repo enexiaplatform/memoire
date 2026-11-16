@@ -2,6 +2,7 @@ import { lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate, useLocation, useParams } from 'react-router-dom';
 import { AppErrorBoundary } from './components/common/AppErrorBoundary';
 import { ProtectedRoute } from './components/layout/ProtectedRoute';
+import { NativeWorkspaceBoundary } from './features/workspaces/NativeWorkspaceBoundary';
 import { isFounderWorkspaceEnabled } from './lib/demoMode';
 import { WebAnalytics } from './lib/webAnalytics';
 import { LibraryGate } from './features/library/LibraryGate';
@@ -126,7 +127,7 @@ function App() {
             path="/app/start"
             element={
               <ProtectedRoute>
-                <FirstRunPage />
+                <NativeWorkspaceBoundary><FirstRunPage /></NativeWorkspaceBoundary>
               </ProtectedRoute>
             }
           />
@@ -161,7 +162,7 @@ function App() {
             path="/app"
             element={
               <ProtectedRoute>
-                <AppShell />
+                <NativeWorkspaceBoundary><AppShell /></NativeWorkspaceBoundary>
               </ProtectedRoute>
             }
           >

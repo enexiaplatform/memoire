@@ -260,12 +260,21 @@ async function sendOne(
   }
 
   const appUrl = process.env.VITE_APP_URL || 'https://memoire-official.com';
+  let recipient = profile.email;
+  let destination = `/app/${kind === 'weekly' ? 'reviews' : 'today'}`;
+  if (recipient.endsWith('@memoire.invalid')) {
+    const result = await supabase.rpc('memoire_native_digest_recipient', { p_data_owner: profile.id }).maybeSingle();
+    const native = result.data as { workspace_id?: string; email?: string } | null;
+    if (result.error || !native?.email || !native.workspace_id) throw new Error('Workspace digest recipient unavailable.');
+    recipient = native.email;
+    destination = `/app/workspaces?workspace=${encodeURIComponent(native.workspace_id)}`;
+  }
   const email = renderDigestEmail(digest, {
-    appUrl: `${appUrl}/app/${kind === 'weekly' ? 'reviews' : 'today'}`,
+    appUrl: appUrl + destination,
     unsubscribeUrl: `${appUrl}/api/send-digests?token=${profile.digest_unsubscribe_token}&kind=${kind}`,
   });
 
-  const delivery = await sendEmail({ to: profile.email, ...email });
+  const delivery = await sendEmail({ to: recipient, ...email });
   if (!delivery.ok) {
     await logDelivery(supabase, profile.id, kind, today, delivery.skipped ? 'skipped' : 'failed', delivery.detail);
     return delivery.skipped ? 'skipped' : 'failed';

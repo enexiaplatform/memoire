@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { isLeadStage } from '../utils/leadIdentity.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
@@ -494,8 +495,8 @@ export function opportunityToFormInput(opportunity: CrmLiteOpportunity): Opportu
 }
 
 function loadLocalOpportunities(): CrmLiteOpportunity[] {
-  if (typeof localStorage === 'undefined') return [];
-  const raw = localStorage.getItem(OPPORTUNITY_STORAGE_KEY);
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return [];
+  const raw = getWorkspaceBrowserStorage(true).getItem(OPPORTUNITY_STORAGE_KEY);
   if (!raw) return [];
 
   try {
@@ -600,7 +601,7 @@ function mirrorCloudOpportunity(record: CrmLiteOpportunity): string | undefined 
 }
 
 function deleteLocalOpportunity(opportunityId: string) {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return;
   const next = loadLocalOpportunities().filter((item) => item.id !== opportunityId);
   commitLocalHistoricalCollection('opportunities',next as unknown as Parameters<typeof commitLocalHistoricalCollection>[1]);
 }

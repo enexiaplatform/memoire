@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { writeLocalCollection } from './localWriteGuard.ts';
 import type { CapturedFactKind } from '../domain/commercialKernel/capturedFacts.ts';
 
@@ -91,9 +92,9 @@ const EMPTY: CaptureFactMetrics = {
 };
 
 export function readCaptureFactMetrics(): CaptureFactMetrics {
-  if (typeof localStorage === 'undefined') return { ...EMPTY };
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return { ...EMPTY };
   try {
-    const raw = localStorage.getItem(CAPTURE_METRICS_STORAGE_KEY);
+    const raw = getWorkspaceBrowserStorage(true).getItem(CAPTURE_METRICS_STORAGE_KEY);
     if (!raw) return { ...EMPTY };
     const parsed = JSON.parse(raw) as Partial<CaptureFactMetrics>;
     return { ...EMPTY, ...parsed };

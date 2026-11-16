@@ -1,3 +1,4 @@
+import { nativeWorkspacesEnabled, openWorkspace } from '../../services/activeWorkspaceScope';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
@@ -38,12 +39,19 @@ function PersonalWorkspaceDirectory({ userId }: { userId: string }) {
     return () => { current = false; };
   }, [userId]);
 
+  useEffect(() => {
+    if (!nativeWorkspacesEnabled || !active) return;
+    try { openWorkspace(userId, active.id); }
+    catch { setError('This browser could not switch workspaces.'); }
+  }, [userId, active]);
+
   async function create(input: { name: string; sourceId: string; categories: CopyCategory[] }) {
     const sourceId = input.sourceId === existingWorkspace.id ? null : input.sourceId;
     const key = JSON.stringify([input.name, sourceId, input.categories]);
     if (pending.current?.key !== key) pending.current = { key, id: crypto.randomUUID() };
     const created = await createPersonalWorkspace({ ...input, sourceId, id: pending.current.id });
     pending.current = null;
+    if (nativeWorkspacesEnabled) { openWorkspace(userId, created.id); return; }
     setWorkspaces(current => [...current.filter(workspace => workspace.id !== created.id), created]);
     setQuery({ workspace: created.id });
     close();
@@ -58,7 +66,8 @@ function PersonalWorkspaceDirectory({ userId }: { userId: string }) {
           <label className="flex items-center gap-2 text-sm font-semibold">
             <span>Workspace</span>
             <select className={controlClass} aria-label="Workspace" value={active?.id ?? existingWorkspace.id} onChange={event => {
-              if (event.target.value === existingWorkspace.id) navigate('/app/today');
+              if (nativeWorkspacesEnabled) openWorkspace(userId, event.target.value === existingWorkspace.id ? null : event.target.value);
+              else if (event.target.value === existingWorkspace.id) navigate('/app/today');
               else setQuery({ workspace: event.target.value });
             }}>
               {choices.map(choice => <option key={choice.id} value={choice.id}>{choice.name}</option>)}
@@ -75,7 +84,9 @@ function PersonalWorkspaceDirectory({ userId }: { userId: string }) {
         {error && <p role="alert" className="text-sm text-tint-red-solid">{error}</p>}
         {!loading && !error && active && <WorkspaceRecords key={active.id} userId={userId} workspaceId={active.id} />}
         {!loading && !error && activeId && !active && <p role="alert" className="text-sm text-tint-red-solid">This workspace is unavailable.</p>}
-        {!loading && !activeId && <Link to="/app/today" className={ghostPillClass}>Open your existing workspace</Link>}
+        {!loading && !activeId && <Link to="/app/today" className={ghostPillClass} onClick={event => {
+          if (nativeWorkspacesEnabled) { event.preventDefault(); openWorkspace(userId, null); }
+        }}>Open your existing workspace</Link>}
       </main>
       {creating && <WorkspaceCreateDialog workspaces={choices} sourceId={active?.id ?? existingWorkspace.id} onClose={close} onCreate={create} />}
     </div>

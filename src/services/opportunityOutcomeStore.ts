@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import type {
   CrmLiteOpportunity,
   DecisionRecommendation,
@@ -123,7 +124,7 @@ export function buildOpportunityOutcomeDraft(opportunity: CrmLiteOpportunity, pa
 export function loadOpportunityOutcomes() {
   if (typeof window === 'undefined') return [];
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(OPPORTUNITY_OUTCOME_STORAGE_KEY) || '[]');
+    const parsed = JSON.parse(getWorkspaceBrowserStorage(true).getItem(OPPORTUNITY_OUTCOME_STORAGE_KEY) || '[]');
     if (!Array.isArray(parsed)) return [];
     return parsed.map(sanitizeOpportunityOutcome).filter((record): record is OpportunityOutcomeRecord => Boolean(record));
   } catch {

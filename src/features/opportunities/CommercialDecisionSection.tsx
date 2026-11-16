@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../../services/workspaceBrowserStorage.ts';
 import { useEffect, useMemo, useState } from 'react';
 import {Link} from 'react-router-dom';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
@@ -75,7 +76,7 @@ export function CommercialDecisionSection({opportunity,forecast,commitments,user
   const recordObservation=async()=>{const decision=rows.find(row=>row.id===reviewDecisionId);if(!decision)return;
     const instant=Date.parse(reviewCutoff);if(!Number.isFinite(instant)){setMessage('Choose a valid observation cutoff.');return;}
     setReviewing(true);try{const cutoff=new Date(instant).toISOString(),scope=userId||'guest';
-      const sources=userId?await getCloudHistoricalSourcesAt(scope,cutoff):getLocalHistoricalSourcesAt(scope,cutoff,window.localStorage);
+      const sources=userId?await getCloudHistoricalSourcesAt(scope,cutoff):getLocalHistoricalSourcesAt(scope,cutoff,getWorkspaceBrowserStorage(true));
       const asOf=composeCommercialStateAsOf({sources,scope,opportunityId:opportunity.id,cutoff,
         timeZone:Intl.DateTimeFormat().resolvedOptions().timeZone,decisions});
       const result=finalizeDecisionObservation({userId:userId||null,sampleDataActive},{id:kernelId('observation'),decision,asOf,plans,operatorNote:reviewNote});

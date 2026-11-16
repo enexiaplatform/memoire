@@ -1,3 +1,5 @@
+import { dataOwnerForLogin } from '../activeWorkspaceScope.ts';
+import { getWorkspaceBrowserStorage } from '../workspaceBrowserStorage.ts';
 import {writeLocal,upsertCloudRecords,reportKernelSyncFailure,type KernelCodec} from './kernelRepository.ts';
 import {supabaseClient} from '../../lib/supabaseClient.ts';
 import {fetchAllRows} from '../supabasePaging.ts';
@@ -20,7 +22,7 @@ export function versionedKernelStore<T extends Versioned>(codec:KernelCodec<T>,l
  const same=(a:T,b:T)=>JSON.stringify(orderedJson(codec.toRow(a,a.userId!)))===JSON.stringify(orderedJson(codec.toRow(b,b.userId!)));
  function load():T[]{
   if(typeof window==='undefined')return [];
-  const raw:unknown=JSON.parse(window.localStorage.getItem(codec.storageKey)||'[]');
+  const raw:unknown=JSON.parse(getWorkspaceBrowserStorage(true).getItem(codec.storageKey)||'[]');
   if(!Array.isArray(raw))throw new Error(`${label} records are unreadable. Keep a verified backup.`);
   const rows=raw.map(codec.sanitize);
   if(rows.some(row=>!row))throw new Error(`${label} records are unreadable. Keep a verified backup.`);
@@ -38,7 +40,7 @@ export function versionedKernelStore<T extends Versioned>(codec:KernelCodec<T>,l
   const pending=records.filter(row=>row.userId&&!row.isSample);if(!pending.length||!supabaseClient)return;
   if(beforeSync)await beforeSync(pending);
   const {data:auth,error:authError}=await supabaseClient.auth.getUser();if(authError)throw new Error(authError.message);
-  const userId=auth.user?.id;if(!userId)return;
+  const userId=dataOwnerForLogin(auth.user?.id);if(!userId)return;
   for(const record of pending.filter(row=>row.userId===userId)){
    const {data,error}=await supabaseClient.from(codec.table).select('*').eq('user_id',userId).eq('id',record.id).maybeSingle();
    if(error)throw new Error(error.message);const server=data?codec.fromRow(data):null;
@@ -47,7 +49,7 @@ export function versionedKernelStore<T extends Versioned>(codec:KernelCodec<T>,l
     if(server.version===record.version&&!same(server,record))throw new Error(`${label} version conflicts with the account.`);
     if(server.version>record.version)await requireAccepted(record,userId);continue;
    }
-   const revisions=JSON.parse(decodeHistoricalStorage(window.localStorage.getItem(HISTORICAL_REVISIONS_KEY)||'[]')) as StateRevision[];
+   const revisions=JSON.parse(decodeHistoricalStorage(getWorkspaceBrowserStorage(true).getItem(HISTORICAL_REVISIONS_KEY)||'[]')) as StateRevision[];
    const states=new Map(revisions.filter(row=>row.scope===userId&&row.entityType===codec.table&&row.entityId===record.id)
     .map(row=>codec.sanitize(row.state)).filter((row):row is T=>Boolean(row)).map(row=>[row.version,row]));
    for(let version=(server?.version||0)+1;version<=record.version;version++){

@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
 import { requireLocalWrite, writeLocalRecords } from './localWriteGuard.ts';
@@ -12,7 +13,7 @@ export function assertDashboardScope(scope: PortfolioScope) {
   if (!scope.sampleDataActive && getLocalWorkspaceOwner() !== scope.userId) throw new Error('The workspace account changed. Reload before using dashboards.');
 }
 function readAll(): SavedDashboard[] {
-  const raw: unknown = JSON.parse(window.localStorage.getItem(DASHBOARD_STORAGE_KEY) || '[]');
+  const raw: unknown = JSON.parse(getWorkspaceBrowserStorage(true).getItem(DASHBOARD_STORAGE_KEY) || '[]');
   if (!Array.isArray(raw)) throw new Error('Saved dashboards are unreadable. Restore a verified workspace backup before editing.');
   const records = raw.map(parseSavedDashboard);
   if (new Set(records.map(record => `${record.isSample}:${record.id}`)).size !== records.length) throw new Error('Duplicate saved dashboard identity.');

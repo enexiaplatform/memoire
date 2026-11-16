@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 import {
   decisionRecommendations,
   emptyOpportunityInput,
@@ -301,8 +302,8 @@ export function detectCsvMappingProfile(
 }
 
 export function loadCsvMappingProfiles(): CsvMappingProfile[] {
-  if (typeof localStorage === 'undefined') return [];
-  const raw = localStorage.getItem(CSV_MAPPING_PROFILE_STORAGE_KEY);
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return [];
+  const raw = getWorkspaceBrowserStorage(true).getItem(CSV_MAPPING_PROFILE_STORAGE_KEY);
   if (!raw) return [];
 
   try {
@@ -496,8 +497,8 @@ export function detectOpportunityChanges(
 }
 
 export function loadOpportunityImportBatches(): OpportunityImportBatchRecord[] {
-  if (typeof localStorage === 'undefined') return [];
-  const raw = localStorage.getItem(OPPORTUNITY_IMPORT_BATCH_STORAGE_KEY);
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return [];
+  const raw = getWorkspaceBrowserStorage(true).getItem(OPPORTUNITY_IMPORT_BATCH_STORAGE_KEY);
   if (!raw) return [];
 
   try {
@@ -525,13 +526,13 @@ export function loadOpportunityImportBatches(): OpportunityImportBatchRecord[] {
 }
 
 export function recordOpportunityImportBatch(record: Omit<OpportunityImportBatchRecord, 'createdAt'> & { createdAt?: string }) {
-  if (typeof localStorage === 'undefined') return [];
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return [];
   const nextRecord: OpportunityImportBatchRecord = {
     ...record,
     createdAt: record.createdAt || new Date().toISOString(),
   };
   const next = [nextRecord, ...loadOpportunityImportBatches().filter((item) => item.id !== nextRecord.id)].slice(0, 12);
-  localStorage.setItem(OPPORTUNITY_IMPORT_BATCH_STORAGE_KEY, JSON.stringify(next));
+  getWorkspaceBrowserStorage(true).setItem(OPPORTUNITY_IMPORT_BATCH_STORAGE_KEY, JSON.stringify(next));
   return next;
 }
 
@@ -754,8 +755,8 @@ function normalizeSourceType(value: unknown): CsvMappingSourceType {
 }
 
 function persistCsvMappingProfiles(profiles: CsvMappingProfile[]) {
-  if (typeof localStorage === 'undefined') return;
-  localStorage.setItem(CSV_MAPPING_PROFILE_STORAGE_KEY, JSON.stringify(profiles));
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return;
+  getWorkspaceBrowserStorage(true).setItem(CSV_MAPPING_PROFILE_STORAGE_KEY, JSON.stringify(profiles));
 }
 
 function createLocalId(prefix: string) {

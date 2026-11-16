@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 import type { User } from '@supabase/supabase-js';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
@@ -13,7 +14,7 @@ let demoWorkspaceCleanupPromise: Promise<boolean> | null = null;
 
 const runtimeDemoWorkspace =
   typeof window !== 'undefined' &&
-  window.localStorage.getItem(DEMO_WORKSPACE_KEY) === 'interactive-demo';
+  getWorkspaceBrowserStorage(true).getItem(DEMO_WORKSPACE_KEY) === 'interactive-demo';
 
 export const isSupabaseConfigured =
   Boolean(supabaseUrl) &&
@@ -29,8 +30,8 @@ export function isDemoWorkspaceActive() {
   }
 
   return (
-    window.localStorage.getItem(DEMO_WORKSPACE_KEY) === 'interactive-demo' ||
-    window.localStorage.getItem(SAMPLE_DATA_FLAG_KEY) === 'true' ||
+    getWorkspaceBrowserStorage(true).getItem(DEMO_WORKSPACE_KEY) === 'interactive-demo' ||
+    getWorkspaceBrowserStorage(true).getItem(SAMPLE_DATA_FLAG_KEY) === 'true' ||
     isFounderWorkspaceEnabled ||
     (demoModeEnabled && !isSupabaseConfigured)
   );
@@ -60,11 +61,11 @@ export function clearDemoWorkspaceMode() {
   if (typeof window === 'undefined') return false;
 
   const hadDemoWorkspace =
-    window.localStorage.getItem(DEMO_WORKSPACE_KEY) === 'interactive-demo' ||
-    Boolean(window.localStorage.getItem(DEMO_AUTH_KEY));
+    getWorkspaceBrowserStorage(true).getItem(DEMO_WORKSPACE_KEY) === 'interactive-demo' ||
+    Boolean(getWorkspaceBrowserStorage(true).getItem(DEMO_AUTH_KEY));
 
-  window.localStorage.removeItem(DEMO_AUTH_KEY);
-  window.localStorage.removeItem(DEMO_WORKSPACE_KEY);
+  getWorkspaceBrowserStorage(true).removeItem(DEMO_AUTH_KEY);
+  getWorkspaceBrowserStorage(true).removeItem(DEMO_WORKSPACE_KEY);
   window.dispatchEvent(new CustomEvent(DEMO_MODE_CHANGED_EVENT));
   return hadDemoWorkspace;
 }
@@ -78,7 +79,7 @@ export async function clearDemoWorkspaceForAccount() {
     try {
       clearDemoWorkspaceMode();
 
-      if (window.localStorage.getItem(SAMPLE_DATA_FLAG_KEY) === 'true') {
+      if (getWorkspaceBrowserStorage(true).getItem(SAMPLE_DATA_FLAG_KEY) === 'true') {
         const { clearSampleDataset } = await import('../utils/sampleData');
         clearSampleDataset();
       }

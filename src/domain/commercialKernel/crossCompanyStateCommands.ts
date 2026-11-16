@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../../services/workspaceBrowserStorage.ts';
 import type {CommercialScope,CommercialEvent} from './types.ts';
 import {normalizeFederatedThreadExchange,verifyFederatedThreadExchange} from './federatedThread.ts';
 import {normalizeCrossCompanyState,verifyCrossCompanyState} from './crossCompanyState.ts';
@@ -13,11 +14,11 @@ import {loadCommercialConditions,conditionCodec} from '../../services/commercial
 import {loadCommercialEvidence,evidenceCodec} from '../../services/commercialKernel/evidenceStore.ts';
 export type PublicRequirementMapping={requirementId:string;reference:string;partyReference:string;commitmentRef:string|null};
 export type CrossCompanyBasis={opportunityId:string;federationEventId:string;mappings:PublicRequirementMapping[]};
-function events(){const raw:unknown=JSON.parse(window.localStorage.getItem(EVENT_STORAGE_KEY)||'[]');if(!Array.isArray(raw)||raw.some(row=>!eventCodec.sanitize(row)))throw new Error('Event history is unreadable.');return raw as CommercialEvent[];}
+function events(){const raw:unknown=JSON.parse(getWorkspaceBrowserStorage(true).getItem(EVENT_STORAGE_KEY)||'[]');if(!Array.isArray(raw)||raw.some(row=>!eventCodec.sanitize(row)))throw new Error('Event history is unreadable.');return raw as CommercialEvent[];}
 export async function crossCompanyFederationSources(scope:CommercialScope){const sources=[];for(const event of events().filter(row=>row.userId===scope.userId&&Boolean(row.isSample)===Boolean(scope.sampleDataActive))){try{let value:unknown;if(event.eventType==='federated_thread_issued')value=event.structuredPayload;else if(event.eventType==='external_observation_received')value=JSON.parse(String(event.structuredPayload.rawText));else continue;
  if((value as {format?:string})?.format==='memoire.federated-thread')sources.push({eventId:event.id,exchange:(await verifyFederatedThreadExchange(value)).exchange});}catch{continue;}}return sources;}
 function currentSources(scope:CommercialScope,opportunityId:string){
- for(const codec of [requirementCodec,dependencyCodec,conditionCodec,evidenceCodec]){const raw:unknown=JSON.parse(window.localStorage.getItem(codec.storageKey)||'[]');if(!Array.isArray(raw)||raw.some(row=>!codec.sanitize(row)))throw new Error('Canonical requirement, dependency or evidence storage is unreadable.');}
+ for(const codec of [requirementCodec,dependencyCodec,conditionCodec,evidenceCodec]){const raw:unknown=JSON.parse(getWorkspaceBrowserStorage(true).getItem(codec.storageKey)||'[]');if(!Array.isArray(raw)||raw.some(row=>!codec.sanitize(row)))throw new Error('Canonical requirement, dependency or evidence storage is unreadable.');}
  const owned=(row:{userId?:string|null;isSample?:boolean})=>row.userId===scope.userId&&Boolean(row.isSample)===Boolean(scope.sampleDataActive);
  const requirements=loadOutcomeRequirements().filter(row=>owned(row)&&row.opportunityId===opportunityId),dependencies=loadCommercialDependencies().filter(row=>owned(row)&&row.opportunityId===opportunityId),conditions=loadCommercialConditions().filter(row=>owned(row)&&(!row.opportunityId||row.opportunityId===opportunityId)),evidence=loadCommercialEvidence().filter(row=>owned(row));
  validateDependencyGraph(requirements,dependencies);return {requirements,dependencies,conditions,evidence};

@@ -171,7 +171,7 @@ async function fetchAuthUsers(supabase: any) {
     if (error) throw new Error(error.message);
 
     const batch = Array.isArray(data?.users) ? data.users : [];
-    users.push(...batch);
+    users.push(...batch.filter(account => account.app_metadata?.memoire_internal_workspace !== true));
     if (batch.length < PAGE_SIZE) return users;
   }
 

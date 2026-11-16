@@ -1,3 +1,4 @@
+import { activeWorkspaceHeaders, dataOwnerForLogin } from './activeWorkspaceScope.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { captureLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import type { AutomationSettings } from '../../shared/automation.js';
@@ -44,9 +45,9 @@ async function request(owner: string, body?: object) {
   const sameScope = captureLocalWorkspaceScope();
   if (!supabaseClient) throw new Error('Sign in to a cloud workspace to use automations.');
   const { data, error } = await supabaseClient.auth.getSession();
-  if (!sameScope() || error || !data.session || data.session.user.id !== owner) throw new Error('Your account changed. Reload before continuing.');
+  if (!sameScope() || error || !data.session || dataOwnerForLogin(data.session.user.id) !== owner) throw new Error('Your account changed. Reload before continuing.');
   const response = await fetch('/api/commercial?resource=automations', {
-    method: body ? 'POST' : 'GET', headers: { Authorization: `Bearer ${data.session.access_token}`, 'Content-Type': 'application/json' },
+    method: body ? 'POST' : 'GET', headers: { Authorization: `Bearer ${data.session.access_token}`, 'Content-Type': 'application/json', ...activeWorkspaceHeaders() },
     body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(20000),
   });
   const result = await response.json().catch(() => null);

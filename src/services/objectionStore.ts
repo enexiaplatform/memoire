@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { fetchAllRows } from './supabasePaging.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
@@ -226,8 +227,8 @@ export function objectionToFormInput(objection: ObjectionRecord): ObjectionFormI
 }
 
 function loadLocalObjections(): ObjectionRecord[] {
-  if (typeof localStorage === 'undefined') return [];
-  const raw = localStorage.getItem(OBJECTION_STORAGE_KEY);
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return [];
+  const raw = getWorkspaceBrowserStorage(true).getItem(OBJECTION_STORAGE_KEY);
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as Partial<ObjectionRecord>[];
@@ -266,13 +267,13 @@ function loadLocalObjections(): ObjectionRecord[] {
 }
 
 function saveLocalObjectionRecord(record: ObjectionRecord) {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return;
   const next = [record, ...loadLocalObjections().filter((item) => item.id !== record.id)];
   writeLocalRecords(OBJECTION_STORAGE_KEY, next.sort(sortNewestFirst));
 }
 
 function deleteLocalObjection(objectionId: string) {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return;
   writeLocalCollection(OBJECTION_STORAGE_KEY, JSON.stringify(loadLocalObjections().filter((item) => item.id !== objectionId)));
 }
 

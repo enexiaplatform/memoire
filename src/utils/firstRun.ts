@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from '../services/workspaceBrowserStorage.ts';
 /**
  * Whether this person has ever been shown the door into Memoire.
  *
@@ -47,13 +48,13 @@ export function firstRunUserKey(user?: { id?: string | null; email?: string | nu
 }
 
 function canUseStorage() {
-  return typeof window !== 'undefined' && Boolean(window.localStorage);
+  return typeof window !== 'undefined' && Boolean(getWorkspaceBrowserStorage());
 }
 
 export function readFirstRunState(): FirstRunState | null {
   if (!canUseStorage()) return null;
   try {
-    const parsed = JSON.parse(window.localStorage.getItem(FIRST_RUN_STORAGE_KEY) || 'null') as Partial<FirstRunState> | null;
+    const parsed = JSON.parse(getWorkspaceBrowserStorage(true).getItem(FIRST_RUN_STORAGE_KEY) || 'null') as Partial<FirstRunState> | null;
     if (!parsed || typeof parsed !== 'object' || typeof parsed.userKey !== 'string') return null;
     return {
       userKey: parsed.userKey,
@@ -69,7 +70,7 @@ export function readFirstRunState(): FirstRunState | null {
 function writeFirstRunState(state: FirstRunState): FirstRunState {
   if (canUseStorage()) {
     try {
-      window.localStorage.setItem(FIRST_RUN_STORAGE_KEY, JSON.stringify(state));
+      getWorkspaceBrowserStorage(true).setItem(FIRST_RUN_STORAGE_KEY, JSON.stringify(state));
     } catch {
       // The welcome is guidance, not data. A full quota must never stop someone
       // reaching their workspace - the worst case is being welcomed twice.
@@ -100,7 +101,7 @@ export function completeFirstRun(userKey: string, choice: FirstRunChoice): First
 export function restartFirstRun(): void {
   if (!canUseStorage()) return;
   try {
-    window.localStorage.removeItem(FIRST_RUN_STORAGE_KEY);
+    getWorkspaceBrowserStorage(true).removeItem(FIRST_RUN_STORAGE_KEY);
   } catch {
     // See writeFirstRunState.
   }

@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import type { OpportunityFormInput } from './opportunityStore.ts';
 import type { PortfolioScope } from './portfolioStore.ts';
 import { getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
@@ -14,7 +15,7 @@ function check(scope: PortfolioScope) {
   if (!scope.sampleDataActive && getLocalWorkspaceOwner() !== scope.userId) throw new Error('Workspace changed before saving Brand work.');
 }
 function all(): BrandWriteCommand[] {
-  const data: unknown = JSON.parse(localStorage.getItem(BRAND_WRITE_JOURNAL_KEY) || '[]');
+  const data: unknown = JSON.parse(getWorkspaceBrowserStorage(true).getItem(BRAND_WRITE_JOURNAL_KEY) || '[]');
   if (!Array.isArray(data) || data.some(row => !row || row.schemaVersion !== 1 || typeof row.id !== 'string' || typeof row.opportunityId !== 'string' || !['create','update'].includes(row.kind) || !row.input || typeof row.fingerprint !== 'string')) throw new Error('Pending Brand work is unreadable. Export a backup before repairing it.');
   return data;
 }

@@ -1,3 +1,4 @@
+import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
@@ -217,8 +218,8 @@ export function stakeholderToFormInput(stakeholder: StakeholderRecord): Stakehol
 }
 
 function loadLocalStakeholders(): StakeholderRecord[] {
-  if (typeof localStorage === 'undefined') return [];
-  const raw = localStorage.getItem(STAKEHOLDER_STORAGE_KEY);
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return [];
+  const raw = getWorkspaceBrowserStorage(true).getItem(STAKEHOLDER_STORAGE_KEY);
   if (!raw) return [];
   try {
     const parsed = JSON.parse(raw) as Partial<StakeholderRecord>[];
@@ -255,13 +256,13 @@ function loadLocalStakeholders(): StakeholderRecord[] {
 }
 
 function saveLocalStakeholderRecord(record: StakeholderRecord) {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return;
   const next = [record, ...loadLocalStakeholders().filter((item) => item.id !== record.id)];
   writeLocalRecords(STAKEHOLDER_STORAGE_KEY, next.sort(sortNewestFirst));
 }
 
 function deleteLocalStakeholder(stakeholderId: string) {
-  if (typeof localStorage === 'undefined') return;
+  if (typeof getWorkspaceBrowserStorage() === 'undefined') return;
   writeLocalCollection(STAKEHOLDER_STORAGE_KEY, JSON.stringify(loadLocalStakeholders().filter((item) => item.id !== stakeholderId)));
 }
 

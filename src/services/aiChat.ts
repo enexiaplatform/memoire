@@ -1,3 +1,4 @@
+import { activeWorkspaceHeaders, dataOwnerForLogin } from './activeWorkspaceScope.ts';
 import { supabaseClient } from "../lib/supabaseClient";
 import { parseActionList } from "../../shared/aiChatActions.js";
 import type { ChatContext, ChatReply } from "../features/aiChat/types";
@@ -37,7 +38,7 @@ export class AiChatError extends Error {
 
 async function tokenForUser(userId: string) {
   const { data } = (await supabaseClient?.auth.getSession()) || { data: null };
-  if (!data?.session?.access_token || data.session.user.id !== userId)
+  if (!data?.session?.access_token || dataOwnerForLogin(data.session.user.id) !== userId)
     throw new AiChatError("sign_in_required");
   return data.session.access_token;
 }
@@ -48,7 +49,7 @@ export async function getAiChatStatus(
 ): Promise<{ available: boolean; provider: string }> {
   const token = await tokenForUser(userId);
   const response = await fetch("/api/ai-chat", {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}`, ...activeWorkspaceHeaders() },
     signal,
     cache: "no-store",
   });
@@ -78,7 +79,7 @@ export async function sendAiChat(
     headers: {
       Authorization: `Bearer ${token}`,
       "Content-Type": "application/json",
-      ...(workspaceId ? { "x-memoire-workspace": workspaceId } : {}),
+      ...(workspaceId ? { "x-memoire-workspace": workspaceId } : activeWorkspaceHeaders()),
     },
     body: JSON.stringify({ consent: true, messages, context }),
     signal: AbortSignal.any([signal, AbortSignal.timeout(35000)]),

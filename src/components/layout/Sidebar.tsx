@@ -1,3 +1,4 @@
+import { getActiveWorkspaceScope } from '../../services/activeWorkspaceScope';
 import { useEffect, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
@@ -220,7 +221,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
             </div>
             <div className="min-w-0 flex-1">
               <div className="truncate text-[13px] font-semibold text-white" title={displayName}>{displayName}</div>
-              <div className="truncate text-[11px] text-white/55">{demoActive ? 'Local sample data' : 'Personal workspace'}</div>
+              <div className="truncate text-[11px] text-white/55">{demoActive ? 'Local sample data' : getActiveWorkspaceScope()?.name ?? 'Personal workspace'}</div>
             </div>
             {/* Administration, under the person it belongs to. It sat as an
                 avatar in the top bar; the rail already carries the name, and a

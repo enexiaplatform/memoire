@@ -1,3 +1,4 @@
+import { resolveWorkspaceServerScope, workspaceDataHeaders } from './_workspaceScope.js';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
 import { getBearerToken, verifyUserToken } from './_auth.js';
@@ -52,8 +53,8 @@ export async function executeAutomationRun(client, settingsRow, manual = false) 
 
 export function createAutomationHandler({
   env = process.env, verify = verifyUserToken, rateLimit = enforceRateLimit,
-  clientForToken = token => createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
-    global: { headers: { Authorization: `Bearer ${token}` } }, auth: { persistSession: false },
+  clientForToken = (token, workspaceId) => createClient(getSupabaseUrl(), getSupabaseAnonKey(), {
+    global: { headers: { Authorization: `Bearer ${token}`, ...workspaceDataHeaders(workspaceId) } }, auth: { persistSession: false },
   }),
   adminClient = () => createClient(getSupabaseUrl(), getSupabaseServiceRoleKey(), { auth: { persistSession: false } }),
   clock = () => new Date(),
@@ -73,17 +74,19 @@ export function createAutomationHandler({
       const ownerQuota = rateLimit(req, 'automation-owner', user.id, 30);
       if (!ownerQuota.allowed) return reply(429, { error: 'rate_limited' });
       if (Object.keys(req.query || {}).some(key => key !== 'resource')) return reply(400, { error: 'invalid_query' });
-      const client = clientForToken(token);
-      const load = await client.from('memoire_automation_settings').select('*').eq('user_id', user.id).maybeSingle();
+      const scope = await resolveWorkspaceServerScope(req.headers, token, user.id, clientForToken);
+      if (!scope) return reply(404, { error: 'workspace_unavailable' });
+      const { client, ownerId } = scope;
+      const load = await client.from('memoire_automation_settings').select('*').eq('user_id', ownerId).maybeSingle();
       if (load.error) return reply(503, { error: 'automation_storage_unavailable' });
-      if (load.data && load.data.user_id !== user.id) return reply(503, { error: 'invalid_stored_scope' });
+      if (load.data && load.data.user_id !== ownerId) return reply(503, { error: 'invalid_stored_scope' });
       if (req.method === 'GET') {
         const runs = await client.from('memoire_automation_runs')
           .select('id,business_date,settings_revision,status,attempts,started_at,finished_at,summary,error_code')
-          .eq('user_id', user.id).order('started_at', { ascending: false }).limit(20);
+          .eq('user_id', ownerId).order('started_at', { ascending: false }).limit(20);
         if (runs.error || !Array.isArray(runs.data)) return reply(503, { error: 'automation_history_unavailable' });
         const outputs = await client.from('memoire_automation_outputs').select('id,kind,title,href,period,prepared_at,run_id')
-          .eq('user_id', user.id).order('prepared_at', { ascending: false }).limit(100);
+          .eq('user_id', ownerId).order('prepared_at', { ascending: false }).limit(100);
         if (outputs.error || !Array.isArray(outputs.data)) return reply(503, { error: 'automation_history_unavailable' });
         return reply(200, { config: parseAutomationSettings(load.data?.config || AUTOMATION_DEFAULTS), revision: load.data?.revision || 0,
           workerConfigured: configured(env), schedulerVerified: false, runs: runs.data, outputs: outputs.data });
@@ -91,7 +94,7 @@ export function createAutomationHandler({
       const body = req.body;
       if (!body || typeof body !== 'object' || Array.isArray(body) || JSON.stringify(body).length > 4000) return reply(400, { error: 'invalid_command' });
       if (body.command === 'output' && Object.keys(body).sort().join(',') === 'command,id' && typeof body.id === 'string' && body.id.length <= 500) {
-        const output = await client.from('memoire_automation_outputs').select('*').eq('user_id', user.id).eq('id', body.id).maybeSingle();
+        const output = await client.from('memoire_automation_outputs').select('*').eq('user_id', ownerId).eq('id', body.id).maybeSingle();
         if (output.error) return reply(503, { error: 'automation_history_unavailable' });
         if (!output.data) return reply(404, { error: 'output_unavailable' });
         return reply(200, { output: output.data });

@@ -1,3 +1,4 @@
+import { resolveWorkspaceServerScope, workspaceDataHeaders } from './_workspaceScope.js';
 import { createClient } from '@supabase/supabase-js';
 import { verifyUserToken } from './_auth.js';
 import { getSupabaseAnonKey, getSupabaseUrl } from './_env.js';
@@ -5,6 +6,7 @@ import { getSupabaseAnonKey, getSupabaseUrl } from './_env.js';
 interface ApiRequest {
   method?: string;
   body?: { userId?: unknown; authToken?: unknown };
+  headers?: Record<string, string | string[] | undefined>;
 }
 
 interface ApiResponse {
@@ -212,13 +214,16 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
   const user = await verifyUserToken(authToken, userId);
   if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  const supabase = createClient(
+  const scope = await resolveWorkspaceServerScope(req.headers, authToken, userId, (token: string, workspaceId?: string) => createClient(
     getSupabaseUrl(),
     getSupabaseAnonKey(),
-    { global: { headers: { Authorization: `Bearer ${authToken}` } } },
-  );
+    { global: { headers: { Authorization: `Bearer ${token}`, ...workspaceDataHeaders(workspaceId) } } },
+  ));
+  if (!scope) return res.status(404).json({ error: 'Workspace is unavailable.' });
+  const { client: supabase, ownerId } = scope;
+  const namedWorkspace = ownerId !== userId;
 
-  const workspaces = await fetchAllRows((from, to) => supabase.from('memoire_personal_workspaces')
+  const workspaces = namedWorkspace ? [] : await fetchAllRows((from, to) => supabase.from('memoire_personal_workspaces')
     .select('*').eq('user_id', userId).order('id').range(from, to)).catch(() => null);
   const results = await Promise.all(exportTables.map(async ({ table, ownerColumn }) => {
     try {
@@ -242,7 +247,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
         data: await fetchAllRows((from, to) => orderColumnsFor(table)
           .reduce(
             (query, column) => query.order(column, { ascending: true }),
-            supabase.from(table).select('*').eq(ownerColumn, userId),
+            supabase.from(table).select('*').eq(ownerColumn, ownerId),
           )
           .range(from, to)),
         warning: '',
@@ -257,7 +262,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
     }
   }));
 
-  const contamination = findExportContamination(results, userId);
+  const contamination = findExportContamination(results, ownerId);
   if (contamination.length > 0) {
     console.error(JSON.stringify({
       level: 'error',
@@ -283,7 +288,7 @@ export default async function handler(req: ApiRequest, res: ApiResponse) {
 
   return res.status(200).json({
     exported_at: new Date().toISOString(),
-    user_id: userId,
+    user_id: ownerId,
     manifest,
     data,
     warnings,
