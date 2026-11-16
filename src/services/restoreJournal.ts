@@ -3,9 +3,9 @@ import { decodeHistoricalStorage, encodeHistoricalStorage } from './historicalSt
 /** A local rollback journal, not a transaction spanning browser and cloud. */
 export const RESTORE_JOURNAL_KEY = 'memoire.restoreJournal.v1';
 let applying = false;
-export function isRestoreInProgress() {
+export function isRestoreInProgress(storage?: Storage | null) {
   if (applying) return true;
-  try { return typeof window !== 'undefined' && Boolean(window.localStorage?.getItem(RESTORE_JOURNAL_KEY)); }
+  try { return Boolean((storage === undefined ? globalThis.window?.localStorage : storage)?.getItem(RESTORE_JOURNAL_KEY)); }
   catch { return false; }
 }
 export function beginRestore() { if (applying) throw new Error('A restore is already in progress.'); applying = true; }

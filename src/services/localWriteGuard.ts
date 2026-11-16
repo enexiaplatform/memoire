@@ -1,5 +1,6 @@
 import { isRestoreInProgress } from './restoreJournal.ts';
 import { reportClientOperationalEvent } from './clientTelemetry.ts';
+import { resolveWorkspaceStorage, type WorkspaceBrowserScope } from './workspaceBrowserStorage.ts';
 
 /**
  * The one place a record collection is written to this browser.
@@ -60,10 +61,10 @@ export function getLastLocalWriteFailure(): LocalWriteFailure | null {
  * a store in the middle of a save has no useful way to handle an exception and
  * every existing caller is synchronous.
  */
-export function writeLocalCollection(key: string, payload: string): LocalWriteResult {
-  if (isRestoreInProgress()) return { ok: false, reason: 'unavailable', message: 'Workspace restore is in progress. Wait before saving changes.' };
+export function writeLocalCollection(key: string, payload: string, scope?: WorkspaceBrowserScope): LocalWriteResult {
   try {
-    const storage = resolveStorage();
+    const storage = resolveWorkspaceStorage(scope);
+    if (isRestoreInProgress(scope ? storage : undefined)) return { ok: false, reason: 'unavailable', message: 'Workspace restore is in progress. Wait before saving changes.' };
     if (!storage) return { ok: false, reason: 'unavailable', message: 'This browser has no local storage available.' };
     storage.setItem(key, payload);
     if (lastFailure) {
@@ -90,9 +91,9 @@ export function writeLocalCollection(key: string, payload: string): LocalWriteRe
 }
 
 /** Convenience for the common case: a list of records, serialised here. */
-export function writeLocalRecords(key: string, records: unknown): LocalWriteResult {
+export function writeLocalRecords(key: string, records: unknown, scope?: WorkspaceBrowserScope): LocalWriteResult {
   try {
-    return writeLocalCollection(key, JSON.stringify(records));
+    return writeLocalCollection(key, JSON.stringify(records), scope);
   } catch (error) {
     // JSON.stringify throws on a cycle. It has never happened here, but a
     // serialisation failure that reads as a successful save is the same bug.
@@ -120,7 +121,7 @@ export function measureLocalStorageUsage(): StorageUsage {
   const byKey: StorageUsage['byKey'] = [];
   let memoireBytes = 0;
 
-  const storage = resolveStorage();
+  const storage = resolveWorkspaceStorage();
   if (storage) {
     for (let index = 0; index < storage.length; index += 1) {
       const key = storage.key(index);
@@ -215,25 +216,6 @@ function describe(reason: LocalWriteFailureReason, key: string): string {
     return 'This browser is blocking local storage, so the last change was not saved. Private browsing and blocked site data both do this.';
   }
   return `Memoire could not save to this browser (${key}). The last change was not stored.`;
-}
-
-/**
- * The storage this environment actually has.
- *
- * The stores reach for a bare `localStorage` in some places and
- * `window.localStorage` in others - the same object in a browser, but not in
- * every environment this code legitimately runs in. The contract scripts stub a
- * global `localStorage` with no `window` at all, and a guard that only knew the
- * window shape turned those runs into silent no-ops: every write "succeeded"
- * without storing anything, which is the exact failure this file exists to
- * prevent, wearing a different coat.
- */
-function resolveStorage(): Storage | null {
-  if (typeof globalThis === 'undefined') return null;
-  const scoped = (globalThis as { window?: { localStorage?: Storage } }).window?.localStorage;
-  if (scoped) return scoped;
-  const bare = (globalThis as { localStorage?: Storage }).localStorage;
-  return bare || null;
 }
 
 function dispatch(name: string, detail: LocalWriteFailure | null) {

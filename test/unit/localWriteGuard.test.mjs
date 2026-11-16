@@ -1,5 +1,7 @@
 import { test, describe, beforeEach, afterEach } from 'node:test';
 import assert from 'node:assert/strict';
+import { resolveWorkspaceStorage } from '../../src/services/workspaceBrowserStorage.ts';
+import { RESTORE_JOURNAL_KEY } from '../../src/services/restoreJournal.ts';
 
 /**
  * The guard is the only thing standing between a refused write and a record the
@@ -124,4 +126,27 @@ describe('local write guard: measuring what is stored', () => {
     const usage = guard.measureLocalStorageUsage();
     assert.equal(usage.byKey[0].records, null);
   });
+});
+
+test('named workspaces write independent browser records and restore journals', () => {
+  const key = 'memoire.opportunities.v1';
+  const ownerId = '3eefc7a1-35ca-4377-a573-bafe0603ab1c';
+  const servicebio = { ownerId, workspaceId: '2bd1f280-3968-4b44-895c-58f1afa37eea' };
+  const other = { ownerId, workspaceId: 'ab11836a-4dfb-4a80-a07c-aa6d4eaa6663' };
+
+  assert.equal(guard.writeLocalCollection(key, 'existing deal').ok, true);
+  assert.equal(guard.writeLocalCollection(key, 'Servicebio deal', servicebio).ok, true);
+  assert.equal(resolveWorkspaceStorage().getItem(key), 'existing deal');
+  const storage = resolveWorkspaceStorage(servicebio);
+  assert.equal(storage.getItem(key), 'Servicebio deal');
+  assert.equal(resolveWorkspaceStorage(other).getItem(key), null);
+  assert.equal(resolveWorkspaceStorage({ ...servicebio, ownerId: other.workspaceId }).getItem(key), null);
+
+  storage.setItem(RESTORE_JOURNAL_KEY, 'recovery pending');
+  assert.equal(guard.writeLocalCollection(key, 'blocked', servicebio).ok, false);
+  assert.equal(guard.writeLocalCollection(key, 'other deal', other).ok, true);
+  storage.clear();
+  assert.equal(storage.length, 0);
+  assert.equal(resolveWorkspaceStorage(other).getItem(key), 'other deal');
+  assert.equal(resolveWorkspaceStorage().getItem(key), 'existing deal');
 });
