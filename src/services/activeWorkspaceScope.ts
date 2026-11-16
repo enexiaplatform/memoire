@@ -8,8 +8,7 @@ export type ActiveWorkspaceScope = Readonly<{
 export const NATIVE_WORKSPACE_HEADER = 'x-memoire-data-workspace';
 const selectionKey = 'memoire.active-data-workspace.v1';
 const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
-const env = (import.meta as { env?: Record<string, string | undefined> }).env;
-export const nativeWorkspacesEnabled = env?.VITE_ENABLE_NATIVE_WORKSPACES === 'true';
+export const nativeWorkspacesEnabled = import.meta.env?.VITE_ENABLE_NATIVE_WORKSPACES === 'true';
 
 let activeScope: ActiveWorkspaceScope | null = null;
 

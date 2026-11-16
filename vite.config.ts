@@ -13,6 +13,9 @@ export default defineConfig(({ mode }) => {
   return {
   plugins: [react(), aiChatDevPlugin(serverEnv), automationDevPlugin(serverEnv)],
   define: {
+    'import.meta.env.VITE_ENABLE_NATIVE_WORKSPACES': JSON.stringify(
+      serverEnv.VITE_ENABLE_NATIVE_WORKSPACES || (serverEnv.VERCEL_ENV === 'production' ? 'true' : 'false'),
+    ),
     'import.meta.env.VITE_ENABLE_PERSONAL_WORKSPACES': JSON.stringify(
       serverEnv.VITE_ENABLE_PERSONAL_WORKSPACES || (serverEnv.VERCEL_ENV === 'production' ? 'true' : 'false'),
     ),
