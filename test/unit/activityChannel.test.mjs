@@ -16,11 +16,15 @@ import {
   findPlanCompletionActivity,
   peopleForPlanAccount,
   planCompletionActivityDate,
+  planCompletionActivityId,
+  planCompletionActivityOptions,
   planCompletionNeedsPerson,
   planCompletionProblems,
   planItemAccountName,
 } from '../../src/utils/planCompletionLog.ts';
 import { buildActivityInsights } from '../../src/utils/activityInsights.ts';
+import { planItemDoneRecord } from '../../src/utils/capturePlanReconciliation.ts';
+import { createPersonalPlanRecord, createPlanItemToggleRecord } from '../../src/utils/weeklyPlan.ts';
 
 describe('normalizeActivityChannel', () => {
   test('keeps a known channel and rejects everything else', () => {
@@ -274,6 +278,36 @@ describe('finishing a plan item records who it was with', () => {
     const item = planItem({ id: 'p9' });
     assert.equal(findPlanCompletionActivity(item, [{ tags: ['plan-completion', 'plan:p1'] }]), undefined);
     assert.ok(findPlanCompletionActivity(item, [{ tags: ['plan-completion', 'plan:p9'] }]));
+  });
+
+  test('a capture can complete a manual item and be reused after it is reopened', () => {
+    const planned = createPersonalPlanRecord({ date: '2026-09-15', label: '[Frulact] Call Rui' });
+    const item = planItem({ id: planned.id, kind: 'personal', derivedKey: undefined });
+    const activity = { id: 'quick-capture', tags: [] };
+    const done = planItemDoneRecord(item, [planned], { activityId: activity.id });
+    const reopened = createPlanItemToggleRecord(item, false, [done]);
+    assert.equal(done.done, true);
+    assert.equal(reopened.done, false);
+    assert.equal(findPlanCompletionActivity(item, [activity], reopened), activity);
+    assert.equal(findPlanCompletionActivity(item, [], reopened), undefined);
+  });
+
+  test('reuse offers captures for the same account and day', () => {
+    const item = planItem({ date: '2026-09-15', tag: 'Frulact', workKind: 'customer' });
+    const capture = { id: 'a1', accountName: 'FRULACT', activityDate: '2026-09-15' };
+    const others = [
+      { ...capture, id: 'a2', accountName: 'Vila Gale' },
+      { ...capture, id: 'a3', activityDate: '2026-09-16' },
+    ];
+    assert.deepEqual(planCompletionActivityOptions(item, [capture, ...others], [], '2026-09-15'), [capture]);
+  });
+
+  test('Plan completion retries use the same Activity ID within their workspace', async () => {
+    const id = await planCompletionActivityId('servicebio', 'task-1');
+    assert.match(id, /^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
+    assert.equal(id, await planCompletionActivityId('servicebio', 'task-1'));
+    assert.notEqual(id, await planCompletionActivityId('biomedia', 'task-1'));
+    assert.notEqual(id, await planCompletionActivityId('servicebio', 'task-2'));
   });
 });
 

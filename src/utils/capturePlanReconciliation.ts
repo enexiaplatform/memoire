@@ -4,7 +4,7 @@ import type { OwnObligation } from './ownObligations.ts';
 import {
   buildPlanBoard,
   condensePlanLabel,
-  createDerivedCompletionRecord,
+  createPlanItemToggleRecord,
   getDatedCaptureActions,
   type PlanItem,
   type PlanRecord,
@@ -114,17 +114,15 @@ export function findClosablePlanItems(input: {
 export function planItemDoneRecord(
   item: PlanItem,
   records: PlanRecord[],
-  options: { source?: 'demo' | 'user'; isSample?: boolean } = {},
+  options: { source?: 'demo' | 'user'; isSample?: boolean; activityId?: string } = {},
 ): PlanRecord | null {
-  const now = new Date().toISOString();
-  if (item.kind === 'personal') {
-    const existing = records.find((record) => record.id === item.id);
-    if (!existing) return null;
-    return { ...existing, done: true, doneAt: now, updatedAt: now };
-  }
-
-  const existing = records.find((record) => record.derivedKey === item.derivedKey);
-  return createDerivedCompletionRecord(item, true, { existing, source: options.source, isSample: options.isSample });
+  const record = createPlanItemToggleRecord(item, true, records, options);
+  if (!record || !options.activityId) return record;
+  return {
+    ...record,
+    doneAt: item.done ? item.doneAt || record.doneAt : record.doneAt,
+    completionActivityId: options.activityId,
+  };
 }
 
 function closeReason(item: PlanItem, touchDate: string) {

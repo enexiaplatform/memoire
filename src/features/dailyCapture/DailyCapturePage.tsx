@@ -28,7 +28,7 @@ import {
   deleteSalesActivity,
   saveSalesActivity,
   updateSalesActivityLink,
-  type SalesActivityRecord,
+  type SalesActivityLinkTarget, type SalesActivityRecord,
 } from '../../services/salesActivityStore';
 import { updateOpportunity, type CrmLiteOpportunity } from '../../services/opportunityStore';
 import { createLead } from '../../services/leadCommands';
@@ -702,6 +702,19 @@ export function DailyCapturePage() {
     };
   };
 
+  const saveCapture = async (activity: ClassifiedSalesActivity, linkTarget: SalesActivityLinkTarget | undefined) => {
+    try {
+      return await saveSalesActivity({ ...activity, opportunityName: linkTarget?.linkedOpportunityName || '' }, dataUserId, {
+        source: sampleDataActive ? 'demo' : 'user',
+        isSample: sampleDataActive,
+      }, linkTarget);
+    } catch (error) {
+      setSaveState('error');
+      setMessage(error instanceof Error ? error.message : 'The activity could not be saved. Your draft is still open.');
+      return null;
+    }
+  };
+
   const handleSave = async () => {
     // Guarded here rather than only on the buttons: both Save buttons and any
     // future call site funnel through this function, and a disabled button is
@@ -754,10 +767,8 @@ export function DailyCapturePage() {
       // customer and the reason is said out loud.
       setMessage('Could not create the lead - the note is saved with the customer instead.');
     }
-    const result = await saveSalesActivity({ ...classified, opportunityName: linkTarget?.linkedOpportunityName || '' }, dataUserId, {
-      source: sampleDataActive ? 'demo' : 'user',
-      isSample: sampleDataActive,
-    }, linkTarget);
+    const result = await saveCapture(classified, linkTarget);
+    if (!result) return;
     const memory = recordCaptureCorrections(corrections, user?.id);
     setCaptureCorrections(memory.corrections);
     setAccountAliases(memory.aliases);
@@ -808,10 +819,8 @@ export function DailyCapturePage() {
     } catch {
       setMessage('Could not create the lead - the note is saved with the customer instead.');
     }
-    const result = await saveSalesActivity({ ...prepared, opportunityName: linkTarget?.linkedOpportunityName || '' }, dataUserId, {
-      source: sampleDataActive ? 'demo' : 'user',
-      isSample: sampleDataActive,
-    }, linkTarget);
+    const result = await saveCapture(prepared, linkTarget);
+    if (!result) return;
     setActivities((current) => [result.record, ...current.filter((item) => item.id !== result.record.id)]);
     setLastSavedActivity(result.record);
     openReviewForCapture(result.record);
@@ -1140,15 +1149,17 @@ export function DailyCapturePage() {
   );
 
   const handleMarkPlanItemDone = useCallback((item: PlanItem) => {
+    if (!lastSavedActivity) return;
     const record = planItemDoneRecord(item, planRecords, {
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
+      activityId: lastSavedActivity.id,
     });
     if (!record) return;
     setPlanRecords(savePlanItem(record));
     setMarkedDoneKeys((current) => [...current, closableKey(item)]);
     trackProductEvent('commitment_completed');
-  }, [planRecords, sampleDataActive]);
+  }, [lastSavedActivity, planRecords, sampleDataActive]);
 
   // Quote state is not a fact read out of the note - it is an existing quote
   // advancing its own lifecycle - so it stays its own suggestion rather than

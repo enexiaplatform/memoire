@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Building2, NotebookPen, UserPlus, Users } from 'lucide-react';
 import type { CrmLiteOpportunity } from '../../services/opportunityStore';
+import type { SalesActivityRecord } from '../../services/salesActivityStore';
 import type { PlanItem } from '../../utils/weeklyPlan';
 import {
   ACTIVITY_CHANNELS,
@@ -25,6 +26,7 @@ import { ghostPillClass, primaryPillClass } from '../ui/daylightStyles';
 export type PlanPersonOption = { name: string; roleTitle: string; accountName: string };
 
 export type RecordPlanActivityValues = {
+  existingActivityId?: string;
   fulfillmentCommitmentId?: string;
   note: string;
   channel: ActivityChannel | '';
@@ -54,6 +56,8 @@ export function RecordPlanActivityDrawer({
   onSave,
   onClose,
   promises = [],
+  existingActivity,
+  captureOptions = [],
 }: {
   item: PlanItem;
   opportunities: CrmLiteOpportunity[];
@@ -64,6 +68,8 @@ export function RecordPlanActivityDrawer({
   onSave: (values: RecordPlanActivityValues) => void;
   onClose: () => void;
   promises?: { id: string; label: string }[];
+  existingActivity?: SalesActivityRecord;
+  captureOptions?: SalesActivityRecord[];
 }) {
   const accountName = planItemAccountName(item, opportunities);
   const candidates = useMemo(
@@ -72,6 +78,8 @@ export function RecordPlanActivityDrawer({
   );
   const [channel, setChannel] = useState<ActivityChannel | ''>(normalizeActivityChannel(item.channel));
   const [note, setNote] = useState('');
+  const [selectedActivityId, setSelectedActivityId] = useState('');
+  const activityToLink = existingActivity || captureOptions.find((activity) => activity.id === selectedActivityId);
   const [fulfillmentCommitmentId, setFulfillmentCommitmentId] = useState('');
   // The person already named on the line is who it was most likely with.
   const [choice, setChoice] = useState(() => {
@@ -93,17 +101,16 @@ export function RecordPlanActivityDrawer({
     : choice === NEW_PERSON
       ? (newName.trim() ? { name: newName.trim(), roleTitle: newRoleTitle.trim() } : null)
       : chosen ? { name: chosen.name, roleTitle: chosen.roleTitle } : null;
-  const problems = planCompletionProblems({ item, note, channel, person, opportunities, activityDate: item.date });
-  if (fulfillmentCommitmentId && !note.trim()) problems.push('Describe the outcome that fulfills the promise.');
+  const problems = activityToLink ? [] : planCompletionProblems({ item, note, channel, person, opportunities, activityDate: item.date });
 
   const save = () => {
     if (problems.length > 0 || saving) return;
-    onSave({ note: note.trim(), channel, person, personIsNew: needsPerson && choice === NEW_PERSON, fulfillmentCommitmentId });
+    onSave({ existingActivityId: activityToLink?.id, note: note.trim(), channel, person, personIsNew: needsPerson && choice === NEW_PERSON, fulfillmentCommitmentId });
   };
 
   return (
     <RecordDrawer
-      eyebrow="Record the activity"
+      eyebrow="Capture from Plan"
       title={item.label}
       label={`Record ${item.label}`}
       onClose={onClose}
@@ -124,9 +131,9 @@ export function RecordPlanActivityDrawer({
         <>
           <button type="button" onClick={save} disabled={problems.length > 0 || saving} className={primaryPillClass}>
             <NotebookPen className="h-4 w-4" />
-            {saving ? 'Saving…' : 'Save and mark done'}
+            {saving ? 'Saving…' : activityToLink ? 'Link and mark done' : 'Capture and mark done'}
           </button>
-          <button type="button" onClick={onClose} className={ghostPillClass}>Not now</button>
+          <button type="button" onClick={onClose} disabled={saving} className={ghostPillClass}>Not now</button>
           {problems.length > 0 && (
             <p className="w-full text-xs text-muted">Still needed: {problems.join(' ')}</p>
           )}
@@ -134,7 +141,24 @@ export function RecordPlanActivityDrawer({
         </>
       )}
     >
-      <p className="mb-3 text-xs leading-5 text-muted">This records a completed task. A commercial promise is kept only when you explicitly confirm its outcome.</p>
+      {!existingActivity && captureOptions.length > 0 && (
+        <label className="mb-4 block text-sm font-semibold">
+          Activity entry
+          <select value={selectedActivityId} onChange={(event) => setSelectedActivityId(event.target.value)} className="mt-1 block w-full rounded-xl border border-line p-2">
+            <option value="">Capture a new activity</option>
+            {captureOptions.map((activity) => (
+              <option key={activity.id} value={activity.id}>
+                {[activity.stakeholderName || activity.contactName, (activity.summary || activity.rawNote).slice(0, 130)].filter(Boolean).join(' · ')}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {activityToLink ? (
+        <p className="rounded-xl bg-canvas p-3 text-sm text-ink">
+          {activityToLink.summary || activityToLink.rawNote}
+        </p>
+      ) : <div className="space-y-3">
       {promises.length > 0 && <label className="mb-4 block text-sm font-semibold">Also fulfill a commercial promise
         <select aria-label="Promise to fulfill" value={fulfillmentCommitmentId} onChange={event => setFulfillmentCommitmentId(event.target.value)} className="mt-1 block w-full rounded-xl border border-line p-2">
           <option value="">Leave promises open</option>{promises.map(promise => <option key={promise.id} value={promise.id}>{promise.label}</option>)}
@@ -253,6 +277,7 @@ export function RecordPlanActivityDrawer({
         </p>
       )}
       {channel==='Desk work'&&accountName&&<p className="text-xs leading-5 text-muted">Preparation is recorded on {accountName}&apos;s history. It does not count as a customer touch or update any person&apos;s last interaction.</p>}
+      </div>}
     </RecordDrawer>
   );
 }

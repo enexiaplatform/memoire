@@ -79,3 +79,85 @@ test('native data scope preserves copied links and isolates the existing Memoire
     await db.close();
   }
 });
+
+test('two named workspaces under one login partition books, currency, reports and automation snapshots', async () => {
+  const db = await createSupabaseCompatibleDatabase();
+  const namedA = 'bbbbbbbb-1111-4111-8111-111111111121';
+  const namedB = 'bbbbbbbb-1111-4111-8111-111111111122';
+  const seeded = [];
+  try {
+    await applyMigrations(db);
+    await seedAuthUsers(db);
+    await setAuthenticatedOwner(db, OWNER_A);
+    for (const [id, name, currency] of [[namedA, 'Bio Lab', 'USD'], [namedB, 'Med Supply', 'VND']]) {
+      await db.query('SELECT public.memoire_create_native_workspace($1,$2,NULL,$3)', [id, name, []]);
+      const directory = await db.query('SELECT data_owner_id FROM public.memoire_get_native_workspace_scope($1)', [id]);
+      const dataOwner = directory.rows[0].data_owner_id;
+      await openScope(db, id);
+      try {
+        const { rows: accounts } = await db.query(
+          'INSERT INTO public.accounts(user_id,name,account_name) VALUES(auth.uid(),$1,$1) RETURNING id', [name],
+        );
+        const { rows: opportunities } = await db.query(
+          'INSERT INTO public.opportunities(user_id,account_id,title,opportunity_name) VALUES(auth.uid(),$1,$2,$2) RETURNING id',
+          [accounts[0].id, name],
+        );
+        const opportunityId = opportunities[0].id;
+        await db.query("INSERT INTO public.quotes(user_id,id,payload) VALUES(auth.uid(),'same-ref',$1)",
+          [{ id: 'same-ref', title: name, opportunityId, amount: 100, currency }]);
+        await db.query('INSERT INTO public.order_receivables(user_id,id,payload) VALUES(auth.uid(),$1,$2)',
+          [opportunityId, { id: opportunityId, opportunityId, receipts: [{ amount: 25, currency }] }]);
+        await db.query('INSERT INTO public.sales_activities(user_id,raw_note,activity_type) VALUES(auth.uid(),$1,$2)',
+          [name, 'Meeting']);
+        await db.query('UPDATE public.user_profiles SET reporting_currency=$1 WHERE id=auth.uid()', [currency]);
+        const reportModule = await import('../../src/domain/reports/reportRecord.ts');
+        const { reportTemplate } = await import('../../src/domain/reports/reportDefinition.ts');
+        const [report] = reportModule.changeSavedReport([], {
+          id: 'regional-report', state: { definition: { ...reportTemplate('portfolio'), name }, archived: false },
+          expectedVersion: 0, sample: false, at: '2026-11-17T00:00:00Z',
+        });
+        await db.query('INSERT INTO public.report_definitions(user_id,id,payload) VALUES(auth.uid(),$1,$2)', [report.id, report]);
+        seeded.push({ id, name, currency, dataOwner, opportunityId });
+      } finally {
+        await db.exec('COMMIT');
+      }
+    }
+
+    for (const expected of [...seeded, seeded[0]]) {
+      await openScope(db, expected.id);
+      try {
+        const { rows } = await db.query('SELECT public.memoire_preview_automation() AS snapshot');
+        const { snapshot } = rows[0];
+        assert.deepEqual(snapshot.accounts.map(row => row.name), [expected.name]);
+        assert.deepEqual(snapshot.opportunities.map(row => row.id), [expected.opportunityId]);
+        assert.deepEqual(snapshot.quotes.map(row => row.payload.title), [expected.name]);
+        assert.deepEqual(snapshot.receivables.map(row => row.payload.opportunityId), [expected.opportunityId]);
+        assert.deepEqual(snapshot.activities.map(row => row.raw_note), [expected.name]);
+        assert.deepEqual(snapshot.reports.map(row => row.payload.definition.name), [expected.name]);
+        assert.deepEqual(snapshot.profiles.map(row => row.reporting_currency), [expected.currency]);
+        assert.equal((await db.query('SELECT public.memoire_active_data_owner() AS id')).rows[0].id, expected.dataOwner);
+        assert.equal((await db.query('SELECT COUNT(*)::int AS total FROM public.quotes')).rows[0].total, 1);
+      } finally {
+        await db.exec('ROLLBACK');
+      }
+    }
+    assert.equal((await db.query('SELECT public.memoire_active_data_owner() AS id')).rows[0].id, OWNER_A);
+    assert.deepEqual((await db.query('SELECT id FROM public.quotes')).rows, []);
+  } finally {
+    await db.close();
+  }
+});
+
+async function openScope(db, workspaceId) {
+  await db.exec('BEGIN');
+  await db.query("SELECT set_config('request.jwt.claims',$1,true), set_config('request.headers',$2,true)", [
+    JSON.stringify({ sub: OWNER_A, role: 'authenticated' }),
+    JSON.stringify({ 'x-memoire-data-workspace': workspaceId }),
+  ]);
+  try {
+    await db.exec('SELECT memoire_private.apply_workspace_data_scope()');
+  } catch (error) {
+    await db.exec('ROLLBACK');
+    throw error;
+  }
+}

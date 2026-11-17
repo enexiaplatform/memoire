@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { CalendarDays, ChevronLeft, ChevronRight, Loader2, Pencil, Plus, RotateCcw, X } from 'lucide-react';
@@ -86,11 +86,14 @@ import { trackProductEvent } from '../../utils/productAnalytics';
 import {
   buildPlanCompletionActivity,
   findPlanCompletionActivity,
+  planCompletionActivityId,
+  planCompletionActivityOptions,
   planCompletionLogMessage,
   planCompletionActivityDate,
   planItemAccountName,
   planItemOpportunity,
 } from '../../utils/planCompletionLog';
+import { planItemDoneRecord } from '../../utils/capturePlanReconciliation';
 import {
   RecordPlanActivityDrawer,
   type RecordPlanActivityValues,
@@ -205,6 +208,7 @@ export function WeeklyPlanPage({
    */
   const [recordingItem, setRecordingItem] = useState<PlanItem | null>(null);
   const [recordSaving, setRecordSaving] = useState(false);
+  const recordSaveInFlight = useRef(false);
   const [recordError, setRecordError] = useState('');
   const [dragItem, setDragItem] = useState<PlanItem | null>(null);
   const [dragOverDate, setDragOverDate] = useState('');
@@ -398,7 +402,27 @@ export function WeeklyPlanPage({
     draftLink ? [] : buildPlanLinkOptions({ draft, opportunities, accountNames: knownAccountNames, brands: knownBrands })
   ), [draft, draftLink, knownAccountNames, knownBrands, opportunities]);
 
+  const completionRecords = useMemo(() => {
+    const index = new Map(records.filter((record) => !record.__deleted)
+      .map((record) => [record.derivedKey || record.id, record]));
+    records.filter((record) => !record.__deleted).forEach((record) => {
+      record.linkedDerivedKeys?.forEach((key) => index.set(key, record));
+    });
+    return index;
+  }, [records]);
+  const completionFor = useCallback((item: PlanItem) => (
+    findPlanCompletionActivity(item, activities, completionRecords.get(item.derivedKey || item.id))
+  ), [activities, completionRecords]);
+  const capturedCount = useMemo(() => displayedBoard.days.reduce((total, day) => (
+    total + day.items.filter((item) => item.done && completionFor(item)).length
+  ), 0), [completionFor, displayedBoard]);
+  const recordedActivity = recordingItem ? completionFor(recordingItem) : undefined;
+  const captureOptions = useMemo(() => recordingItem && !recordedActivity
+    ? planCompletionActivityOptions(recordingItem, activities, opportunities, todayDateKey()) : [],
+  [activities, opportunities, recordedActivity, recordingItem]);
+
   const closeRecord = useCallback(() => {
+    if (recordSaveInFlight.current) return;
     setRecordingItem(null);
     setRecordSaving(false);
     setRecordError('');
@@ -430,15 +454,34 @@ export function WeeklyPlanPage({
     });
     if (!record) return;
     setRecords(savePlanItem(record));
-    if (findPlanCompletionActivity(item, activities)) {
+    if (completionFor(item)) {
       setBoardMessage(`"${item.label}" is open again. The activity recorded for it stays on Activity - delete it there if it did not happen.`);
     }
-  }, [activities, records, sampleDataActive]);
+  }, [completionFor, records, sampleDataActive]);
 
   const recordCompletion = useCallback(async (values: RecordPlanActivityValues) => {
     const item = recordingItem;
-    if (!item || recordSaving) return;
+    if (!item || recordSaveInFlight.current) return;
     const workspaceTag = { source: sampleDataActive ? 'demo' as const : 'user' as const, isSample: sampleDataActive };
+    const existingActivity = completionFor(item)
+      || captureOptions.find((activity) => activity.id === values.existingActivityId);
+    const completion = planItemDoneRecord(item, records, workspaceTag);
+    if (!completion) { setRecordError('This plan item could not be found. Reopen it and try again.'); return; }
+    if (existingActivity) {
+      try {
+        setRecords(savePlanItem({ ...completion, doneAt: item.doneAt || completion.doneAt, completionActivityId: existingActivity.id }));
+        if (!item.done) trackProductEvent('commitment_completed');
+        const fulfilled = values.fulfillmentCommitmentId
+          ? promiseLedger.complete(values.fulfillmentCommitmentId, `${values.note.trim() || existingActivity.summary} (activity ${existingActivity.id})`) : false;
+        setBoardMessage(fulfilled
+          ? 'Task done. The existing Activity entry also records evidence for the selected promise.'
+          : 'Task done. Linked to the existing Activity entry.');
+        closeRecord();
+      } catch {
+        setRecordError('Could not link the Activity entry. Try again.');
+      }
+      return;
+    }
     // The day the item sat on, or today when it was finished ahead of its day.
     const activityDate = planCompletionActivityDate(item, todayDateKey());
     const log = buildPlanCompletionActivity({
@@ -451,6 +494,7 @@ export function WeeklyPlanPage({
     });
     if (!log) { setRecordError('Write what happened, and who it was with, before saving.'); return; }
 
+    recordSaveInFlight.current = true;
     setRecordSaving(true);
     setRecordError('');
     try {
@@ -459,7 +503,11 @@ export function WeeklyPlanPage({
       // The link to a stakeholder is real, not a name in a sentence: somebody
       // new is filed under the customer, and somebody already on record has
       // their last interaction moved to this day when it is newer.
-      if (personName && values.personIsNew) {
+      const existing = personName ? stakeholders.find((person) => (
+        normalizeEntityName(person.name) === normalizeEntityName(personName)
+        && accountKey(person.accountName) === accountKey(accountName)
+      )) : undefined;
+      if (personName && values.personIsNew && !existing) {
         const deal = planItemOpportunity(item, opportunities);
         const created = await createStakeholder({
           ...emptyStakeholderInput,
@@ -474,44 +522,33 @@ export function WeeklyPlanPage({
           lastInteractionDate: activityDate,
         }, dataUserId, workspaceTag);
         setStakeholders((current) => [created.stakeholder, ...current]);
-      } else if (personName) {
-        const existing = stakeholders.find((person) => (
-          normalizeEntityName(person.name) === normalizeEntityName(personName)
-          && accountKey(person.accountName) === accountKey(accountName)
-        ));
-        if (existing && isMoreRecentBusinessDate(activityDate, existing.lastInteractionDate)) {
-          const updated = await updateStakeholder(existing, { ...stakeholderToFormInput(existing), lastInteractionDate: activityDate }, dataUserId);
-          setStakeholders((current) => current.map((person) => (person.id === existing.id ? updated.stakeholder : person)));
-        }
+      } else if (existing && isMoreRecentBusinessDate(activityDate, existing.lastInteractionDate)) {
+        const updated = await updateStakeholder(existing, { ...stakeholderToFormInput(existing), lastInteractionDate: activityDate }, dataUserId);
+        setStakeholders((current) => current.map((person) => (person.id === existing.id ? updated.stakeholder : person)));
       }
 
       const result = await saveSalesActivity(log.activity, dataUserId, {
         source: workspaceTag.source,
         isSample: sampleDataActive,
-      }, log.link);
-      setActivities((current) => [result.record, ...current]);
-
-      if (!item.done) {
-        const record = createPlanItemToggleRecord(item, true, records, workspaceTag);
-        if (record) {
-          setRecords(savePlanItem(record));
-          // Fires for typed items too. It used to return early for them, so a
-          // week spent on the operator's own work counted as zero kept.
-          trackProductEvent('commitment_completed');
-        }
-      }
+      }, log.link, await planCompletionActivityId(dataUserId || workspaceTag.source, completion.id));
+      setActivities((current) => [result.record, ...current.filter((activity) => activity.id !== result.record.id)]);
+      setRecords(savePlanItem({ ...completion, doneAt: item.doneAt || completion.doneAt, completionActivityId: result.record.id }));
+      if (!item.done) trackProductEvent('commitment_completed');
       // Step 3 of the demo path: the promise was kept and the conversation
       // behind it is on the record. Nothing happens outside the sandbox.
       if (sampleDataActive) markDemoJourneyStepComplete('record-the-week', 'Recorded a finished promise on the plan');
       const fulfilled = values.fulfillmentCommitmentId
         ? promiseLedger.complete(values.fulfillmentCommitmentId, `${values.note.trim()} (activity ${result.record.id})`) : false;
       setBoardMessage(result.warning || `${planCompletionLogMessage(log.accountName, log.activity.activityChannel, personName)} ${fulfilled ? 'Selected commercial promise marked kept with this evidence.' : 'Task done. Commercial promises remain open until their outcome is confirmed.'}`);
+      recordSaveInFlight.current = false;
       closeRecord();
     } catch {
       setRecordSaving(false);
       setRecordError('Could not save it. What you wrote is still here - try again.');
+    } finally {
+      recordSaveInFlight.current = false;
     }
-  }, [closeRecord, dataUserId, opportunities, promiseLedger, recordSaving, recordingItem, records, sampleDataActive, stakeholders]);
+  }, [captureOptions, closeRecord, completionFor, dataUserId, opportunities, promiseLedger, recordingItem, records, sampleDataActive, stakeholders]);
 
   /**
    * Rewrites the completion stub for a derived item whose date is changing, so
@@ -520,8 +557,14 @@ export function WeeklyPlanPage({
   const carryCompletionStub = useCallback((item: PlanItem, nextDerivedKey: string, nextDate: string) => {
     const stub = records.find((record) => record.derivedKey === item.derivedKey);
     if (!stub) return;
-    setRecords(savePlanItem({ ...stub, date: nextDate, derivedKey: nextDerivedKey, updatedAt: new Date().toISOString() }));
-  }, [records]);
+    setRecords(savePlanItem({
+      ...stub,
+      date: nextDate,
+      derivedKey: nextDerivedKey,
+      completionActivityId: completionFor(item)?.id || stub.completionActivityId,
+      updatedAt: new Date().toISOString(),
+    }));
+  }, [completionFor, records]);
 
   /**
    * Dragging an item onto another day writes the new date into the record that
@@ -741,10 +784,10 @@ export function WeeklyPlanPage({
     }
   }, [activities, carryCompletionStub, closeDetail, dataUserId, detailDraft, detailItem, opportunities, records]);
 
-  const addPersonalItem = useCallback((date: string) => {
+  const addPersonalItem = useCallback((date: string, captureCompleted = false) => {
     const label = draft.trim();
     if (!label) return;
-    setRecords(savePlanItem(createPersonalPlanRecord({
+    const record = createPersonalPlanRecord({
       date,
       label,
       linkedOpportunityId: draftLink?.opportunityId,
@@ -753,12 +796,20 @@ export function WeeklyPlanPage({
       channel: draftChannel,
       source: sampleDataActive ? 'demo' : 'user',
       isSample: sampleDataActive,
-    })));
+    });
+    const nextRecords = savePlanItem(record);
+    setRecords(nextRecords);
+    if (captureCompleted) {
+      const added = buildPlanBoard({
+        periodType, anchorDate, opportunities, obligations, activities, records: nextRecords, brands: knownBrands,
+      }).days.find((day) => day.date === date)?.items.find((item) => item.id === record.id);
+      if (added) { setRecordingItem(added); setRecordError(''); }
+    }
     setDraft('');
     setDraftLink(null);
     setDraftChannel('');
     trackProductEvent('commitment_created');
-  }, [draft, draftChannel, draftLink, sampleDataActive]);
+  }, [activities, anchorDate, draft, draftChannel, draftLink, knownBrands, obligations, opportunities, periodType, sampleDataActive]);
 
   const importPastedWeek = useCallback((lines: { date: string; tag: string; label: string }[]) => {
     let nextRecords = records;
@@ -980,7 +1031,7 @@ export function WeeklyPlanPage({
         />
       </header>
 
-      <WeekSummaryStrip summary={summary} periodType={periodType} />
+      <WeekSummaryStrip summary={summary} periodType={periodType} capturedCount={capturedCount} />
 
       {/* Who the week is for, and where its lines came from. The strip above
           answers how much of it is done; this line answers who it serves, which
@@ -1112,7 +1163,7 @@ export function WeeklyPlanPage({
                 }[state];
                 // A finished line says whether it reached Activity, and with
                 // whom - the record is the point of finishing it.
-                const recorded = item.done ? findPlanCompletionActivity(item, activities) : undefined;
+                const recorded = item.done ? completionFor(item) : undefined;
                 const meta = [
                   item.channel,
                   state === 'done'
@@ -1236,8 +1287,16 @@ export function WeeklyPlanPage({
                         onClick={() => { setRecordingItem(item); setRecordError(''); }}
                         className="mt-1 text-[11px] font-bold text-brand-blue-dark underline-offset-2 hover:underline"
                       >
-                        Record what happened
+                        Capture activity
                       </button>
+                    )}
+                    {!isEditing && recorded && (
+                      <Link
+                        to={`/app/timeline?view=history&activityId=${encodeURIComponent(recorded.id)}`}
+                        className="mt-1 block text-[11px] font-bold text-brand-blue-dark underline-offset-2 hover:underline"
+                      >
+                        View activity
+                      </Link>
                     )}
                   </div>
                   {/* The pencil opens the line in full - day, customer,
@@ -1294,9 +1353,17 @@ export function WeeklyPlanPage({
                       onClick={() => addPersonalItem(day.date)}
                       className="shrink-0 rounded-full bg-brand-blue px-2 py-1 text-xs font-bold text-white hover:bg-brand-blue-dark"
                     >
-                      Add
+                      Plan
                     </button>
                   </div>
+                  <button
+                    type="button"
+                    disabled={!draft.trim()}
+                    onClick={() => addPersonalItem(day.date, true)}
+                    className="mt-1.5 text-left text-[11px] font-bold text-brand-blue-dark hover:underline disabled:opacity-50"
+                  >
+                    Capture completed work
+                  </button>
                   {/* What kind of day this line is asking for. Optional, and
                       blank by default - most lines do not need it. Two that do:
                       a visit, because the week has to show which days leave the
@@ -1416,6 +1483,8 @@ export function WeeklyPlanPage({
           people={contactOptions}
           saving={recordSaving}
           error={recordError}
+          existingActivity={recordedActivity}
+          captureOptions={captureOptions}
           promises={promiseLedger.commitments.filter(promise => promise.status === 'open' && promise.commitmentParty === 'self' && promise.sourceType !== 'system_rule'
             && accountKey(promise.accountName) === accountKey(planItemAccountName(recordingItem, opportunities)))
             .map(promise => ({ id: promise.id, label: promise.commitmentText }))}
@@ -1510,7 +1579,7 @@ const CHANNEL_COLOUR: Record<string, string> = {
  * next step does not say whether it is a call - and a bar that quietly dropped
  * them would describe a week made only of the few lines somebody labelled.
  */
-function WeekSummaryStrip({ summary, periodType }: { summary: PlanBoardSummary; periodType: PlanPeriod }) {
+function WeekSummaryStrip({ summary, periodType, capturedCount }: { summary: PlanBoardSummary; periodType: PlanPeriod; capturedCount: number }) {
   const percentTone = summary.donePercent === null
     ? 'text-muted'
     : summary.donePercent >= 70 ? 'text-tint-green-solid' : summary.donePercent >= 40 ? 'text-tint-amber-solid' : 'text-tint-red-solid';
@@ -1575,9 +1644,9 @@ function WeekSummaryStrip({ summary, periodType }: { summary: PlanBoardSummary; 
       <div aria-hidden="true" className="hidden w-px self-stretch bg-line lg:block" />
 
       <div className="shrink-0 lg:text-right">
-        <MicroLabel>From records / by hand</MicroLabel>
+        <MicroLabel>Captured / done</MicroLabel>
         <span className="mt-1.5 block font-mono text-[22px] font-bold text-ink">
-          {summary.fromRecords} / {summary.addedByHand}
+          {capturedCount} / {summary.done}
         </span>
       </div>
     </Panel>

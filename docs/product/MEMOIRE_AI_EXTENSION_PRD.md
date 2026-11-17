@@ -1,6 +1,6 @@
 # Memoire AI extension PRD
 
-Status as of 2026-11-17. Memoire already offers optional Chat, local commercial search and analysis, manual quotation tracking, pricing calculations, follow-up preparation and pipeline review. The development branch hardens the existing owner boundary. The capabilities below describe acceptance for the later extension. They are not enabled.
+Status as of 2026-11-17. Memoire already offers optional Chat, local commercial search and analysis, manual quotation tracking, pricing calculations, follow-up preparation and pipeline review. The release candidate carries confirmed copy previews for named workspaces and more durable Capture and Plan activity linking. The capabilities below describe acceptance for the later extension. They are not enabled.
 
 ## Product and capability boundaries
 
@@ -32,4 +32,4 @@ Surface overdue commitments, stale opportunities, quotes awaiting response, miss
 - The backend verifies workspace membership and the scope of each retrieved record. A stale request or a source from another workspace cannot produce a draft, evidence link, report or job.
 - Tests use fictional RFQs that cover missing quantities and SKUs, contradictory lines, spreadsheet formulas, malformed inputs and embedded prompt injection. Reviews retain source anchors and seller corrections.
 - Money regression cases cover zero and missing values, tax and discount order, negative margin, currency rounding and approved-rate validity. Approval tests cover false actor, stale revision, retry, concurrent response and changed authorization.
-- The extension depends on complete workspace isolation, canonical Capture event integration, and governed automation execution. Current evidence and open gates are in the [release readiness report](../engineering/RELEASE_READINESS_REPORT.md).
+- Named workspaces now have server-checked data scope. The extension still depends on canonical Capture event integration and governed event-triggered automation. Current evidence and open gates are in the [release readiness report](../engineering/RELEASE_READINESS_REPORT.md).

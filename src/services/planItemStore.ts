@@ -129,6 +129,7 @@ function sanitizePlanRecord(value: unknown): PlanRecord | null {
     tag: typeof candidate.tag === 'string' ? candidate.tag.trim() : '',
     done: candidate.done === true,
     doneAt: typeof candidate.doneAt === 'string' ? candidate.doneAt : undefined,
+    completionActivityId: typeof candidate.completionActivityId === 'string' ? candidate.completionActivityId : undefined,
     derivedKey: typeof candidate.derivedKey === 'string' ? candidate.derivedKey : undefined,
     linkedDerivedKeys: Array.isArray(candidate.linkedDerivedKeys) ? [...new Set(candidate.linkedDerivedKeys.filter((key): key is string => typeof key === 'string' && key !== candidate.derivedKey))].slice(0, 50) : undefined,
     linkedOpportunityId: typeof candidate.linkedOpportunityId === 'string' ? candidate.linkedOpportunityId : undefined,

@@ -1,11 +1,11 @@
 # Memoire automation architecture
 
-Status as of 2026-11-17. The owner-scoped scheduled engine described below exists in the baseline. This development branch adds workspace-boundary safeguards. The event-triggered extension and commercial approvals are pending.
+Status as of 2026-11-17. The scheduled engine described below exists in the baseline. Current native workspaces run it against the verified data owner for the selected book. This development branch adds workspace-boundary safeguards. The event-triggered extension and commercial approvals are pending.
 
 ## Implemented execution path
 
-1. Settings calls the `automations` resource on the existing Commercial endpoint. The handler verifies the bearer identity, applies address and owner limits, and reads settings and history with the caller's Supabase token. Configuration revisions guard simultaneous edits. Preview reads a bounded confirmed-cloud snapshot and computes candidate work without writes.
-2. The scheduled worker verifies the scheduler secret and processes enabled owners in bounded batches. The Run now action uses the same execution function after verifying the requesting owner and enabled settings.
+1. Settings calls the `automations` resource on the existing Commercial endpoint. The handler verifies the bearer identity, applies address and owner limits, and binds the requested workspace to the login and reads settings and history with the scoped Supabase token. Configuration revisions guard simultaneous edits. Preview reads a bounded confirmed-cloud snapshot and computes candidate work without writes.
+2. The scheduled worker verifies the scheduler secret and processes enabled data owners in bounded batches. The Run now action uses the same execution function after verifying the requesting owner and enabled settings.
 3. PostgreSQL gives a run a two-minute lease with an attempt limit of three per run identity. The worker reads the captured sources and settings revision, evaluates the deterministic engine and proposes Plan changes and prepared outputs.
 4. The finish RPC rechecks the lease, settings revision and source fingerprint. It atomically records the receipt and accepted changes. Changed sources produce a retryable result. Repeated completion returns the stored summary. Deterministic task identities, tombstones and the daily cap constrain repeats, and seller edits take precedence.
 5. Settings surfaces run status and outputs. Today, Capture, Plan, Review, Accounts, margin, reports and dashboards display relevant prepared work through their existing entry points.
@@ -31,7 +31,7 @@ The engine can prepare information and create opted-in low-risk Plan items. It d
 
 ## Dependencies for event dispatch
 
-First pass the full same-account isolation gate in [Workspace isolation tests](WORKSPACE_ISOLATION_TESTS.md). Then attach the event to the successful business mutation in the same durable transaction where the store permits it. For offline commands, retain the same mutation identity through reconciliation. Scope the run ledger, counters, source fingerprint, source resolution, prepared IDs and execution history to the workspace. Check authorization and current policy again at execution so a revoked or stale action cannot replay.
+Use the resolved data owner and the isolation checks in [Workspace isolation tests](WORKSPACE_ISOLATION_TESTS.md). Attach the event to the successful business mutation in the same durable transaction where the store permits it. For offline commands, retain the same mutation identity through reconciliation. Scope the run ledger, counters, source fingerprint, source resolution, prepared IDs and execution history to the workspace. Check authorization and current policy again at execution so a revoked or stale action cannot replay.
 
 Reuse the existing Vercel and Supabase scheduler. There is no repository evidence that an additional orchestration service is needed for the planned bounded workflows.
 

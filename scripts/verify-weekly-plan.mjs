@@ -171,7 +171,7 @@ const anchor = new Date(2026, 6, 22); // Wed of the Mon 2026-07-20 week
   const recording = page.slice(page.indexOf('const recordCompletion'), page.indexOf('const carryCompletionStub'));
   assert.ok(
     recording.indexOf('await saveSalesActivity(') > 0
-      && recording.indexOf('createPlanItemToggleRecord(item, true') > recording.indexOf('await saveSalesActivity('),
+      && recording.indexOf('completionActivityId: result.record.id') > recording.indexOf('await saveSalesActivity('),
     'the line is marked done only after its activity is written',
   );
 

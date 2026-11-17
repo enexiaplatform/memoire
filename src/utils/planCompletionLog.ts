@@ -1,9 +1,9 @@
 import type { CrmLiteOpportunity } from '../services/opportunityStore';
-import type { SalesActivityLinkTarget } from '../services/salesActivityStore';
+import type { SalesActivityLinkTarget, SalesActivityRecord } from '../services/salesActivityStore';
 import type { ClassifiedSalesActivity, SalesActivityType } from './salesActivityClassifier.ts';
 import { getPlanItemWriteTarget, type PlanItem } from './weeklyPlan.ts';
 import { isOutOfOfficeChannel, normalizeActivityChannel, type ActivityChannel } from './activityChannel.ts';
-import { normalizeEntityName } from './accountIdentity.ts';
+import { normalizeEntityName, sameAccount } from './accountIdentity.ts';
 import { compareSafeBusinessDate, isValidBusinessDate } from './safeDate.ts';
 
 /**
@@ -171,12 +171,42 @@ export function planCompletionItemTag(item: Pick<PlanItem, 'id' | 'derivedKey'>)
 }
 
 /** The activity already recorded for this line, when there is one. */
-export function findPlanCompletionActivity<Activity extends { tags?: string[] }>(
+export function findPlanCompletionActivity<Activity extends { id?: string; tags?: string[] }>(
   item: Pick<PlanItem, 'id' | 'derivedKey'>,
   activities: Activity[],
+  record?: { completionActivityId?: string },
 ): Activity | undefined {
+  if (record?.completionActivityId) return activities.find((activity) => activity.id === record.completionActivityId);
   const tag = planCompletionItemTag(item);
   return activities.find((activity) => (activity.tags || []).includes(tag));
+}
+
+export function planCompletionActivityOptions(
+  item: PlanItem,
+  activities: SalesActivityRecord[],
+  opportunities: CrmLiteOpportunity[],
+  today: string,
+) {
+  const account = planItemAccountName(item, opportunities);
+  const opportunityId = planItemOpportunity(item, opportunities)?.id || item.linkedOpportunityId;
+  const date = planCompletionActivityDate(item, today);
+  return activities.filter((activity) => {
+    if (activity.activityDate !== date) return false;
+    const capturedAccount = activity.linkedAccountName || activity.accountName || '';
+    if (account ? !sameAccount(account, capturedAccount) : capturedAccount.trim()) return false;
+    return !opportunityId || !activity.linkedOpportunityId || opportunityId === activity.linkedOpportunityId;
+  });
+}
+
+/** A stable UUID keeps retries and offline reconciliation on the same Activity entry. */
+export async function planCompletionActivityId(workspace: string, planRecordId: string): Promise<string | undefined> {
+  if (!globalThis.crypto?.subtle) return undefined;
+  const input = new TextEncoder().encode(JSON.stringify(['memoire-plan-completion', workspace, planRecordId]));
+  const bytes = new Uint8Array(await crypto.subtle.digest('SHA-256', input));
+  bytes[6] = (bytes[6] & 0x0f) | 0x80;
+  bytes[8] = (bytes[8] & 0x3f) | 0x80;
+  const hex = Array.from(bytes.subarray(0, 16), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return [hex.slice(0, 8), hex.slice(8, 12), hex.slice(12, 16), hex.slice(16, 20), hex.slice(20)].join('-');
 }
 
 export function buildPlanCompletionActivity(input: PlanCompletionLogInput): PlanCompletionLog | null {

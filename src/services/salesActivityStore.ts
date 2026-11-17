@@ -12,7 +12,7 @@ import {
   parseIngestionSourceTags,
   type IngestionSourceType,
 } from '../utils/ingestionSource.ts';
-import { writeLocalRecords } from './localWriteGuard.ts';
+import { requireLocalWrite, writeLocalRecords } from './localWriteGuard.ts';
 import type { AnalyticsDataMode } from '../utils/productAnalytics.ts';
 
 export interface SalesActivityRecord extends ClassifiedSalesActivity {
@@ -217,7 +217,7 @@ export async function flushPendingSalesActivities(
       await createCloudActivity(record, userId as string, {
         createdAt: record.createdAt,
         updatedAt: record.updatedAt,
-      });
+      }, record.linkStatus === 'Linked' ? record : undefined, isUuid(record.id) ? record.id : undefined);
       assertCurrent();
       deleteLocalActivity(record.id);
       synced += 1;
@@ -319,6 +319,7 @@ export async function saveSalesActivity(
   workspace: SalesActivityWorkspaceTag,
   /** The deal this interaction was about, when it is known. */
   link?: SalesActivityLinkTarget,
+  recordId?: string,
 ): Promise<{ record: SalesActivityRecord; mode: 'local' | 'cloud'; warning?: string }> {
   // A sample capture never reaches the account, whatever id it was handed.
   // Callers already pass `undefined` for the user in demo mode, so this is a
@@ -326,11 +327,14 @@ export async function saveSalesActivity(
   // stranger's demo lands in a paying workspace, and `pendingSync` below would
   // otherwise queue a demo touch for upload the moment a connection returned.
   const demoOnly = workspace.isSample === true || workspace.source === 'demo';
+  // Reuse the same identity if the insert commits but the network drops its
+  // response, so a subsequent offline flush can acknowledge the original row.
+  const activityId = recordId ?? globalThis.crypto?.randomUUID?.();
 
   if (!demoOnly && canUseSalesActivityCloudStore(userId)) {
     const assertCurrent = guardLocalWorkspaceScope(userId);
     try {
-      const record = await createCloudActivity(activity, userId as string, undefined, link);
+      const record = await createCloudActivity(activity, userId as string, undefined, link, activityId);
       assertCurrent();
       invalidateWorkspaceCollection('activities');
       trackCaptureSaved(record, demoOnly, 'cloud-synced');
@@ -341,7 +345,7 @@ export async function saveSalesActivity(
       // Owed to the cloud, not merely saved locally. Without the flag this
       // capture is indistinguishable from one made while signed out, and
       // nothing would ever send it.
-      const record = { ...createLocalActivity(activity, workspace, link), pendingSync: true };
+      const record = { ...createLocalActivity(activity, workspace, link, activityId), pendingSync: true };
       saveLocalActivityRecord(record);
       invalidateWorkspaceCollection('activities');
       announcePendingSync();
@@ -355,7 +359,7 @@ export async function saveSalesActivity(
     }
   }
 
-  const record = createLocalActivity(activity, workspace, link);
+  const record = createLocalActivity(activity, workspace, link, activityId);
   saveLocalActivityRecord(record);
   invalidateWorkspaceCollection('activities');
   trackCaptureSaved(record, demoOnly, 'browser-only');
@@ -586,9 +590,7 @@ function loadLocalActivities(): SalesActivityRecord[] {
 
 function saveLocalActivityRecord(record: SalesActivityRecord) {
   const next = [record, ...loadLocalActivities().filter((item) => item.id !== record.id)];
-  if (typeof getWorkspaceBrowserStorage() !== 'undefined') {
-    writeLocalRecords(SALES_ACTIVITY_STORAGE_KEY, next.sort(sortNewestFirst));
-  }
+  requireLocalWrite(writeLocalRecords(SALES_ACTIVITY_STORAGE_KEY, next.sort(sortNewestFirst)));
 }
 
 function deleteLocalActivity(activityId: string) {
@@ -619,13 +621,18 @@ async function createCloudActivity(
   userId: string,
   timestamps?: { createdAt: string; updatedAt: string },
   link?: SalesActivityLinkTarget,
+  recordId?: string,
 ) {
   const { data, error } = await supabaseClient!
     .from(TABLE_NAME)
-    .insert(activityToInsert(activity, userId, timestamps, link))
+    .insert({ ...activityToInsert(activity, userId, timestamps, link), ...(recordId ? { id: recordId } : {}) })
     .select('*')
     .single();
 
+  if (error?.code === '23505' && recordId) {
+    const existing = await supabaseClient!.from(TABLE_NAME).select('*').eq('user_id', userId).eq('id', recordId).single();
+    if (existing.data && !existing.error) return rowToRecord(existing.data as SalesActivityRow);
+  }
   if (error) throw new Error(error.message);
   return rowToRecord(data as SalesActivityRow);
 }
@@ -634,6 +641,7 @@ function createLocalActivity(
   activity: ClassifiedSalesActivity,
   workspace: SalesActivityWorkspaceTag = {},
   link?: SalesActivityLinkTarget,
+  recordId?: string,
 ): SalesActivityRecord {
   const timestamp = new Date().toISOString();
   const tags = mergeActivitySourceTags(activity.tags, activity);
@@ -643,7 +651,7 @@ function createLocalActivity(
     dueDate: sanitizeBusinessDate(activity.dueDate),
     nextActions: normalizeNextActions(activity.nextActions),
     tags,
-    id: createId(),
+    id: recordId || createId(),
     source: workspace.source ?? 'user',
     isSample: workspace.isSample === true,
     // A link is written when the caller knows one and left alone when it does
@@ -775,6 +783,10 @@ function createId() {
   return crypto.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 }
 
+function isUuid(value: string) {
+  return /^[\da-f]{8}-[\da-f]{4}-[\da-f]{4}-[\da-f]{4}-[\da-f]{12}$/i.test(value);
+}
+
 function sortNewestFirst(a: SalesActivityRecord, b: SalesActivityRecord) {
   return compareBusinessDateDesc(a.activityDate, b.activityDate) || b.createdAt.localeCompare(a.createdAt);
 }
@@ -820,7 +832,7 @@ function getErrorMessage(error: unknown) {
 }
 
 function debugSalesActivityStore(message: string, context?: Record<string, unknown>) {
-  if (import.meta.env.DEV) {
+  if (import.meta.env?.DEV) {
     console.debug(`[SalesActivityStore] ${message}`, context || {});
   }
 }

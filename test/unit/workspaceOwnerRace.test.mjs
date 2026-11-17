@@ -24,21 +24,49 @@ registerHooks({
 });
 
 const storage = new Map();
+let refuseLocalWrites = false;
 globalThis.localStorage = globalThis.window = undefined;
 globalThis.localStorage = {
   get length() { return storage.size; },
   key: index => [...storage.keys()][index] ?? null,
   getItem: key => storage.get(key) ?? null,
-  setItem: (key, value) => storage.set(key, value),
+  setItem(key, value) {
+    if (refuseLocalWrites) throw new DOMException('Fixture storage is full', 'QuotaExceededError');
+    storage.set(key, value);
+  },
   removeItem: key => storage.delete(key),
 };
 globalThis.window = { localStorage, dispatchEvent: () => true };
 const requests = [];
 const uploads = [];
+const activityRows = new Map();
+let loseFirstActivityResponse = false;
 globalThis.__workspaceRaceCloud = {
   from(table) {
     const request = { table, owner: null };
     const response = () => new Promise(resolve => requests.push({ ...request, resolve }));
+    if (table === 'sales_activities') {
+      const filters = new Map();
+      let inserted;
+      return {
+        insert(row) { inserted = row; return this; },
+        select() { return this; },
+        eq(key, value) { filters.set(key, value); return this; },
+        async single() {
+          if (!inserted) {
+            const row = activityRows.get(filters.get('id'));
+            return { data: row?.user_id === filters.get('user_id') ? row : null, error: null };
+          }
+          if (activityRows.has(inserted.id)) return { data: null, error: { code: '23505', message: 'Duplicate' } };
+          activityRows.set(inserted.id, inserted);
+          if (loseFirstActivityResponse) {
+            loseFirstActivityResponse = false;
+            return { data: null, error: { message: 'Network interrupted after commit' } };
+          }
+          return { data: inserted, error: null };
+        },
+      };
+    }
     return {
       select() { return this; },
       eq(_, owner) { request.owner = owner; return this; },
@@ -50,6 +78,8 @@ globalThis.__workspaceRaceCloud = {
   },
 };
 
+const { saveSalesActivity, flushPendingSalesActivities, listPendingSalesActivities } =
+  await import('../../src/services/salesActivityStore.ts');
 const { claimLocalWorkspace } = await import('../../src/services/localWorkspaceOwner.ts');
 const { emptyQuoteInput, loadQuotes, loadQuotesForUser, QUOTE_STORAGE_KEY } =
   await import('../../src/services/quoteStore.ts');
@@ -71,6 +101,9 @@ beforeEach(() => {
   storage.clear();
   requests.length = 0;
   uploads.length = 0;
+  activityRows.clear();
+  loseFirstActivityResponse = false;
+  refuseLocalWrites = false;
   claimLocalWorkspace(ownerA);
 });
 
@@ -163,4 +196,34 @@ test('a new settings load does not reuse an earlier visit to the same account', 
   requests[0].resolve({ data: { reporting_currency: 'SGD' }, error: null });
   await original;
   assert.equal(getReportingCurrency(), 'USD');
+});
+
+
+test('Capture retries the original Activity ID when the first write committed without a response', async () => {
+  loseFirstActivityResponse = true;
+  const input = {
+    activityDate: '2026-11-17', rawNote: 'Fictional renewal call',
+    summary: 'Discussed the renewal', activityType: 'Call', tags: [],
+  };
+  const scope = { source: 'user', isSample: false };
+  const target = { linkedOpportunityId: '10000000-0000-4000-8000-000000000101',
+    linkedOpportunityName: 'Fictional renewal', linkedAccountName: 'Fictional customer', linkStatus: 'Linked' };
+  const first = await saveSalesActivity(input, ownerA, scope, target);
+  assert.equal(first.mode, 'local');
+  assert.deepEqual([...activityRows.keys()], [first.record.id]);
+  assert.equal(listPendingSalesActivities().length, 1);
+
+  const result = await flushPendingSalesActivities(ownerA);
+  assert.equal(result.synced, 1);
+  assert.equal(result.remaining, 0);
+  assert.deepEqual([...activityRows.keys()], [first.record.id]);
+  assert.equal(activityRows.get(first.record.id).linked_opportunity_id, target.linkedOpportunityId);
+});
+
+test('a full browser cannot report an offline Capture save as successful', async () => {
+  refuseLocalWrites = true;
+  await assert.rejects(saveSalesActivity({
+    activityDate: '2026-11-17', rawNote: 'Fictional demo call', activityType: 'Call', tags: [],
+  }, null, { source: 'demo', isSample: true }), /not saved here/i);
+  assert.equal(activityRows.size, 0);
 });

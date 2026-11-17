@@ -1,13 +1,13 @@
 # Implementation changelog
 
-## 2026-11-17 development checkpoint
+## 2026-11-17
 
-- Established the architecture and workflow baseline at `4a5f55e`. Ran the complete build, API types, lint, Node test and contract chain before editing application code.
-- Worked in `codex/commercial-extension` in a separate working tree. The original working tree contained ten uncommitted Capture and Plan edits.
-- Invalidate stored workspace query results and in-flight cache entries when the browser owner changes. Remount protected content when the authenticated account changes.
-- Scope delayed collection merges, cloud writes initiated after identity checks, local fallbacks, selected account and stakeholder writes, Capture retries, workspace aggregation and financial preference hydration to the owner generation that started them. A return to the same account after a different account occupied the browser is a new generation.
-- Add an additive opportunity/account ownership trigger for inserts and changed links. It preserves the existing optional foreign key relationship and the legacy rows already stored.
-- Add eight browser-store race regression cases and three migrated-database cases, alongside the existing suite. Keep existing report/dashboard error wording and update the asset test's cache mock for the shared invalidation contract.
-- Record the remaining same-account isolation gate, automation architecture and Commercial AI acceptance criteria in the companion documents.
+- Established the architecture and workflow baseline at `4a5f55e` with a full local regression run. Rebased on `7b8eb1c`, which already shipped native workspace creation, selective copy and routing.
+- Added owner-generation guards for delayed collection merges, offline fallbacks and reporting preferences. Invalidated aggregate and collection caches and remounted protected content on account changes.
+- Reused the deployed workspace-link validation from the native workspace migrations. This release candidate adds no database migrations.
+- Added a workspace copy summary and explicit confirmation. Contacts select their required Accounts and changes to the destination or selection require fresh confirmation.
+- Integrated the ten local Capture and Plan changes in the release worktree. The original checkout still holds those edits. Completing a task can link an existing Activity or write a new Activity with a stable task-based ID. Reopening retains the Activity association.
+- Reused the first Activity ID when a cloud save loses its response and retries through the offline queue. Reject unavailable local storage and preserve the Capture draft in its editor when save fails.
+- Added local regression coverage for newly named workspaces, late account responses, settings hydration, Capture retry after a lost server response, and rejected offline writes.
 
-Same-account workspace creation, switching and selective copy, the Capture command unification, event automation and Commercial AI remain open. No production rollout was performed.
+New event triggers, scoped approval policies, structured RFQ intake, and smart quotation drafting remain pending.
