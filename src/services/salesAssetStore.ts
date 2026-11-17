@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache';
 import {
   claimLocalCollectionForUser,
@@ -95,8 +96,10 @@ export function loadSalesAssets(): SalesAssetRecord[] {
 }
 
 export async function loadSalesAssetsForUser(userId: string) {
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   const local = loadSalesAssets();
   const cloud = await loadCloudJsonCollection<SalesAssetRecord>('sales_assets', userId);
+  assertCurrent();
   const recordsToMerge = claimLocalCollectionForUser('sales_assets', userId) ? local : [];
   const merged = mergeCloudJsonRecords(recordsToMerge, cloud)
     .map(sanitizeAsset)

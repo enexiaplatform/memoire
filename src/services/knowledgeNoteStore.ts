@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import {
   sanitizeKnowledgeRecord,
   type KnowledgeRecord,
@@ -45,9 +46,11 @@ export function loadKnowledgeNotes(): KnowledgeRecord[] {
 
 export async function loadKnowledgeNotesForWorkspace(userId?: string | null, sampleDataActive = false) {
   if (!userId || sampleDataActive) return loadKnowledgeNotes();
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   try {
     const local = loadKnowledgeNotes();
     const cloud = await loadCloudJsonCollection<KnowledgeRecord>('knowledge_notes', userId);
+    assertCurrent();
     const recordsToMerge = claimLocalCollectionForUser('knowledge_notes', userId) ? local.filter(isUserRecord) : [];
     const merged = sortKnowledge(mergeCloudJsonRecords(recordsToMerge, cloud)
       .map(sanitizeKnowledgeRecord)
@@ -56,6 +59,7 @@ export async function loadKnowledgeNotesForWorkspace(userId?: string | null, sam
     sendOwedCloudJsonRecords('knowledge_notes', userId, merged, cloud);
     return merged;
   } catch {
+    assertCurrent();
     return loadKnowledgeNotes();
   }
 }

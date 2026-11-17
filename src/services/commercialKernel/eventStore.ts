@@ -1,3 +1,4 @@
+import { guardLocalWorkspaceScope } from '../localWorkspaceOwner.ts';
 import {isExternalObservationReceipt} from '../../domain/commercialKernel/externalObservation.ts';
 import {isSharedCommitmentPublication} from '../../domain/commercialKernel/sharedCommitment.ts';
 import {isFederatedThreadPublication} from '../../domain/commercialKernel/federatedThread.ts';
@@ -171,11 +172,14 @@ export async function loadRecentEvents(
 
   if (!userId || sampleDataActive) return localInWindow.slice(0, limit);
 
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   let cloud: CommercialEvent[] = [];
   try {
     cloud = await loadCloudRecordsSince(eventCodec, userId, 'occurred_at', since, limit);
+    assertCurrent();
     if (cloud.some(event => !inScope(event)) || local.some(event => !inScope(event) && cloud.some(row => row.id === event.id))) throw new Error('Event history conflicts with another workspace.');
   } catch (error) {
+    assertCurrent();
     reportWorkspaceSyncError();
     reportKernelSyncFailure(eventCodec.table, 'load', error);
     // A cloud that cannot be reached is not an empty history. The browser copy

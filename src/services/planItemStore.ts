@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope, WorkspaceScopeChangedError } from './localWorkspaceOwner.ts';
 import type { PlanRecord } from '../utils/weeklyPlan';
 import {
   claimLocalCollectionForUser,
@@ -39,8 +40,10 @@ export function loadPlanItems(): PlanRecord[] {
 }
 
 export async function loadPlanItemsForUser(userId: string) {
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   const local = loadPlanItems();
   const cloud = await loadCloudJsonCollection<PlanRecord>('plan_items', userId);
+  assertCurrent();
   const recordsToMerge = claimLocalCollectionForUser('plan_items', userId) ? local.filter(isUserRecord) : [];
   const merged = mergeCloudJsonRecords(recordsToMerge, cloud)
     .map(sanitizePlanRecord)
@@ -69,7 +72,10 @@ export async function loadPlanItemsForWorkspace(userId?: string | null, sampleDa
   if (existing) return existing;
 
   const promise = loadPlanItemsForUser(userId)
-    .catch(() => loadPlanItems())
+    .catch((error) => {
+      if (error instanceof WorkspaceScopeChangedError) throw error;
+      return loadPlanItems();
+    })
     .finally(() => { loadsInFlight.delete(userId); });
   loadsInFlight.set(userId, promise);
   return promise;

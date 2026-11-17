@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
@@ -100,9 +101,13 @@ export function canUseAccountCloudStore(userId?: string | null) {
 
 export async function loadAccounts(userId?: string | null): Promise<AccountMemoryRecord[]> {
   if (canUseAccountCloudStore(userId)) {
+    const assertCurrent = guardLocalWorkspaceScope(userId);
     try {
-      return await loadCloudAccounts(userId as string);
+      const records = await loadCloudAccounts(userId as string);
+      assertCurrent();
+      return records;
     } catch (error) {
+      assertCurrent();
       reportWorkspaceSyncError();
       debugAccountStore('cloud load failed; falling back to local', { message: getErrorMessage(error) });
       return loadLocalAccounts();
@@ -119,14 +124,18 @@ export async function createAccount(
   const normalized = normalizeAccountInput(input);
 
   if (canUseAccountCloudStore(userId)) {
+    const assertCurrent = guardLocalWorkspaceScope(userId);
     try {
       const cloudAccounts = await loadCloudAccounts(userId as string);
+      assertCurrent();
       const accountCode = getNextAccountCode(cloudAccounts);
       const account = await createCloudAccount(normalized, userId as string, accountCode);
+      assertCurrent();
       saveLocalAccountRecord({ ...account, storageMode: 'local' });
       invalidateWorkspaceCollection('accounts');
       return { account, mode: 'cloud' };
     } catch (error) {
+      assertCurrent();
       reportWorkspaceSyncError();
       const account = createLocalAccount(normalized, userId || undefined);
       saveLocalAccountRecord(account);
@@ -164,10 +173,13 @@ export async function createAccounts(
   if (normalized.length === 0) return { accounts: [], mode: 'local' };
 
   if (canUseAccountCloudStore(userId)) {
+    const assertCurrent = guardLocalWorkspaceScope(userId);
     try {
       const cloudAccounts = await loadCloudAccounts(userId as string);
+      assertCurrent();
       const codes = allocateAccountCodes(cloudAccounts, normalized.length);
       const created = await createCloudAccounts(normalized, userId as string, codes);
+      assertCurrent();
       const localWrite = saveLocalAccountRecords(created.map((account) => ({ ...account, storageMode: 'local' as const })));
       invalidateWorkspaceCollection('accounts');
       return {
@@ -176,6 +188,7 @@ export async function createAccounts(
         warning: localWrite?.ok === false ? localWrite.message : undefined,
       };
     } catch (error) {
+      assertCurrent();
       reportWorkspaceSyncError();
       debugAccountStore('cloud bulk create failed; local copies preserved', { message: getErrorMessage(error) });
       const local = createLocalAccounts(normalized, userId || undefined);
@@ -207,13 +220,16 @@ export async function updateAccount(
   const normalized = normalizeAccountInput(input);
 
   if (account.storageMode === 'cloud' && canUseAccountCloudStore(userId)) {
+    const assertCurrent = guardLocalWorkspaceScope(userId);
     try {
       const updated = await updateCloudAccount(account.id, normalized, userId as string);
+      assertCurrent();
       updated.accountCode ||= account.accountCode;
       saveLocalAccountRecord({ ...updated, storageMode: 'local' });
       invalidateWorkspaceCollection('accounts');
       return { account: updated, mode: 'cloud' };
     } catch (error) {
+      assertCurrent();
       reportWorkspaceSyncError();
       const localCopy = {
         ...account,
@@ -245,12 +261,14 @@ export async function updateAccount(
 
 export async function deleteAccount(account: AccountMemoryRecord, userId?: string | null) {
   if (account.storageMode === 'cloud' && canUseAccountCloudStore(userId)) {
+    const assertCurrent = guardLocalWorkspaceScope(userId);
     const { error } = await supabaseClient!
       .from(TABLE_NAME)
       .delete()
       .eq('id', account.id)
       .eq('user_id', userId);
 
+    assertCurrent();
     if (error) throw new Error(error.message);
   }
 

@@ -1,5 +1,5 @@
 import { Navigate, useLocation } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { loadInteractiveDemoWorkspace } from '../../features/v31/localStore';
 import { isDemoWorkspaceActive } from '../../lib/demoMode';
@@ -61,7 +61,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     return <Navigate to="/login" replace state={{ from: location }} />;
   }
 
-  return <>{children}</>;
+  return <Fragment key={user?.id ?? session?.user.id}>{children}</Fragment>;
 }
 
 function LoadingFallback({

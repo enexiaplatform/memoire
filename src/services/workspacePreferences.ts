@@ -1,3 +1,4 @@
+import { captureLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import {
   BASE_CURRENCY,
@@ -95,25 +96,32 @@ export function hydrateWorkspacePreferences(userId?: string | null): Promise<Wor
   // promise; only one query goes out.
   const key = userId || 'local';
   const existing = hydrationsInFlight.get(key);
-  if (existing) return existing;
+  if (existing?.isCurrent()) return existing.promise;
 
-  const promise = readWorkspacePreferences(userId).finally(() => {
-    hydrationsInFlight.delete(key);
+  const isCurrent = captureLocalWorkspaceScope(userId);
+  const promise = readWorkspacePreferences(userId, isCurrent).finally(() => {
+    if (hydrationsInFlight.get(key)?.promise === promise) hydrationsInFlight.delete(key);
   });
-  hydrationsInFlight.set(key, promise);
+  hydrationsInFlight.set(key, { promise, isCurrent });
   return promise;
 }
 
-const hydrationsInFlight = new Map<string, Promise<WorkspacePreferences>>();
+const hydrationsInFlight = new Map<string, {
+  promise: Promise<WorkspacePreferences>;
+  isCurrent: () => boolean;
+}>();
 
-async function readWorkspacePreferences(userId?: string | null): Promise<WorkspacePreferences> {
+async function readWorkspacePreferences(
+  userId: string | null | undefined,
+  isCurrent: () => boolean,
+): Promise<WorkspacePreferences> {
   const current: WorkspacePreferences = {
     reportingCurrency: getReportingCurrency(),
     openingCashBalance: getOpeningCashBalance(),
     targetMarginPct: getTargetMarginPct(),
     financingRatePct: getFinancingRatePct(),
   };
-  if (!canUseAccountStore(userId)) return current;
+  if (!canUseAccountStore(userId) || !isCurrent()) return current;
 
   try {
     const { data, error } = await supabaseClient!
@@ -121,6 +129,7 @@ async function readWorkspacePreferences(userId?: string | null): Promise<Workspa
       .select('reporting_currency, opening_cash_balance, target_margin_pct, financing_annual_rate_pct')
       .eq('id', userId as string)
       .maybeSingle();
+    if (!isCurrent()) return current;
     if (error) throw new Error(error.message);
     if (!data) return current;
 
@@ -189,6 +198,7 @@ async function readWorkspacePreferences(userId?: string | null): Promise<Workspa
     }
     return current;
   } catch (error) {
+    if (!isCurrent()) return current;
     debugPreferences('could not read account preferences; keeping this browser\'s copy', error);
     return current;
   }

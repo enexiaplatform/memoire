@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { fetchAllRows } from './supabasePaging.ts';
 import type { ClassifiedSalesActivity, SalesActivityType } from '../utils/salesActivityClassifier.ts';
@@ -129,10 +130,13 @@ export function canUseSalesActivityCloudStore(userId?: string | null) {
 
 export async function loadSalesActivities(userId?: string | null): Promise<SalesActivityRecord[]> {
   if (canUseSalesActivityCloudStore(userId)) {
+    const assertCurrent = guardLocalWorkspaceScope(userId);
     try {
       const cloud = await loadCloudActivities(userId as string);
+      assertCurrent();
       return mergePendingIntoCloud(cloud, listPendingSalesActivities());
     } catch (error) {
+      assertCurrent();
       reportWorkspaceSyncError();
       debugSalesActivityStore('cloud load failed; falling back to local', { message: getErrorMessage(error) });
       return loadLocalActivities();
@@ -200,6 +204,7 @@ function announcePendingSync() {
 export async function flushPendingSalesActivities(
   userId?: string | null
 ): Promise<{ synced: number; remaining: number; error?: string }> {
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   const pending = listPendingSalesActivities();
   if (pending.length === 0) return { synced: 0, remaining: 0 };
   if (!canUseSalesActivityCloudStore(userId)) return { synced: 0, remaining: pending.length };
@@ -213,9 +218,11 @@ export async function flushPendingSalesActivities(
         createdAt: record.createdAt,
         updatedAt: record.updatedAt,
       });
+      assertCurrent();
       deleteLocalActivity(record.id);
       synced += 1;
     } catch (sendError) {
+      assertCurrent();
       error = getErrorMessage(sendError);
       reportWorkspaceSyncError();
       debugSalesActivityStore('pending capture could not be sent; it stays on the device', { message: error });
@@ -321,12 +328,15 @@ export async function saveSalesActivity(
   const demoOnly = workspace.isSample === true || workspace.source === 'demo';
 
   if (!demoOnly && canUseSalesActivityCloudStore(userId)) {
+    const assertCurrent = guardLocalWorkspaceScope(userId);
     try {
       const record = await createCloudActivity(activity, userId as string, undefined, link);
+      assertCurrent();
       invalidateWorkspaceCollection('activities');
       trackCaptureSaved(record, demoOnly, 'cloud-synced');
       return { record, mode: 'cloud' };
     } catch (error) {
+      assertCurrent();
       reportWorkspaceSyncError();
       // Owed to the cloud, not merely saved locally. Without the flag this
       // capture is indistinguishable from one made while signed out, and
@@ -354,12 +364,14 @@ export async function saveSalesActivity(
 
 export async function deleteSalesActivity(activity: SalesActivityRecord, userId?: string | null) {
   if (activity.storageMode === 'cloud' && canUseSalesActivityCloudStore(userId)) {
+    const assertCurrent = guardLocalWorkspaceScope(userId);
     const { error } = await supabaseClient!
       .from(TABLE_NAME)
       .delete()
       .eq('id', activity.id)
       .eq('user_id', userId);
 
+    assertCurrent();
     if (error) throw new Error(error.message);
     invalidateWorkspaceCollection('activities');
     return;

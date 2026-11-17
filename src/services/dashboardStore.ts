@@ -1,6 +1,6 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
-import { getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
+import { getLocalWorkspaceOwner, guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import { requireLocalWrite, writeLocalRecords } from './localWriteGuard.ts';
 import { claimLocalCollectionForUser, loadCloudJsonCollection, upsertCloudJsonCollection } from './cloudJsonCollectionStore.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
@@ -47,10 +47,13 @@ export async function loadSavedDashboards(scope: PortfolioScope): Promise<Dashbo
   const local = readSavedDashboards(scope);
   if (scope.sampleDataActive || !scope.userId) return { records: local, cloud: 'local', message: scope.sampleDataActive ? 'Demo dashboard library. Separate from your real data.' : 'Dashboard library stored in this browser.' };
   let cloud: SavedDashboard[];
+  const assertCurrent = guardLocalWorkspaceScope(scope.userId);
   try {
     if (!supabaseClient) throw new Error('Unavailable');
     cloud = await loadCloudJsonCollection<SavedDashboard>('dashboard_definitions', scope.userId);
+    assertCurrent();
   } catch {
+    assertCurrent();
     assertDashboardScope(scope); reportWorkspaceSyncError();
     return { records: readSavedDashboards(scope), cloud: 'unavailable', message: 'Using this browser’s dashboard library. Cloud sync is unavailable.' };
   }

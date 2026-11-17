@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { sanitizeBusinessDate, todayDateKey } from '../utils/safeDate.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
@@ -113,9 +114,11 @@ export function loadExpenses(): ExpenseRecord[] {
  */
 export async function loadExpensesForUser(userId: string): Promise<ExpenseRecord[]> {
   if (!userId) return loadExpenses();
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   try {
     const local = loadExpenses();
     const cloud = await loadCloudJsonCollection<ExpenseRecord>('expenses', userId);
+    assertCurrent();
     // Only adopt this browser's records into the account the first time, and
     // only if the browser has not already been claimed by someone else -
     // otherwise signing in on a shared machine would upload the last person's
@@ -128,6 +131,7 @@ export async function loadExpensesForUser(userId: string): Promise<ExpenseRecord
     sendOwedCloudJsonRecords('expenses', userId, merged, cloud);
     return merged;
   } catch {
+    assertCurrent();
     return loadExpenses();
   }
 }

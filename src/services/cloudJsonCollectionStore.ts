@@ -5,7 +5,7 @@ import { fetchAllRows } from './supabasePaging.ts';
 import { reportClientOperationalEvent } from './clientTelemetry.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 import { writeLocalCollection } from './localWriteGuard.ts';
-import { getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
+import { captureLocalWorkspaceScope, getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
 
 const pendingWrites = new Set<Promise<void>>();
 
@@ -159,9 +159,10 @@ export function syncCloudJsonCollectionForCurrentUser<T extends CloudJsonRecord>
   records: T[],
 ) {
   const owner = getLocalWorkspaceOwner();
+  const isCurrent = captureLocalWorkspaceScope(owner);
   trackWrite(table, 'upsert', getCurrentUserId()
     .then((userId) => {
-      if (!userId || owner !== userId || getLocalWorkspaceOwner() !== owner) return undefined;
+      if (!userId || owner !== userId || !isCurrent()) return undefined;
       setLocalCollectionOwner(table, userId);
       return upsertCloudJsonCollection(table, userId, records);
     })
@@ -173,9 +174,10 @@ export function deleteCloudJsonRecordForCurrentUser(
   recordId: string,
 ) {
   const owner = getLocalWorkspaceOwner();
+  const isCurrent = captureLocalWorkspaceScope(owner);
   trackWrite(table, 'delete', getCurrentUserId()
     .then((userId) => {
-      if (!userId || owner !== userId || getLocalWorkspaceOwner() !== owner) return undefined;
+      if (!userId || owner !== userId || !isCurrent()) return undefined;
       setLocalCollectionOwner(table, userId);
       return deleteCloudJsonRecord(table, userId, recordId);
     })

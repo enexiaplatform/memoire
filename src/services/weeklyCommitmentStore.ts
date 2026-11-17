@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope, WorkspaceScopeChangedError } from './localWorkspaceOwner.ts';
 import type { WeeklyCommitmentSnapshot } from '../utils/weeklyCommitment';
 import {
   claimLocalCollectionForUser,
@@ -37,8 +38,10 @@ export function loadWeeklyCommitments(): WeeklyCommitmentSnapshot[] {
 }
 
 export async function loadWeeklyCommitmentsForUser(userId: string) {
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   const local = loadWeeklyCommitments();
   const cloud = await loadCloudJsonCollection<WeeklyCommitmentSnapshot>('weekly_commitments', userId);
+  assertCurrent();
   const recordsToMerge = claimLocalCollectionForUser('weekly_commitments', userId)
     ? local.filter(isUserSnapshot)
     : [];
@@ -54,7 +57,8 @@ export async function loadWeeklyCommitmentsForWorkspace(userId?: string | null, 
   if (!userId || sampleDataActive) return loadWeeklyCommitments();
   try {
     return await loadWeeklyCommitmentsForUser(userId);
-  } catch {
+  } catch (error) {
+    if (error instanceof WorkspaceScopeChangedError) throw error;
     return loadWeeklyCommitments();
   }
 }

@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import type {
   CrmLiteOpportunity,
   DecisionRecommendation,
@@ -133,8 +134,10 @@ export function loadOpportunityOutcomes() {
 }
 
 export async function loadOpportunityOutcomesForUser(userId: string) {
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   const local = loadOpportunityOutcomes();
   const cloud = await loadCloudJsonCollection<OpportunityOutcomeRecord>('opportunity_outcomes', userId);
+  assertCurrent();
   const recordsToMerge = claimLocalCollectionForUser('opportunity_outcomes', userId) ? local : [];
   const merged = mergeCloudJsonRecords(recordsToMerge, cloud)
     .map(sanitizeOpportunityOutcome)

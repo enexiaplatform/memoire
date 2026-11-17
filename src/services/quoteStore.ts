@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import {
   claimLocalCollectionForUser,
   deleteCloudJsonRecordForCurrentUser,
@@ -139,8 +140,10 @@ export function loadQuotes(): QuoteRecord[] {
 
 export async function loadQuotesForUser(userId: string) {
   const local = loadQuotes();
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   try {
     const cloud = await loadCloudJsonCollection<QuoteRecord>('quotes', userId);
+    assertCurrent();
     const recordsToMerge = claimLocalCollectionForUser('quotes', userId) ? local : [];
     const merged = mergeCloudJsonRecords(recordsToMerge, cloud)
       .map(sanitizeQuote)
@@ -149,6 +152,7 @@ export async function loadQuotesForUser(userId: string) {
     sendOwedCloudJsonRecords('quotes', userId, merged, cloud);
     return merged;
   } catch {
+    assertCurrent();
     return local;
   }
 }

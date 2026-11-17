@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
@@ -104,9 +105,13 @@ export function canUseStakeholderCloudStore(userId?: string | null) {
 
 export async function loadStakeholders(userId?: string | null): Promise<StakeholderRecord[]> {
   if (canUseStakeholderCloudStore(userId)) {
+    const assertCurrent = guardLocalWorkspaceScope(userId);
     try {
-      return await loadCloudStakeholders(userId as string);
+      const records = await loadCloudStakeholders(userId as string);
+      assertCurrent();
+      return records;
     } catch (error) {
+      assertCurrent();
       reportWorkspaceSyncError();
       debugStakeholderStore('cloud load failed; falling back to local', { message: getErrorMessage(error) });
       return loadLocalStakeholders();
@@ -141,12 +146,15 @@ export async function createStakeholder(
     return { stakeholder, mode: 'local' };
   }
   if (canUseStakeholderCloudStore(userId)) {
+    const assertCurrent = guardLocalWorkspaceScope(userId);
     try {
       const stakeholder = await createCloudStakeholder(normalized, userId as string);
+      assertCurrent();
       saveLocalStakeholderRecord({ ...stakeholder, storageMode: 'local' });
       invalidateWorkspaceCollection('stakeholders');
       return { stakeholder, mode: 'cloud' };
     } catch (error) {
+      assertCurrent();
       reportWorkspaceSyncError();
       const stakeholder = createLocalStakeholder(normalized, userId || undefined, workspace);
       saveLocalStakeholderRecord(stakeholder);
@@ -164,12 +172,15 @@ export async function createStakeholder(
 export async function updateStakeholder(stakeholder: StakeholderRecord, input: StakeholderFormInput, userId?: string | null): Promise<{ stakeholder: StakeholderRecord; mode: 'local' | 'cloud'; warning?: string }> {
   const normalized = normalizeStakeholderInput(input);
   if (stakeholder.storageMode === 'cloud' && canUseStakeholderCloudStore(userId)) {
+    const assertCurrent = guardLocalWorkspaceScope(userId);
     try {
       const updated = await updateCloudStakeholder(stakeholder.id, normalized, userId as string);
+      assertCurrent();
       saveLocalStakeholderRecord({ ...updated, storageMode: 'local' });
       invalidateWorkspaceCollection('stakeholders');
       return { stakeholder: updated, mode: 'cloud' };
     } catch (error) {
+      assertCurrent();
       reportWorkspaceSyncError();
       const localCopy = { ...stakeholder, ...normalized, updatedAt: new Date().toISOString(), storageMode: 'local' as const };
       saveLocalStakeholderRecord(localCopy);
@@ -186,11 +197,13 @@ export async function updateStakeholder(stakeholder: StakeholderRecord, input: S
 
 export async function deleteStakeholder(stakeholder: StakeholderRecord, userId?: string | null) {
   if (stakeholder.storageMode === 'cloud' && canUseStakeholderCloudStore(userId)) {
+    const assertCurrent = guardLocalWorkspaceScope(userId);
     const { error } = await supabaseClient!
       .from(TABLE_NAME)
       .delete()
       .eq('id', stakeholder.id)
       .eq('user_id', userId);
+    assertCurrent();
     if (error) throw new Error(error.message);
   }
   deleteLocalStakeholder(stakeholder.id);

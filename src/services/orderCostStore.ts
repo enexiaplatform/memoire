@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import { createOrderCostRecord, type OrderCostRecord } from '../utils/orderMargin';
 import {
   claimLocalCollectionForUser,
@@ -51,9 +52,11 @@ export function loadOrderCosts(): OrderCostRecord[] {
 
 export async function loadOrderCostsForWorkspace(userId?: string | null, sampleDataActive = false) {
   if (!userId || sampleDataActive) return loadOrderCosts();
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   try {
     const local = loadOrderCosts();
     const cloud = await loadCloudJsonCollection<OrderCostRecord>('order_costs', userId);
+    assertCurrent();
     const recordsToMerge = claimLocalCollectionForUser('order_costs', userId) ? local.filter(isUserRecord) : [];
     const merged = mergeCloudJsonRecords(recordsToMerge, cloud)
       .map(sanitizeOrderCostRecord)
@@ -62,6 +65,7 @@ export async function loadOrderCostsForWorkspace(userId?: string | null, sampleD
     sendOwedCloudJsonRecords('order_costs', userId, merged, cloud);
     return merged;
   } catch {
+    assertCurrent();
     return loadOrderCosts();
   }
 }

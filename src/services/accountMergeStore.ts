@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope, WorkspaceScopeChangedError } from './localWorkspaceOwner.ts';
 import {
   claimLocalCollectionForUser,
   loadCloudJsonCollection,
@@ -83,8 +84,10 @@ export function loadAccountMerges(includeDeleted = false): AccountMergeRecord[] 
 }
 
 export async function loadAccountMergesForUser(userId: string) {
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   const local = loadAccountMerges(true);
   const cloud = await loadCloudJsonCollection<AccountMergeRecord>('account_merges', userId);
+  assertCurrent();
   const recordsToMerge = claimLocalCollectionForUser('account_merges', userId)
     ? local.filter((record) => record.source !== 'demo' && record.isSample !== true)
     : [];
@@ -103,7 +106,8 @@ export async function loadAccountMergesForWorkspace(userId?: string | null, samp
   if (!userId || sampleDataActive) return loadAccountMerges();
   try {
     return await loadAccountMergesForUser(userId);
-  } catch {
+  } catch (error) {
+    if (error instanceof WorkspaceScopeChangedError) throw error;
     return loadAccountMerges();
   }
 }

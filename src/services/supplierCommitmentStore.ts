@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import {
   supplierCommitmentKinds,
   supplierCommitmentParties,
@@ -41,9 +42,11 @@ export function loadSupplierCommitments(): SupplierCommitmentRecord[] {
 
 export async function loadSupplierCommitmentsForWorkspace(userId?: string | null, sampleDataActive = false) {
   if (!userId || sampleDataActive) return loadSupplierCommitments();
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   try {
     const local = loadSupplierCommitments();
     const cloud = await loadCloudJsonCollection<SupplierCommitmentRecord>('supplier_commitments', userId);
+    assertCurrent();
     const recordsToMerge = claimLocalCollectionForUser('supplier_commitments', userId) ? local.filter(isUserRecord) : [];
     const merged = mergeCloudJsonRecords(recordsToMerge, cloud)
       .map(sanitizeSupplierCommitment)
@@ -52,6 +55,7 @@ export async function loadSupplierCommitmentsForWorkspace(userId?: string | null
     sendOwedCloudJsonRecords('supplier_commitments', userId, merged, cloud);
     return merged;
   } catch {
+    assertCurrent();
     return loadSupplierCommitments();
   }
 }

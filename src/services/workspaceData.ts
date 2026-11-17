@@ -1,3 +1,4 @@
+import { captureLocalWorkspaceScope, guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import { withQuoteCollectionEvidence } from '../utils/quoteCollectionEvidence';
 import { loadAccounts, type AccountMemoryRecord } from './accountStore';
 import { loadAccountMergesForWorkspace, type AccountMergeRecord } from './accountMergeStore';
@@ -188,8 +189,10 @@ function loadCollection<K extends keyof SalesWorkspaceData>(
   }
 
   const stamp = getWorkspaceCacheStamp(collection);
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   const loader = collectionLoaders[collection] as (id?: string | null) => Promise<SalesWorkspaceData[K]>;
   const promise = loader(userId).then((value) => {
+    assertCurrent();
     setCachedWorkspaceValue(key, value, stamp);
     return value;
   });
@@ -203,6 +206,7 @@ function loadCollection<K extends keyof SalesWorkspaceData>(
 }
 
 export async function loadSalesWorkspaceData(userId?: string | null, options: LoadOptions = {}): Promise<SalesWorkspaceData> {
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   const blobKey = collectionCacheKey(userId, 'all');
 
   if (!options.force) {
@@ -234,6 +238,7 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
   const cloudLoad = Promise.all(
     names.map((name) => track(name, loadCollection(name, userId, Boolean(options.force)))),
   ).then(async (results) => {
+    assertCurrent();
     const workspace = {} as SalesWorkspaceData;
     names.forEach((name, index) => {
       (workspace as Record<string, unknown>)[name] = results[index];
@@ -241,14 +246,17 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
     workspace.quotes = withQuoteCollectionEvidence({quotes: workspace.quotes, opportunities: workspace.opportunities,
       receivableRecords: workspace.receivableRecords || [], milestoneRecords: workspace.milestoneRecords || []});
     if(userId){await requireCloudHistoricalIntegrity(userId).catch(()=>{
+      assertCurrent();
       reportWorkspaceSyncError('Historical baseline is not active on the account. New covered changes will stay in this browser.');
     });}
     else{
       try{activateLocalHistoricalIntegrity(hasLocalSampleData()?'sample':'guest');}
       catch{reportWorkspaceSyncError('Historical baseline could not be saved. Current records remain usable; retry before historical queries.');}
     }
+    assertCurrent();
     await flushPendingCloudJsonWrites();
     await flushPendingKernelWrites();
+    assertCurrent();
     if (userId && getWorkspaceSyncStatus().state !== 'error') reportWorkspaceSyncReady();
     // What the cloud actually held, so the next first paint can tell a complete
     // browser copy from a fragment of one.
@@ -257,11 +265,12 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
   });
 
   const tracked = cloudLoad.catch((error) => {
+    assertCurrent();
     if (userId) reportWorkspaceSyncError();
     throw error;
   });
 
-  const promise = userId ? withLocalFallback(tracked, unsettled, userId) : tracked;
+  const promise = userId ? withLocalFallback(tracked, unsettled, userId, assertCurrent) : tracked;
   setCachedWorkspacePromise(blobKey, promise);
 
   try {
@@ -318,13 +327,21 @@ function withLocalFallback(
   cloudLoad: Promise<SalesWorkspaceData>,
   unsettled: Set<string>,
   userId: string,
+  assertCurrent: () => void,
 ): Promise<SalesWorkspaceData> {
   return new Promise((resolve, reject) => {
     let settled = false;
 
+    async function loadLocalCopy() {
+      assertCurrent();
+      const local = await loadSalesWorkspaceData(null);
+      assertCurrent();
+      return local;
+    }
+
     const firstPaint = setTimeout(() => {
       if (settled) return;
-      void loadSalesWorkspaceData(null).then((local) => {
+      void loadLocalCopy().then((local) => {
         if (settled) return;
         if (!isLocalCopyComplete(userId, local as unknown as Record<string, unknown>)) {
           if (import.meta.env.DEV) {
@@ -346,6 +363,7 @@ function withLocalFallback(
         // workspace that was true a moment ago and never sees it catch up until
         // they navigate - which is the difference between "fast" and "stale".
         void cloudLoad.then(() => {
+          assertCurrent();
           if (typeof window !== 'undefined') {
             window.dispatchEvent(new CustomEvent(WORKSPACE_REFRESHED_EVENT, { detail: { userId } }));
           }
@@ -363,7 +381,7 @@ function withLocalFallback(
           Array.from(unsettled).join(', ') || 'nothing (the merge itself stalled)'
         }`,
       );
-      loadSalesWorkspaceData(null).then((local) => {
+      loadLocalCopy().then((local) => {
         // A red pill above a screen reading "0 accounts" is still a screen that
         // says the business is gone, and a seller reads the number before the
         // pill. An incomplete copy is refused and the surface reports a failed
@@ -432,6 +450,7 @@ function revalidateInBackground(userId: string) {
  * with no account and an empty commitment list, which reads as data loss.
  */
 export function getCachedSalesWorkspaceData(userId?: string | null): SalesWorkspaceData | null {
+  if (!captureLocalWorkspaceScope(userId)()) return null;
   const workspace = {} as SalesWorkspaceData;
   for (const name of WORKSPACE_COLLECTIONS) {
     const value = getCachedWorkspaceValue<unknown>(collectionCacheKey(userId, name));

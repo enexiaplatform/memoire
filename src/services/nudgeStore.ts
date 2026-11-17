@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import {
   claimLocalCollectionForUser,
   loadCloudJsonCollection,
@@ -85,8 +86,10 @@ export function loadNudges(userId?: string): NudgeRecord[] {
 
 export async function loadNudgesForUser(userId: string) {
   const local = loadNudges(userId);
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   try {
     const cloud = await loadCloudJsonCollection<NudgeRecord>('nudges', userId);
+    assertCurrent();
     const recordsToMerge = claimLocalCollectionForUser('nudges', userId) ? local : [];
     const merged = mergeCloudJsonRecords(recordsToMerge, cloud)
       .map(sanitizeNudge)
@@ -95,6 +98,7 @@ export async function loadNudgesForUser(userId: string) {
     sendOwedCloudJsonRecords('nudges', userId, merged, cloud);
     return merged;
   } catch {
+    assertCurrent();
     return local;
   }
 }

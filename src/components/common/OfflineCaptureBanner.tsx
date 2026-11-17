@@ -1,3 +1,4 @@
+import { WorkspaceScopeChangedError } from '../../services/localWorkspaceOwner.ts';
 import { useCallback, useEffect, useState } from 'react';
 import { CloudOff, RefreshCw } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
@@ -43,10 +44,17 @@ export function OfflineCaptureBanner() {
     if (listPendingSalesActivities().length === 0) return;
 
     setSyncing(true);
-    const result = await flushPendingSalesActivities(userId);
-    setSyncing(false);
-    setPending(result.remaining);
-    setFailure(result.remaining > 0 && result.error ? result.error : '');
+    try {
+      const result = await flushPendingSalesActivities(userId);
+      setPending(result.remaining);
+      setFailure(result.remaining > 0 && result.error ? result.error : '');
+    } catch (error) {
+      if (!(error instanceof WorkspaceScopeChangedError)) {
+        setFailure('Capture could not sync. Retry when the connection is available.');
+      }
+    } finally {
+      setSyncing(false);
+    }
   }, [syncing, userId]);
 
   useEffect(() => {

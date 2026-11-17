@@ -1,6 +1,6 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
-import { getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
+import { getLocalWorkspaceOwner, guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import { requireLocalWrite, writeLocalRecords } from './localWriteGuard.ts';
 import { claimLocalCollectionForUser, loadCloudJsonCollection, upsertCloudJsonCollection } from './cloudJsonCollectionStore.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
@@ -59,9 +59,11 @@ async function sync(scope: PortfolioScope, records: PortfolioRecord[]): Promise<
 export async function loadPortfolio(scope: PortfolioScope): Promise<PortfolioLoad> {
   const local = readPortfolio(scope);
   if (scope.sampleDataActive || !scope.userId) return { records: local, cloud: 'local', message: scope.sampleDataActive ? 'Demo catalog. Separate from your real data.' : 'Catalog stored in this browser.' };
+  const assertCurrent = guardLocalWorkspaceScope(scope.userId);
   try {
     if (!supabaseClient) throw new Error('Cloud unavailable');
     const cloud = (await loadCloudJsonCollection<PortfolioRecord>('portfolio_records', scope.userId)).map(parsePortfolioRecord);
+    assertCurrent();
     checkScope(scope);
     if (!claimLocalCollectionForUser('portfolio_records', scope.userId)) throw new Error('Catalog ownership changed.');
     // Re-read after the request so edits made while loading cannot be overwritten.
@@ -71,6 +73,7 @@ export async function loadPortfolio(scope: PortfolioScope): Promise<PortfolioLoa
     if (owed.length) return sync(scope, owed).then(result => ({ ...result, records: merged }));
     return { records: merged, cloud: 'synced', message: 'Catalog cloud sync completed.' };
   } catch (error) {
+    assertCurrent();
     checkScope(scope);
     // Invalid cloud data is not permission to replace it with an empty catalog.
     if (error instanceof Error && /portfolio|catalog|reference|hierarchy/i.test(error.message)) throw error;

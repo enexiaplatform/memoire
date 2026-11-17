@@ -1,6 +1,6 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
-import { getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
+import { getLocalWorkspaceOwner, guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import { requireLocalWrite, writeLocalRecords } from './localWriteGuard.ts';
 import { claimLocalCollectionForUser, loadCloudJsonCollection, upsertCloudJsonCollection } from './cloudJsonCollectionStore.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
@@ -47,10 +47,13 @@ export async function loadSavedReports(scope: PortfolioScope): Promise<ReportLib
   const local = readSavedReports(scope);
   if (scope.sampleDataActive || !scope.userId) return { records: local, cloud: 'local', message: scope.sampleDataActive ? 'Demo report library. Separate from your real data.' : 'Report library stored in this browser.' };
   let cloud: SavedReport[];
+  const assertCurrent = guardLocalWorkspaceScope(scope.userId);
   try {
     if (!supabaseClient) throw new Error('Unavailable');
     cloud = await loadCloudJsonCollection<SavedReport>('report_definitions', scope.userId);
+    assertCurrent();
   } catch {
+    assertCurrent();
     assertReportScope(scope); reportWorkspaceSyncError();
     return { records: readSavedReports(scope), cloud: 'unavailable', message: 'Using this browser’s report library. Cloud sync is unavailable.' };
   }

@@ -1,5 +1,6 @@
 import { dataOwnerForLogin } from '../activeWorkspaceScope.ts';
 import { getWorkspaceBrowserStorage } from '../workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from '../localWorkspaceOwner.ts';
 import { supabaseClient } from '../../lib/supabaseClient.ts';
 import { fetchAllRows } from '../supabasePaging.ts';
 import { reportClientOperationalEvent } from '../clientTelemetry.ts';
@@ -293,7 +294,9 @@ export async function loadMergedForUser<T extends KernelRecord>(
   codec: KernelCodec<T>,
   userId: string,
 ): Promise<T[]> {
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   const cloud = await loadCloudRecords(codec, userId);
+  assertCurrent();
   if (cloud.some(record => record.userId !== userId || record.isSample)) throw new Error('Account records are outside the requested scope.');
   const allLocal = readLocal(codec);
   const local = allLocal.filter(record => record.userId === userId && !record.isSample);
@@ -361,9 +364,13 @@ export async function loadForWorkspace<T extends KernelRecord>(
 ): Promise<T[]> {
   const scopedLocal = () => readLocal(codec).filter(record => (record.userId ?? null) === (sampleDataActive ? null : userId || null) && Boolean(record.isSample) === sampleDataActive);
   if (!userId || sampleDataActive) return scopedLocal();
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   try {
-    return await loadMergedForUser(codec, userId);
+    const records = await loadMergedForUser(codec, userId);
+    assertCurrent();
+    return records;
   } catch (error) {
+    assertCurrent();
     reportWorkspaceSyncError(`Commercial records could not load (${codec.table}): ${error instanceof Error ? error.message : 'The account did not answer.'}`);
     reportKernelSyncFailure(codec.table, 'load', error);
     return scopedLocal();

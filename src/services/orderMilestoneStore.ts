@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import {
   createOrderMilestoneRecord,
   orderMilestoneKeys,
@@ -40,9 +41,11 @@ export function loadOrderMilestones(): OrderMilestoneRecord[] {
 
 export async function loadOrderMilestonesForWorkspace(userId?: string | null, sampleDataActive = false) {
   if (!userId || sampleDataActive) return loadOrderMilestones();
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   try {
     const local = loadOrderMilestones();
     const cloud = await loadCloudJsonCollection<OrderMilestoneRecord>('order_milestones', userId);
+    assertCurrent();
     const recordsToMerge = claimLocalCollectionForUser('order_milestones', userId) ? local.filter(isUserRecord) : [];
     const merged = mergeCloudJsonRecords(recordsToMerge, cloud)
       .map(sanitizeOrderMilestoneRecord)
@@ -51,6 +54,7 @@ export async function loadOrderMilestonesForWorkspace(userId?: string | null, sa
     sendOwedCloudJsonRecords('order_milestones', userId, merged, cloud);
     return merged;
   } catch {
+    assertCurrent();
     return loadOrderMilestones();
   }
 }

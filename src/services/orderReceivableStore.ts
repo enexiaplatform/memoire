@@ -20,7 +20,7 @@ import { requireLocalWrite, writeLocalRecords } from './localWriteGuard.ts';
 import { applyReceivableChanges, receivableCloudPayload, resolvePendingReceivableTerms, sameReceivableBusinessValue, validateReceivableChanges, type ReceivableChange } from '../utils/receivableChanges.ts';
 import { flushPendingReceivables, makeReceivableCloudAdapter, triggerReceivableSync } from './orderReceivableSync.ts';
 import { supabaseClient } from '../lib/supabaseClient.ts';
-import { getLocalWorkspaceOwner } from './localWorkspaceOwner.ts';
+import { getLocalWorkspaceOwner, guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import { reportWorkspaceSyncError } from './workspaceSyncStatus.ts';
 
 export const ORDER_RECEIVABLE_STORAGE_KEY = 'memoire.orderReceivables.v1';
@@ -63,8 +63,10 @@ export function loadOrderReceivables(): OrderReceivableRecord[] {
 
 export async function loadOrderReceivablesForWorkspace(userId?: string | null, sampleDataActive = false) {
   if (!userId || sampleDataActive) return loadOrderReceivables();
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   try {
     const cloud = await loadCloudJsonCollection<OrderReceivableRecord>('order_receivables', userId);
+    assertCurrent();
     // Read after the await: a payment recorded during the fetch must survive it.
     const local = loadOrderReceivables();
     const recordsToMerge = claimLocalCollectionForUser('order_receivables', userId)
@@ -87,8 +89,10 @@ export async function loadOrderReceivablesForWorkspace(userId?: string | null, s
     const normalized = [...merged.values()].map(sanitizeOrderReceivableRecord).filter((record): record is OrderReceivableRecord => Boolean(record));
     persistOrderReceivables(normalized, false);
     await flushPendingReceivables(userId, localIO);
+    assertCurrent();
     return loadOrderReceivables();
   } catch (error) {
+    assertCurrent();
     if (error instanceof ReceiptIntegrityError || error instanceof PaymentScheduleIntegrityError) throw error;
     return loadOrderReceivables();
   }

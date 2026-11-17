@@ -2,6 +2,7 @@ import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 
 import { reportClientOperationalEvent } from './clientTelemetry.ts';
 import { writeLocalCollection } from './localWriteGuard.ts';
+import { invalidateWorkspaceDataCache } from './workspaceDataCache.ts';
 
 /**
  * Which account the records in this browser belong to.
@@ -35,10 +36,33 @@ export const LOCAL_WORKSPACE_OWNER_KEY = 'memoire.local-workspace-owner.v1';
 let ownerGeneration = 0;
 
 /** A returning owner is still a new session after another workspace occupied the browser. */
-export function captureLocalWorkspaceScope() {
+export function captureLocalWorkspaceScope(userId?: string | null) {
   const owner = getLocalWorkspaceOwner();
   const generation = ownerGeneration;
-  return () => owner === getLocalWorkspaceOwner() && generation === ownerGeneration;
+  return () => (!owner || !userId || userId === owner)
+    && owner === getLocalWorkspaceOwner() && generation === ownerGeneration;
+}
+
+export class WorkspaceScopeChangedError extends Error {
+  constructor() {
+    super('The workspace account changed. Reload before continuing.');
+    this.name = 'WorkspaceScopeChangedError';
+  }
+}
+
+/** Capture before starting I/O and assert immediately before publishing or falling back. */
+export function guardLocalWorkspaceScope(userId?: string | null) {
+  const isCurrent = captureLocalWorkspaceScope(userId);
+  const assertCurrent = () => {
+    if (!isCurrent()) throw new WorkspaceScopeChangedError();
+  };
+  assertCurrent();
+  return assertCurrent;
+}
+
+export function invalidateLocalWorkspaceScope() {
+  ownerGeneration += 1;
+  invalidateWorkspaceDataCache();
 }
 
 /** Fired after a foreign workspace is cleared, so the shell can say what happened. */
@@ -97,7 +121,7 @@ export function claimLocalWorkspace(userId: string): WorkspaceClaimResult {
     return { outcome: 'unchanged', previousOwner, removedKeys: [] };
   }
 
-  ownerGeneration += 1;
+  invalidateLocalWorkspaceScope();
   // No recorded owner means the records here were captured signed out, or
   // predate this key. Either way there is no other account they can be taken
   // from, so this user adopts them.

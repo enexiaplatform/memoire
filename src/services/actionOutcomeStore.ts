@@ -1,4 +1,5 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from './localWorkspaceOwner.ts';
 import type { OpportunityRecommendedAction } from '../utils/opportunityActionPlan';
 import { todayDateKey } from '../utils/safeDate.ts';
 import {
@@ -70,8 +71,10 @@ export function loadActionOutcomes() {
 }
 
 export async function loadActionOutcomesForUser(userId: string) {
+  const assertCurrent = guardLocalWorkspaceScope(userId);
   const local = loadActionOutcomes();
   const cloud = await loadCloudJsonCollection<ActionOutcomeRecord>('action_outcomes', userId);
+  assertCurrent();
   const recordsToMerge = claimLocalCollectionForUser('action_outcomes', userId) ? local : [];
   const merged = mergeCloudJsonRecords(recordsToMerge, cloud)
     .map(sanitizeOutcome)
