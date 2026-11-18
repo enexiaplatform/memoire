@@ -30,7 +30,7 @@ const storage = {
 globalThis.window = Object.assign(new EventTarget(), { localStorage: storage });
 Object.defineProperty(globalThis, 'navigator', { configurable: true, value: { get onLine() { return online; } } });
 globalThis.__planTest = {
-  login, get saved() { return saved; }, save(value) { saved = value; },
+  login, get saved() { return saved; }, save(value) { if (this.saveError) throw Error('cache full'); saved = value; },
   assert() { if (stale) throw Error('stale scope'); },
   pending() { return activityPending ? [{ id: activity }] : []; },
   flush() { if (!keepDependency) activityPending = false; },
@@ -39,7 +39,7 @@ const substitutions = {
   'productAnalytics.ts': 'export const trackProductEvent = () => {};',
   'supabaseClient.ts': 'export const supabaseAccountClient = {auth:{ getSession: async () => ({data: {session:{user:{id:globalThis.__planTest.login}, access_token:"opaque"}}}) }};',
   'localWorkspaceOwner.ts': 'export const guardLocalWorkspaceScope = () => globalThis.__planTest.assert;',
-  'planItemStore.ts': 'export const loadPlanItems = () => globalThis.__planTest.saved ? [globalThis.__planTest.saved] : []; export const savePlanItem = globalThis.__planTest.save;',
+  'planItemStore.ts': 'export const loadPlanItems = () => globalThis.__planTest.saved ? [globalThis.__planTest.saved] : []; export const savePlanItem = value => globalThis.__planTest.save(value);',
   'salesActivityStore.ts': 'export const flushPendingSalesActivities = globalThis.__planTest.flush; export const listPendingSalesActivities = globalThis.__planTest.pending;',
 };
 registerHooks({
@@ -105,6 +105,28 @@ test('full storage rejects before sending; a scope switch leaves the original in
   globalThis.fetch = async () => Response.json({ status: 'conflict' }, { status: 409 });
   await flushPendingPlanCompletions(login);
   assert.equal(countPendingPlanCompletions(login), 0);
+});
+
+test('flag off parks the original command and a confirmed receipt survives a local cache failure', async () => {
+  saved = undefined;
+  const requests = [];
+  globalThis.__planTest.saveError = true;
+  globalThis.fetch = async (_url, init) => {
+    requests.push(JSON.parse(init.body));
+    return requests.length === 1
+      ? Response.json({ status: 'paused' }, { status: 503 })
+      : Response.json(receipt);
+  };
+  assert.equal((await confirmExistingPlanActivity(login, item, record, activity, record)).status, 'pending');
+  assert.equal(countPendingPlanCompletions(login), 1);
+  assert.equal(saved, undefined);
+  await flushPendingPlanCompletions(login);
+  assert.equal(countPendingPlanCompletions(login), 1);
+  globalThis.__planTest.saveError = false;
+  await flushPendingPlanCompletions(login);
+  assert.equal(countPendingPlanCompletions(login), 0);
+  assert.deepEqual(requests, [requests[0], requests[0], requests[0]]);
+  assert.equal(saved.completionActivityId, activity);
 });
 
 test('API checks explicit scope, derives actor/session from verified token, and pauses without dropping queued intent', async () => {

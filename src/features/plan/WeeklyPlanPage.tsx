@@ -211,6 +211,7 @@ export function WeeklyPlanPage({
   const [recordingItem, setRecordingItem] = useState<PlanItem | null>(null);
   const [recordSaving, setRecordSaving] = useState(false);
   const recordSaveInFlight = useRef(false);
+  const pendingCompletionId = useRef<string | null>(null);
   const [recordError, setRecordError] = useState('');
   const [dragItem, setDragItem] = useState<PlanItem | null>(null);
   const [dragOverDate, setDragOverDate] = useState('');
@@ -425,6 +426,7 @@ export function WeeklyPlanPage({
 
   const closeRecord = useCallback(() => {
     if (recordSaveInFlight.current) return;
+    pendingCompletionId.current = null;
     setRecordingItem(null);
     setRecordSaving(false);
     setRecordError('');
@@ -446,6 +448,7 @@ export function WeeklyPlanPage({
      * stays on Activity until the operator deletes it there.
      */
     if (!item.done) {
+      pendingCompletionId.current = null;
       setRecordingItem(item);
       setRecordError('');
       return;
@@ -467,13 +470,17 @@ export function WeeklyPlanPage({
       if (outcome?.status === 'confirmed') {
         const record = outcome.record as PlanRecord;
         setRecords(current => [record, ...current.filter(row => row.id !== record.id)]);
+        if (pendingCompletionId.current === record.id && !recordSaveInFlight.current) {
+          closeRecord();
+          setBoardMessage('Task done. Linked to the existing Activity entry.');
+        }
       } else if (outcome?.status === 'conflict') {
         void loadPlanItemsForWorkspace(dataUserId, sampleDataActive).then(setRecords).catch(() => {});
       }
     };
     window.addEventListener(PLAN_COMPLETION_CHANGED, onCompletion);
     return () => window.removeEventListener(PLAN_COMPLETION_CHANGED, onCompletion);
-  }, [dataUserId, sampleDataActive]);
+  }, [closeRecord, dataUserId, sampleDataActive]);
 
   const recordCompletion = useCallback(async (values: RecordPlanActivityValues) => {
     const item = recordingItem;
@@ -498,11 +505,13 @@ export function WeeklyPlanPage({
             return;
           }
           if (result.status === 'pending') {
+            pendingCompletionId.current = completion.id;
             setRecordError(values.fulfillmentCommitmentId
               ? 'Completion is pending. Review the selected promise separately once the Activity link is confirmed.'
               : 'Completion saved on this device, waiting for workspace confirmation.');
             return;
           }
+          pendingCompletionId.current = null;
           applyPromise = result.status === 'confirmed' && result.transitioned;
         } else {
           setRecords(savePlanItem({ ...completion, doneAt: item.doneAt || completion.doneAt, completionActivityId: existingActivity.id }));

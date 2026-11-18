@@ -1156,6 +1156,8 @@ export function DailyCapturePage() {
       if (outcome?.status === 'confirmed') {
         const record = outcome.record as PlanRecord;
         setPlanRecords(current => [record, ...current.filter(row => row.id !== record.id)]);
+        setMessage(current => current === 'Plan completion saved on this device, waiting for workspace confirmation.'
+          ? 'Plan completion confirmed.' : current);
       } else if (outcome?.status === 'conflict') {
         void loadPlanItemsForWorkspace(dataUserId, sampleDataActive).then(setPlanRecords).catch(() => {});
       }

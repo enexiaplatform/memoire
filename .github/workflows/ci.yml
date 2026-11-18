@@ -73,3 +73,6 @@ jobs:
           PLAN_TEST_PG_CONTAINER: ${{ job.services.pg.id }}
       - if: failure()
         run: docker logs plan-completion-postgrest
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/verify-plan-completion-browser.mjs

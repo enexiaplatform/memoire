@@ -4,7 +4,6 @@ CREATE TABLE memoire_private.plan_completion_receipts (
   request_id uuid NOT NULL,
   arguments jsonb NOT NULL,
   receipt_id uuid NOT NULL,
-  record jsonb NOT NULL,
   actor_id uuid NOT NULL,
   committed_at timestamptz NOT NULL,
   PRIMARY KEY (user_id, request_id)
@@ -134,7 +133,7 @@ BEGIN
 
   PERFORM 1 FROM public.sales_activities WHERE user_id=owner_id AND id=p_activity FOR SHARE;
   IF NOT FOUND THEN RETURN jsonb_build_object('status','activity_unavailable'); END IF;
-  IF (existing AND plan.payload->>'__deleted'='true')
+  IF (existing AND (plan.payload->>'__deleted'='true' OR plan.payload->>'isSample'='true' OR plan.payload->>'source'='demo'))
     OR (NOT existing AND (p_expected IS NOT NULL OR p_derived_key IS NULL OR p_plan_id <> 'plan-done-'||p_derived_key))
     OR (existing AND p_derived_key IS NULL AND plan.payload->>'derivedKey' IS NOT NULL)
     OR (existing AND p_derived_key IS NOT NULL AND p_derived_key IS DISTINCT FROM plan.payload->>'derivedKey'
@@ -149,7 +148,7 @@ BEGIN
      AND (plan.payload->>'completionRevision') ~* '^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$' THEN
     revision := (plan.payload->>'completionRevision')::uuid;
     SELECT r.committed_at INTO committed FROM memoire_private.plan_completion_receipts r
-      WHERE r.user_id=owner_id AND r.receipt_id=revision LIMIT 1;
+      WHERE r.user_id=owner_id AND r.receipt_id=revision AND r.arguments->>1=p_plan_id LIMIT 1;
     IF FOUND THEN record := plan.payload; END IF;
   END IF;
   IF record IS NULL THEN
@@ -181,7 +180,7 @@ BEGIN
       OR plan.payload->>'completionActivityId' IS DISTINCT FROM p_activity::text;
   END IF;
 
-  INSERT INTO memoire_private.plan_completion_receipts VALUES(owner_id,p_request,args,revision,record,p_actor,committed);
+  INSERT INTO memoire_private.plan_completion_receipts VALUES(owner_id,p_request,args,revision,p_actor,committed);
   RETURN jsonb_build_object('status','confirmed','receiptId',revision,'committedAt',committed,
     'transitioned',transitioned,'record',record);
 END;
