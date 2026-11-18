@@ -101,6 +101,35 @@ test('Plan completion migration preserves populated rows and atomically scopes, 
     assert.equal((await confirm({3: randomUUID(), 7: reopened.updatedAt})).status, 'confirmed');
   });
 
+  await t.test('replay follows current edits, and stale modern sync cannot reverse reopen or deletion', async () => {
+    await db.query('INSERT INTO plan_items(user_id,id,payload,updated_at) VALUES($1,$2,$3,$4)',
+      [named, 'lifecycle', JSON.stringify({ ...note, id: 'lifecycle' }), stamp]);
+    const requestId = randomUUID();
+    const complete = () => confirm({3: requestId, 5: 'lifecycle'});
+    const result = await complete();
+    const sync = async payload => {
+      await setAuthenticatedOwner(db, named);
+      await db.query('INSERT INTO plan_items(user_id,id,payload,updated_at) VALUES($1,$2,$3,$4) ON CONFLICT (user_id,id) DO UPDATE SET payload=excluded.payload,updated_at=excluded.updated_at',
+        [named, 'lifecycle', JSON.stringify(payload), payload.updatedAt]);
+      await db.exec('RESET ROLE');
+    };
+    const at = offset => new Date(Date.parse(result.record.updatedAt) + offset).toISOString();
+    await sync({ ...result.record, label: 'Edited label', updatedAt: at(1000) });
+    assert.equal((await complete()).record.label, 'Edited label');
+    await sync({ ...result.record, done: false, updatedAt: at(2000) });
+    assert.equal((await complete()).record, null);
+    await sync({ ...result.record, label: 'Stale tab edit', updatedAt: at(3000) });
+    assert.equal((await complete()).record, null, 'A stale tab re-closed the reopened Plan item');
+    await sync({ ...result.record, done: false, __deleted: true, updatedAt: at(4000) });
+    await sync({ ...result.record, done: false, label: 'Stale tab edit', updatedAt: at(5000) });
+    const state = (await db.query('SELECT payload FROM plan_items WHERE user_id=$1 AND id=$2', [named, 'lifecycle'])).rows[0].payload;
+    assert.equal(state.__deleted, true, 'A stale edit removed the Plan tombstone');
+    const replay = await complete();
+    assert.equal(replay.receiptId, result.receiptId);
+    assert.equal(replay.transitioned, false);
+    assert.equal(replay.record, null);
+  });
+
   await t.test('typed derived activities and linked groups resolve against current source ownership and due date', async () => {
     const key = 'capture:' + activity + ':2026-11-18:main';
     const wrong = 'capture:' + foreign + ':2026-11-18:main';

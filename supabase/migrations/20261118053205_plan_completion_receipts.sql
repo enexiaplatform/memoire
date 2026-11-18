@@ -31,6 +31,11 @@ BEGIN
     (NEW.user_id, NEW.id) IS DISTINCT FROM (OLD.user_id, OLD.id)
     OR NEW.updated_at <= OLD.updated_at
     OR NEW.payload->>'completionActivityId' IS DISTINCT FROM OLD.payload->>'completionActivityId'
+    -- Full-record sync carries the receipt revision even after another tab
+    -- reopens or deletes this item. A newer edit timestamp is not new consent
+    -- to re-close it. Only the scoped command can confirm another transition.
+    OR (OLD.payload->>'done' IS DISTINCT FROM 'true' AND NEW.payload->>'done'='true')
+    OR (OLD.payload->>'__deleted'='true' AND NEW.payload->>'__deleted' IS DISTINCT FROM 'true')
   ) THEN RETURN NULL; END IF;
   RETURN NEW;
 END;
