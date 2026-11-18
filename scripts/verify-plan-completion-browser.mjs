@@ -58,6 +58,9 @@ async function scenario(named, surface) {
       }
       return respond([]);
     });
+    // Keep unrelated APIs out of Vite's source module fallback. A clean CI
+    // checkout has no built Vercel handlers and this fixture only owns PR-01.
+    await context.route('**/api/**', route => route.fulfill({ status: 503, json: { error: 'fixture_unavailable' } }));
     await context.route('**/api/commercial?resource=plan-completion', async route => {
       const req = route.request();
       assert.equal(req.headers()['x-memoire-data-workspace'], named ? workspace : 'default');
