@@ -46,3 +46,33 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+
+  plan-completion-postgrest:
+    name: Plan completion on PostgreSQL and PostgREST
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    services:
+      pg:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: fixture
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: node scripts/verify-plan-completion-postgrest.mjs
+        env:
+          PLAN_TEST_PG_CONTAINER: ${{ job.services.pg.id }}
+      - if: failure()
+        run: docker logs plan-completion-postgrest
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/verify-plan-completion-browser.mjs

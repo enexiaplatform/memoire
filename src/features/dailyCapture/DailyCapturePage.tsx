@@ -1,3 +1,4 @@
+import { WorkspaceScopeChangedError } from '../../services/localWorkspaceOwner';
 import {ExternalObservationIntake} from './ExternalObservationIntake';
 import { useCallback, useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
@@ -41,6 +42,7 @@ import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportuni
 import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import { suggestQuoteStateChanges, type QuoteStateSuggestion } from '../../utils/quoteStateSuggestions';
 import { updateQuote, type QuoteRecord } from '../../services/quoteStore';
+import { confirmExistingPlanActivity, PLAN_COMPLETION_CHANGED } from '../../services/planCompletionClient';
 import { loadPlanItemsForWorkspace, savePlanItem } from '../../services/planItemStore';
 import {
   findClosablePlanItems,
@@ -1148,7 +1150,23 @@ export function DailyCapturePage() {
     [lastSavedActivity, opportunities, planRecords, markedDoneKeys],
   );
 
-  const handleMarkPlanItemDone = useCallback((item: PlanItem) => {
+  useEffect(() => {
+    const onCompletion = (event: Event) => {
+      const outcome = (event as CustomEvent).detail;
+      if (outcome?.status === 'confirmed') {
+        const record = outcome.record as PlanRecord;
+        setPlanRecords(current => [record, ...current.filter(row => row.id !== record.id)]);
+        setMessage(current => current === 'Plan completion saved on this device, waiting for workspace confirmation.'
+          ? 'Plan completion confirmed.' : current);
+      } else if (outcome?.status === 'conflict') {
+        void loadPlanItemsForWorkspace(dataUserId, sampleDataActive).then(setPlanRecords).catch(() => {});
+      }
+    };
+    window.addEventListener(PLAN_COMPLETION_CHANGED, onCompletion);
+    return () => window.removeEventListener(PLAN_COMPLETION_CHANGED, onCompletion);
+  }, [dataUserId, sampleDataActive]);
+
+  const handleMarkPlanItemDone = useCallback(async (item: PlanItem) => {
     if (!lastSavedActivity) return;
     const record = planItemDoneRecord(item, planRecords, {
       source: sampleDataActive ? 'demo' : 'user',
@@ -1156,10 +1174,23 @@ export function DailyCapturePage() {
       activityId: lastSavedActivity.id,
     });
     if (!record) return;
+    if (dataUserId && !sampleDataActive) {
+      try {
+        const result = await confirmExistingPlanActivity(
+          dataUserId, item, record, lastSavedActivity.id, planRecords.find(row => row.id === record.id),
+        );
+        if (result.status === 'confirmed') setMessage('Plan completion confirmed.');
+        if (result.status === 'pending') setMessage('Plan completion saved on this device, waiting for workspace confirmation.');
+        if (result.status === 'conflict') setMessage('The Activity link could not be confirmed. Review the latest item in Plan.');
+      } catch (error) {
+        if (!(error instanceof WorkspaceScopeChangedError)) setMessage('Could not save the completion to this device. Free storage and try again.');
+      }
+      return;
+    }
     setPlanRecords(savePlanItem(record));
     setMarkedDoneKeys((current) => [...current, closableKey(item)]);
     trackProductEvent('commitment_completed');
-  }, [lastSavedActivity, planRecords, sampleDataActive]);
+  }, [dataUserId, lastSavedActivity, planRecords, sampleDataActive]);
 
   // Quote state is not a fact read out of the note - it is an existing quote
   // advancing its own lifecycle - so it stays its own suggestion rather than

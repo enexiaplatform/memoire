@@ -131,6 +131,7 @@ export type PlanRecord = {
   linkedDerivedKeys?: string[];
   /** The Activity entry that records the result of this work. */
   completionActivityId?: string;
+  completionRevision?: string;
   linkedOpportunityId?: string;
   linkedAccountName?: string;
   /**
@@ -782,6 +783,7 @@ export function createDerivedCompletionRecord(
     derivedKey: item.derivedKey,
     linkedDerivedKeys: existing?.linkedDerivedKeys,
     completionActivityId: existing?.completionActivityId,
+    completionRevision: existing?.completionRevision,
     createdAt: existing?.createdAt || now,
     updatedAt: now,
     // Tagged at birth, like every other record the demo sandbox can create:

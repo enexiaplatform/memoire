@@ -87,7 +87,13 @@ export function savePlanItem(record: PlanRecord, options: { syncCloud?: boolean 
 }
 
 export function deletePlanItem(recordId: string, options: { syncCloud?: boolean } = {}): PlanRecord[] {
-  const records = persistPlanItems(loadPlanItems().filter((item) => item.id !== recordId), options.syncCloud);
+  const existing = loadPlanItems();
+  const removed = existing.find(item => item.id === recordId);
+  const remaining = existing.filter(item => item.id !== recordId);
+  if (removed?.completionRevision) {
+    return persistPlanItems([...remaining, { ...removed, __deleted: true, updatedAt: new Date().toISOString() }], options.syncCloud);
+  }
+  const records = persistPlanItems(remaining, options.syncCloud);
   if (options.syncCloud !== false) deleteCloudJsonRecordForCurrentUser('plan_items', recordId);
   return records;
 }
@@ -129,6 +135,7 @@ function sanitizePlanRecord(value: unknown): PlanRecord | null {
     tag: typeof candidate.tag === 'string' ? candidate.tag.trim() : '',
     done: candidate.done === true,
     doneAt: typeof candidate.doneAt === 'string' ? candidate.doneAt : undefined,
+    completionRevision: typeof candidate.completionRevision === 'string' ? candidate.completionRevision : undefined,
     completionActivityId: typeof candidate.completionActivityId === 'string' ? candidate.completionActivityId : undefined,
     derivedKey: typeof candidate.derivedKey === 'string' ? candidate.derivedKey : undefined,
     linkedDerivedKeys: Array.isArray(candidate.linkedDerivedKeys) ? [...new Set(candidate.linkedDerivedKeys.filter((key): key is string => typeof key === 'string' && key !== candidate.derivedKey))].slice(0, 50) : undefined,

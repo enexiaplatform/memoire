@@ -82,6 +82,8 @@ import { SubjectChip } from '../../components/common/SubjectChip';
 import { getWeeklyCommitmentForWeek, loadWeeklyCommitmentsForWorkspace } from '../../services/weeklyCommitmentStore';
 import { getCurrentPipelineReviewWeekId } from '../../utils/pipelineReviewHabit';
 import type { WeeklyCommitmentSnapshot } from '../../utils/weeklyCommitment';
+import { confirmExistingPlanActivity, PLAN_COMPLETION_CHANGED } from '../../services/planCompletionClient';
+import { WorkspaceScopeChangedError } from '../../services/localWorkspaceOwner';
 import { trackProductEvent } from '../../utils/productAnalytics';
 import {
   buildPlanCompletionActivity,
@@ -209,6 +211,7 @@ export function WeeklyPlanPage({
   const [recordingItem, setRecordingItem] = useState<PlanItem | null>(null);
   const [recordSaving, setRecordSaving] = useState(false);
   const recordSaveInFlight = useRef(false);
+  const pendingCompletionId = useRef<string | null>(null);
   const [recordError, setRecordError] = useState('');
   const [dragItem, setDragItem] = useState<PlanItem | null>(null);
   const [dragOverDate, setDragOverDate] = useState('');
@@ -423,6 +426,7 @@ export function WeeklyPlanPage({
 
   const closeRecord = useCallback(() => {
     if (recordSaveInFlight.current) return;
+    pendingCompletionId.current = null;
     setRecordingItem(null);
     setRecordSaving(false);
     setRecordError('');
@@ -445,6 +449,7 @@ export function WeeklyPlanPage({
      */
     if (!item.done) {
       setRecordingItem(item);
+      pendingCompletionId.current = null;
       setRecordError('');
       return;
     }
@@ -459,6 +464,24 @@ export function WeeklyPlanPage({
     }
   }, [completionFor, records, sampleDataActive]);
 
+  useEffect(() => {
+    const onCompletion = (event: Event) => {
+      const outcome = (event as CustomEvent).detail;
+      if (outcome?.status === 'confirmed') {
+        const record = outcome.record as PlanRecord;
+        setRecords(current => [record, ...current.filter(row => row.id !== record.id)]);
+        if (pendingCompletionId.current === record.id && !recordSaveInFlight.current) {
+          closeRecord();
+          setBoardMessage('Task done. Linked to the existing Activity entry.');
+        }
+      } else if (outcome?.status === 'conflict') {
+        void loadPlanItemsForWorkspace(dataUserId, sampleDataActive).then(setRecords).catch(() => {});
+      }
+    };
+    window.addEventListener(PLAN_COMPLETION_CHANGED, onCompletion);
+    return () => window.removeEventListener(PLAN_COMPLETION_CHANGED, onCompletion);
+  }, [closeRecord, dataUserId, sampleDataActive]);
+
   const recordCompletion = useCallback(async (values: RecordPlanActivityValues) => {
     const item = recordingItem;
     if (!item || recordSaveInFlight.current) return;
@@ -468,17 +491,50 @@ export function WeeklyPlanPage({
     const completion = planItemDoneRecord(item, records, workspaceTag);
     if (!completion) { setRecordError('This plan item could not be found. Reopen it and try again.'); return; }
     if (existingActivity) {
+      recordSaveInFlight.current = true;
+      setRecordSaving(true);
+      setRecordError('');
       try {
-        setRecords(savePlanItem({ ...completion, doneAt: item.doneAt || completion.doneAt, completionActivityId: existingActivity.id }));
-        if (!item.done) trackProductEvent('commitment_completed');
-        const fulfilled = values.fulfillmentCommitmentId
-          ? promiseLedger.complete(values.fulfillmentCommitmentId, `${values.note.trim() || existingActivity.summary} (activity ${existingActivity.id})`) : false;
-        setBoardMessage(fulfilled
-          ? 'Task done. The existing Activity entry also records evidence for the selected promise.'
-          : 'Task done. Linked to the existing Activity entry.');
+        let applyPromise = true;
+        if (dataUserId && !sampleDataActive) {
+          const result = await confirmExistingPlanActivity(
+            dataUserId, item, completion, existingActivity.id, records.find(row => row.id === completion.id),
+          );
+          if (result.status === 'conflict') {
+            setRecordError('The Activity link could not be confirmed. Review the refreshed Plan item.');
+            return;
+          }
+          if (result.status === 'pending') {
+            pendingCompletionId.current = completion.id;
+            setRecordError(values.fulfillmentCommitmentId
+              ? 'Completion is pending. Review the selected promise separately once the Activity link is confirmed.'
+              : 'Completion saved on this device, waiting for workspace confirmation.');
+            return;
+          }
+          pendingCompletionId.current = null;
+          applyPromise = result.status === 'confirmed' && result.transitioned;
+        } else {
+          setRecords(savePlanItem({ ...completion, doneAt: item.doneAt || completion.doneAt, completionActivityId: existingActivity.id }));
+          if (!item.done) trackProductEvent('commitment_completed');
+        }
+        let promiseMessage = '';
+        if (values.fulfillmentCommitmentId) {
+          try {
+            const evidence = (values.note.trim() || existingActivity.summary) + ' (activity ' + existingActivity.id + ')';
+            const fulfilled = applyPromise && promiseLedger.complete(values.fulfillmentCommitmentId, evidence);
+            promiseMessage = fulfilled ? ' The selected promise was marked kept.' : ' Review the selected promise separately.';
+          } catch {
+            promiseMessage = ' The promise update could not be confirmed. Review it separately.';
+          }
+        }
+        setBoardMessage('Task done. Linked to the existing Activity entry.' + promiseMessage);
+        recordSaveInFlight.current = false;
         closeRecord();
-      } catch {
-        setRecordError('Could not link the Activity entry. Try again.');
+      } catch (error) {
+        if (!(error instanceof WorkspaceScopeChangedError)) setRecordError('Could not save the completion. Your input is still here.');
+      } finally {
+        recordSaveInFlight.current = false;
+        setRecordSaving(false);
       }
       return;
     }
