@@ -24,6 +24,20 @@ export function stagingKey(key, ref, role) {
   throw new Error('Use the approved staging project key for ' + role + '.');
 }
 
+// Use alongside GoTrue verification on the approved staging origin.
+export function assertStagingSession(token, ref, backend, userId) {
+  const origin = stagingBackend(ref, backend);
+  try {
+    const claims = JSON.parse(Buffer.from(token.split('.')[1], 'base64url').toString('utf8'));
+    if (claims.iss === origin + '/auth/v1' && claims.sub === userId && claims.role === 'authenticated' &&
+        (claims.ref === undefined || claims.ref === ref) &&
+        /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(claims.session_id ?? '')) return;
+  } catch {
+    // Do not include the token in diagnostics.
+  }
+  throw new Error('Auth session is not bound to the approved staging issuer and user.');
+}
+
 export function stagingOrigin(value) {
   if (!value || !/^https:\/\/memoire-staging(?:-[a-z0-9-]+)?\.vercel\.app$/.test(value)) {
     throw new Error('Use the dedicated Memoire staging Vercel origin.');
@@ -32,6 +46,7 @@ export function stagingOrigin(value) {
 }
 
 export function stagingDatabase(value, ref) {
+  stagingBackend(ref, 'https://' + ref + '.supabase.co');
   let url;
   try {
     url = new URL(value);

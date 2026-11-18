@@ -1,5 +1,7 @@
 # Enexia staging foundation
 
+See the [cost comparison and activation plan](activation-plan.md) for capacity, owner decisions and provisioning order.
+
 ## Decision and current inventory
 
 Use a dedicated **Memoire staging Supabase project** and a dedicated **`memoire-staging` Vercel project**, with a protected Preview at a stable staging origin. Keep these under separately approved nonproduction access and billing. Disable automatic Git deployments for the staging Vercel project or limit the project to an explicit staging branch. The production-linked Memoire Vercel project and its automatic PR Preview have no role in this rehearsal.

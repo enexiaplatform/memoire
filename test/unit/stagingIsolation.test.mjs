@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { stagingBackend, stagingDatabase, stagingKey, stagingOrigin } from '../../scripts/staging/isolation.mjs';
+import { assertStagingSession, stagingBackend, stagingDatabase, stagingKey, stagingOrigin } from '../../scripts/staging/isolation.mjs';
 import { stagingAttestation } from '../../api/_stagingAttestation.js';
 
 const ref = 'aaaaaaaaaaaaaaaaaaaa';
@@ -30,6 +30,7 @@ test('staging isolation rejects production, existing unrelated projects and unsa
   assert.match(stagingDatabase('postgresql://postgres:dummy@db.' + ref + '.supabase.co/postgres?sslmode=require', ref).hostname, /^db\./);
   assert.throws(() => stagingDatabase('postgresql://postgres:dummy@db.mlmpcpkucurylkrobain.supabase.co/postgres?sslmode=require', ref));
   assert.throws(() => stagingDatabase('postgresql://postgres:dummy@db.' + ref + '.supabase.co/postgres?sslmode=disable', ref));
+  assert.throws(() => stagingDatabase('postgresql://postgres:dummy@db.mlmpcpkucurylkrobain.supabase.co/postgres?sslmode=require', 'mlmpcpkucurylkrobain'));
   assert.throws(() => stagingDatabase('not-a-url-with-a-secret', ref), {
     message: 'Staging database URL is malformed.',
   });
@@ -47,4 +48,18 @@ test('attestation only works on the approved protected preview and excludes secr
     { MEMOIRE_STAGING_ATTESTATION: 'false' }, { CRON_SECRET: 'should not exist' }, { AI_CHAT_ENABLED: 'true' }]) {
     assert.equal(stagingAttestation(req, { ...valid, ...bad }), null);
   }
+});
+
+test('staging session binding rejects a production issuer and mixed-project claims without a network call', () => {
+  const user = '12345678-1234-4234-8234-123456789012';
+  const stageClaims = { iss: backend + '/auth/v1', sub: user, role: 'authenticated', session_id: user };
+  const encode = claims => 'fixture.' + Buffer.from(JSON.stringify(claims)).toString('base64url') + '.signature';
+  assert.doesNotThrow(() => assertStagingSession(encode(stageClaims), ref, backend, user));
+  assert.throws(() => assertStagingSession(encode({
+    ...stageClaims, iss: 'https://mlmpcpkucurylkrobain.supabase.co/auth/v1',
+  }), ref, backend, user));
+  assert.throws(() => assertStagingSession(encode({
+    ...stageClaims, ref: 'mlmpcpkucurylkrobain',
+  }), ref, backend, user));
+  assert.throws(() => assertStagingSession(encode(stageClaims), ref, backend, 'another-user'));
 });

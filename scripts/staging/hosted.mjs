@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { randomBytes, randomUUID } from 'node:crypto';
 import { createClient } from '@supabase/supabase-js';
-import { required, stagingBackend, stagingKey, stagingOrigin } from './isolation.mjs';
+import { assertStagingSession, required, stagingBackend, stagingKey, stagingOrigin } from './isolation.mjs';
 
 export const env = process.env;
 
@@ -66,6 +66,9 @@ export async function seed(c, cleanupIds) {
     const account = client(c);
     const session = (await checked('Sign in synthetic Auth user', account.auth.signInWithPassword({ email, password }))).session;
     assert.equal(session.user.id, created.user.id);
+    assertStagingSession(session.access_token, c.ref, c.backend, created.user.id);
+    const verified = await checked('Verify synthetic session with staging Auth', account.auth.getUser(session.access_token));
+    assert.equal(verified.user.id, created.user.id);
     users.push({ account, session });
   }
   const [owner, outsider] = users;
