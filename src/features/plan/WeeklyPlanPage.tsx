@@ -448,8 +448,8 @@ export function WeeklyPlanPage({
      * stays on Activity until the operator deletes it there.
      */
     if (!item.done) {
-      pendingCompletionId.current = null;
       setRecordingItem(item);
+      pendingCompletionId.current = null;
       setRecordError('');
       return;
     }
