@@ -1,0 +1,113 @@
+import assert from 'node:assert/strict';
+import { createHmac, randomUUID } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
+import { readFileSync, readdirSync } from 'node:fs';
+
+const endpoint = 'http://127.0.0.1:3300';
+const secret = 'local-plan-fixture-only-secret-for-ci-postgrest';
+const actor = '11111111-1111-4111-8111-111111111111';
+const stranger = '22222222-2222-4222-8222-222222222222';
+const session = randomUUID();
+const firstBook = randomUUID();
+const secondBook = randomUUID();
+const otherBook = randomUUID();
+const activityA = randomUUID();
+const activityB = randomUUID();
+const privateActivity = randomUUID();
+const stamp = '2026-11-17T12:00:00.000Z';
+
+function sql(source) {
+  return execFileSync('docker', ['exec', '-i', process.env.PLAN_TEST_PG_CONTAINER, 'psql', '-U', 'postgres', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1', '-qAt'], {
+    input: source, encoding: 'utf8', maxBuffer: 1024 * 1024,
+  }).trim();
+}
+const fixture = readFileSync('scripts/release-database-harness.mjs', 'utf8').split('await db.exec(`')[1].split('`);')[0];
+sql(fixture + "ALTER ROLE authenticator LOGIN PASSWORD 'fixture'; GRANT anon, authenticated, service_role TO authenticator; CREATE TABLE auth.sessions(id uuid PRIMARY KEY,user_id uuid NOT NULL,not_after timestamptz);");
+for (const migration of readdirSync('supabase/migrations').filter(name => name.endsWith('.sql')).sort((a, b) => a.localeCompare(b))) {
+  sql(readFileSync('supabase/migrations/' + migration, 'utf8'));
+}
+sql(`
+  INSERT INTO auth.users(id,email) VALUES('${actor}','one@example.test'),('${stranger}','two@example.test');
+  INSERT INTO auth.sessions(id,user_id) VALUES('${session}','${actor}');
+  SELECT set_config('request.jwt.claim.sub','${actor}',false);
+  SELECT public.memoire_create_native_workspace('${firstBook}','First',NULL,'{}');
+  SELECT public.memoire_create_native_workspace('${secondBook}','Second',NULL,'{}');
+  SELECT set_config('request.jwt.claim.sub','${stranger}',false);
+  SELECT public.memoire_create_native_workspace('${otherBook}','Other',NULL,'{}');
+  INSERT INTO sales_activities(id,user_id,raw_note,activity_type)
+    SELECT a.id,w.data_owner_id,'Synthetic existing touch','Call'
+    FROM (VALUES ('${activityA}'::uuid,'${firstBook}'::uuid), ('${activityB}'::uuid,'${firstBook}'::uuid),
+      ('${privateActivity}'::uuid,'${secondBook}'::uuid)) AS a(id,book)
+    JOIN memoire_private.workspace_data_owners w ON w.workspace_id=a.book;
+  INSERT INTO plan_items(user_id,id,payload,updated_at)
+    SELECT data_owner_id,p.id,jsonb_build_object('id',p.id,'label','Synthetic plan','date','2026-11-18',
+      'done',false,'updatedAt','${stamp}'),'${stamp}'
+    FROM memoire_private.workspace_data_owners CROSS JOIN (VALUES ('race'),('same'),('revoked')) p(id)
+    WHERE workspace_id='${firstBook}';
+`);
+
+execFileSync('docker', [
+  'run', '-d', '--name', 'plan-completion-postgrest', '--network', 'host',
+  '-e', 'PGRST_DB_URI=postgres://authenticator:fixture@127.0.0.1:55432/postgres',
+  '-e', 'PGRST_DB_ANON_ROLE=anon', '-e', 'PGRST_DB_SCHEMAS=public',
+  '-e', 'PGRST_SERVER_PORT=3300', '-e', 'PGRST_JWT_SECRET=' + secret,
+  'postgrest/postgrest:v13.0.7',
+], { stdio: 'inherit', env: process.env });
+
+function jwt(role, sub) {
+  const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
+  const data = encode({ alg: 'HS256', typ: 'JWT' }) + '.' + encode({ role, sub, exp: Math.floor(Date.now() / 1000) + 600 });
+  return data + '.' + createHmac('sha256', secret).update(data).digest('base64url');
+}
+const service = jwt('service_role', actor);
+const identity = jwt('authenticated', actor);
+const request = (id, activity) => ({
+  p_actor: actor, p_session: session, p_workspace: firstBook, p_request: randomUUID(), p_activity: activity,
+  p_plan_id: id, p_derived_key: null, p_expected: stamp, p_label: null, p_tag: null,
+});
+async function rpc(payload, token = service) {
+  const response = await fetch(endpoint + '/rpc/memoire_confirm_plan_completion', {
+    method: 'POST', signal: AbortSignal.timeout(10_000),
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: 'Bearer ' + token } : {}) },
+    body: JSON.stringify(payload),
+  });
+  return { code: response.status, data: await response.json() };
+}
+
+for (let i = 0; i < 40; i++) {
+  const ready = await fetch(endpoint + '/').then(response => response.ok).catch(() => false);
+  if (ready) break;
+  await new Promise(resolve => setTimeout(resolve, 250));
+}
+assert.equal((await rpc(request('race', activityA), null)).code, 401);
+assert.equal((await rpc(request('race', activityA), identity)).code, 403);
+for (const scope of [null, secondBook, otherBook]) {
+  const inaccessible = await rpc({ ...request('race', activityA), p_workspace: scope });
+  assert.equal(inaccessible.code, 200);
+  assert.equal(inaccessible.data.status, scope === otherBook ? 'unavailable' : 'activity_unavailable');
+}
+assert.equal((await rpc(request('race', privateActivity))).data.status, 'activity_unavailable');
+
+const race = [request('race', activityA), request('race', activityB)];
+const outcomes = await Promise.all(race.map(body => rpc(body)));
+assert.deepEqual(outcomes.map(result => result.data.status).sort(), ['confirmed', 'conflict']);
+const winningIndex = outcomes.findIndex(result => result.data.status === 'confirmed');
+const committed = outcomes[winningIndex].data;
+assert.equal(committed.transitioned, true);
+assert.deepEqual((await rpc(race[winningIndex])).data, { ...committed, transitioned: false });
+
+const same = [request('same', activityA), request('same', activityA)];
+const equal = await Promise.all(same.map(body => rpc(body)));
+assert.deepEqual(equal.map(outcome => outcome.data.transitioned).sort(), [false, true]);
+assert.equal(equal[0].data.receiptId, equal[1].data.receiptId);
+assert.equal(equal[0].data.record.doneAt, equal[1].data.record.doneAt);
+assert.equal(sql('SELECT count(*) FROM public.sales_activities;'), '3');
+
+const scoped = await fetch(endpoint + '/plan_items?select=id,payload&id=eq.race', {
+  headers: { Authorization: 'Bearer ' + identity, 'x-memoire-data-workspace': firstBook },
+});
+assert.equal(scoped.status, 200);
+assert.equal((await scoped.json())[0].payload.completionActivityId, committed.record.completionActivityId);
+sql("DELETE FROM auth.sessions WHERE id='" + session + "';");
+assert.equal((await rpc(request('revoked', activityA))).data.status, 'unauthorized');
+console.log('PostgREST: explicit workspace scope, direct role denial, revocation, separate concurrent requests, stable receipts, and unchanged Activity count verified.');
