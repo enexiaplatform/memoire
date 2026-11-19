@@ -1,4 +1,5 @@
 {
+  "git": { "deploymentEnabled": { "codex/agent-authorization-foundation": false } },
   "trailingSlash": false,
   "headers": [
     {
