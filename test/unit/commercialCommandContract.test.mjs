@@ -17,6 +17,7 @@ test('agent proposal fixtures cannot assign authority, accept truth or request a
     { ...body, idempotencyKey: 'model-chosen-key' },
     { ...body, grant: { allowed: true } },
     { ...body, approval: { approved: true } },
+    { ...body, permissions: ['commercial:write'] },
     { ...body, command: 'complete-commitment' },
     { ...body, command: 'accept-evidence' },
     { ...body, version: 2 },
@@ -24,8 +25,22 @@ test('agent proposal fixtures cannot assign authority, accept truth or request a
   for (const candidate of fixtures) {
     assert.deepEqual(await prepareCommercialCommand(candidate, owner), { status: 'invalid_command' });
   }
-  assert.deepEqual(await prepareCommercialCommand({ ...body, observation: { ...observation, acceptedCommercialTruth: true } }, owner),
-    { status: 'invalid_observation' });
+  const untrustedFields = {
+    actorId: otherOwner,
+    workspaceId: otherOwner,
+    approval: { approved: true },
+    grant: { allowed: true },
+    permissions: ['commercial:write'],
+    acceptedCommercialTruth: true,
+  };
+  for (const [field, value] of Object.entries(untrustedFields)) {
+    assert.deepEqual(await prepareCommercialCommand({ ...body, observation: { ...observation, [field]: value } }, owner),
+      { status: 'invalid_observation' }, field);
+  }
+  for (const field of ['summary', 'rawText']) {
+    assert.deepEqual(await prepareCommercialCommand({ ...body, observation: { ...observation, [field]: untrustedFields } }, owner),
+      { status: 'invalid_observation' }, field);
+  }
   assert.deepEqual(await prepareCommercialCommand({ ...body, observation: { ...observation, rawText: '€'.repeat(43_000) } }, owner),
     { status: 'payload_too_large' });
 });
