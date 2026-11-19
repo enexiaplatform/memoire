@@ -82,7 +82,12 @@ function serve(handler) {
         for (const [name, value] of response.headers) {
           if (!['content-encoding', 'content-length', 'connection', 'transfer-encoding'].includes(name)) res.setHeader(name, value);
         }
-        return res.writeHead(response.status).end(Buffer.from(await response.arrayBuffer()));
+        const responseBody = Buffer.from(await response.arrayBuffer());
+        if (prefix === '/rest/v1' && pathname === '/rpc/memoire_confirm_plan_completion' && response.status >= 400) {
+          const problem = JSON.parse(responseBody.toString());
+          console.error('PostgREST RPC fixture diagnostic', JSON.stringify({ code: problem.code, message: problem.message }));
+        }
+        return res.writeHead(response.status).end(responseBody);
       }
       if (url.pathname === '/api/commercial' || url.pathname === '/api/ai-chat') {
         req.query = Object.fromEntries(url.searchParams);
@@ -170,8 +175,15 @@ try {
       // Force PostgREST to observe the new RPC before issuing app requests.
       sql("NOTIFY pgrst, 'reload schema';");
       for (let attempt = 0; attempt < 40; attempt++) {
-        const spec = await fetch(restOrigin + '/', { headers: { Authorization: 'Bearer ' + c.service } }).then(r => r.json());
-        if (spec.paths?.['/rpc/memoire_confirm_plan_completion']) break;
+        const probe = await fetch(restOrigin + '/rpc/memoire_confirm_plan_completion', {
+          method: 'POST',
+          headers: { Authorization: 'Bearer ' + c.service, 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            p_actor: null, p_session: null, p_workspace: null, p_request: null, p_activity: null,
+            p_plan_id: null, p_derived_key: null, p_expected: null, p_label: null, p_tag: null,
+          }),
+        });
+        if (probe.ok && (await probe.json()).status === 'unauthorized') break;
         if (attempt === 39) throw new Error('PostgREST did not reload the candidate RPC.');
         await new Promise(resolve => setTimeout(resolve, 250));
       }
