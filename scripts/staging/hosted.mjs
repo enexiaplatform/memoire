@@ -66,7 +66,8 @@ export async function seed(c, cleanupIds) {
     const account = client(c);
     const session = (await checked('Sign in synthetic Auth user', account.auth.signInWithPassword({ email, password }))).session;
     assert.equal(session.user.id, created.user.id);
-    assertStagingSession(session.access_token, c.ref, c.backend, created.user.id);
+    if (c.checkSession) c.checkSession(session.access_token, created.user.id);
+    else assertStagingSession(session.access_token, c.ref, c.backend, created.user.id);
     const verified = await checked('Verify synthetic session with staging Auth', account.auth.getUser(session.access_token));
     assert.equal(verified.user.id, created.user.id);
     users.push({ account, session });
@@ -89,9 +90,9 @@ export async function seed(c, cleanupIds) {
   return { admin, owner, outsider, books, runId };
 }
 
-export async function cleanup(c, ids) {
+export async function cleanup(c, ids, attestTarget = attest) {
   if (!ids.length) return;
-  await attest(c);
+  await attestTarget(c);
   const admin = client(c, c.service);
   const results = await Promise.allSettled(ids.map(id => checked('Delete synthetic fixture user', admin.auth.admin.deleteUser(id))));
   if (results.some(result => result.status === 'rejected')) throw new Error('Synthetic cleanup incomplete. See the emitted fixture run ID and inspect staging only.');

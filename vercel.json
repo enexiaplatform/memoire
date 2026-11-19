@@ -1,4 +1,5 @@
 {
+  "git": { "deploymentEnabled": { "codex/enexia-staging-foundation": false } },
   "trailingSlash": false,
   "headers": [
     {

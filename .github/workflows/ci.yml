@@ -76,3 +76,45 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: node scripts/verify-plan-completion-browser.mjs
+
+  plan-completion-ephemeral:
+    name: PR-01 ephemeral Auth and browser integration
+    if: github.event_name == 'pull_request' && github.head_ref == 'codex/enexia-staging-foundation' && github.event.repository.visibility == 'public'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    services:
+      pg:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: ephemeral-bootstrap
+        ports:
+          - 127.0.0.1:55432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Run disposable integration without repository secrets
+        run: |
+          env -i PATH="$PATH" HOME="$HOME" CI=true GITHUB_SHA="$CANDIDATE_SHA"             PLAN_TEST_PG_CONTAINER="$PG_CONTAINER" node scripts/staging/ephemeral-pr01.mjs
+        env:
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          PG_CONTAINER: ${{ job.services.pg.id }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr01-ephemeral-integration
+          path: ephemeral-evidence/pr01.json
+          if-no-files-found: warn
+          retention-days: 1
