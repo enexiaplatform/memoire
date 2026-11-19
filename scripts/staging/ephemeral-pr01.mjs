@@ -113,7 +113,8 @@ try {
     CREATE ROLE service_role NOLOGIN BYPASSRLS;
     CREATE ROLE authenticator LOGIN NOINHERIT PASSWORD '${databasePassword}';
     GRANT anon, authenticated, service_role TO authenticator;
-    ALTER ROLE postgres PASSWORD '${databasePassword}';
+    CREATE ROLE supabase_auth_admin LOGIN SUPERUSER PASSWORD '${databasePassword}';
+    ALTER ROLE supabase_auth_admin SET search_path TO auth, public;
     CREATE SCHEMA auth;
     CREATE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS $$
       SELECT coalesce(NULLIF(current_setting('request.jwt.claim.sub', true), ''), nullif(current_setting('request.jwt.claims', true), '')::jsonb->>'sub')::uuid
@@ -124,7 +125,7 @@ try {
   service('memoire-ephemeral-auth', 'supabase/auth:v2.176.0', {
     GOTRUE_API_HOST: '127.0.0.1', GOTRUE_API_PORT: '9999', API_EXTERNAL_URL: origin + '/auth/v1',
     GOTRUE_SITE_URL: origin, GOTRUE_DB_DRIVER: 'postgres', DB_NAMESPACE: 'auth',
-    GOTRUE_DB_DATABASE_URL: 'postgres://postgres:' + databasePassword + '@127.0.0.1:55432/postgres',
+    GOTRUE_DB_DATABASE_URL: 'postgres://supabase_auth_admin:' + databasePassword + '@127.0.0.1:55432/postgres',
     GOTRUE_JWT_SECRET: secret, GOTRUE_JWT_EXP: '3600', GOTRUE_JWT_ADMIN_ROLES: 'service_role',
     GOTRUE_JWT_DEFAULT_GROUP_NAME: 'authenticated', GOTRUE_MAILER_AUTOCONFIRM: 'true',
     GOTRUE_LOG_LEVEL: 'warn',
@@ -182,6 +183,12 @@ try {
 } catch (error) {
   results.integration = 'FAIL: see job log for the failing step';
   console.error(error.message);
+  for (const name of ['memoire-ephemeral-auth', 'memoire-ephemeral-rest']) {
+    try {
+      const log = execFileSync('docker', ['logs', '--tail', '20', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      console.error(log.replaceAll(secret, '[redacted]').replaceAll(databasePassword, '[redacted]'));
+    } catch { /* Service may not have started. */ }
+  }
   process.exitCode = 1;
 } finally {
   mkdirSync('ephemeral-evidence', { recursive: true });
