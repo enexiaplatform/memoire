@@ -9,12 +9,16 @@ const pendingText = /Plan completion.*waiting for workspace confirmation/;
 const routePath = '/api/commercial?resource=plan-completion';
 export async function verifyPr01(c, {
   attestTarget = attest, setFlag, prepare = async () => {}, browserOptions = {},
-  label = 'HOSTED STAGING', preflight = false, rehearseFlag = false,
+  label = 'HOSTED STAGING', preflight = false, rehearseFlag = false, onPass = () => {},
 } = {}) {
   const initial = await attestTarget(c);
   console.log(label, 'binding verified for', initial.commit);
   if (preflight) return;
   if (!setFlag) assert.equal(initial.planCompletionEnabled, true, 'Enable Plan completion before running the gates.');
+  const pass = (key, description) => {
+    onPass(key);
+    console.log(label + ' PASS ' + description);
+  };
 
   const ids = [];
   let browser;
@@ -88,7 +92,7 @@ export async function verifyPr01(c, {
     await expectCommand(fixture.outsider.session.access_token, bookA, outsideBody, 401);
     assert.equal((await row(bookA, outside.plan.id)).payload.done, false);
     await setPlan(bookA, { ...outside.plan, __deleted: true, updatedAt: new Date().toISOString() });
-    console.log(label + ' PASS Auth and revoked JWT');
+    pass('auth_revocation', 'Auth and revoked JWT');
 
     const lifecycle = await seedCase(bookA, 'Replay lifecycle test');
     const body = requestFor(lifecycle.plan, lifecycle.activity);
@@ -111,7 +115,7 @@ export async function verifyPr01(c, {
     await setPlan(bookA, { ...first.record, done: false, updatedAt: at(6000) });
     assert.equal((await row(bookA, lifecycle.plan.id)).payload.__deleted, true);
     assert.equal((await expectCommand(token, bookA, body, 200)).record, null);
-    console.log(label + ' PASS lifecycle replay and stale sync');
+    pass('legacy_replay', 'lifecycle replay and stale sync');
 
     const capture = await seedCase(bookA, 'Capture offline staging');
     const link = await seedCase(bookA, 'Plan switch staging');
@@ -186,7 +190,7 @@ export async function verifyPr01(c, {
     const linkedId = (await row(bookA, capture.plan.id)).payload.completionActivityId;
     const linked = await checked('Read the canonical Capture', bookA.scoped.from('sales_activities').select('id').eq('id', linkedId).single());
     assert.equal(linked.id, linkedId);
-    console.log(label + ' PASS Capture offline, reconnect and receipt');
+    pass('offline_capture', 'Capture offline, reconnect and receipt');
 
     let release;
     const held = new Promise(resolve => { release = resolve; });
@@ -228,7 +232,7 @@ export async function verifyPr01(c, {
     await pending.waitFor({ state: 'hidden' });
     assert.equal((await row(bookA, link.plan.id)).payload.completionActivityId, link.activity);
     assertSingleReceipt(link.plan.id);
-    console.log(label + ' PASS Plan offline, uncertain acknowledgment, workspace switch and replay');
+    pass('offline_plan_workspace_switch', 'Plan offline, uncertain acknowledgment, workspace switch and replay');
 
     if (rehearseFlag) {
       await flag(false);
@@ -241,12 +245,15 @@ export async function verifyPr01(c, {
       await pending.waitFor();
       assert.equal((await row(bookA, rollback.plan.id)).payload.done, false);
       await flag(true);
-      await waitFor('flag resume acknowledgment', async () => (await row(bookA, rollback.plan.id))?.payload.done);
+      // The app retries parked completions on a 30-second interval, with
+      // up to 15 seconds allowed for each request.
+      await waitFor('flag resume acknowledgment', async () => (await row(bookA, rollback.plan.id))?.payload.done, 50_000);
+      assert.ok(requests.filter(req => req.planId === rollback.plan.id).length >= 2);
       await pending.waitFor({ state: 'hidden' });
       assertSingleReceipt(rollback.plan.id);
       const prior = await expectCommand(token, bookA, requests.find(req => req.planId === link.plan.id), 200);
       assert.equal(prior.receiptId, acceptedLink.receipt.receiptId);
-      console.log(label + ' PASS feature flag pause and resume');
+      pass('flag_rollback', 'feature flag pause and resume');
     } else {
       console.log('SKIPPED hosted feature-flag rehearsal. Supply --flag-rehearsal with an authorized staging operator.');
     }

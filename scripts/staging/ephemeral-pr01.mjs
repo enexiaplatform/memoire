@@ -23,7 +23,7 @@ const restOrigin = 'http://127.0.0.1:3301';
 const secret = randomBytes(40).toString('hex');
 const databasePassword = randomBytes(20).toString('hex');
 const targetMigration = '20261118053205_plan_completion_receipts.sql';
-const results = { label, sha, hosted: false, app: 'built frontend and real api/commercial.ts', credentials: 'run-local random values', migration: 'NOT RUN', integration: 'NOT RUN' };
+const results = { label, sha, hosted: false, app: 'built frontend and real api/commercial.ts', credentials: 'run-local random values', migration: 'NOT RUN', integration: 'NOT RUN', checks: {} };
 const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
 function key(role) {
   const input = encode({ alg: 'HS256', typ: 'JWT' }) + '.' + encode({ role, iss: 'ephemeral', exp: Math.floor(Date.now() / 1000) + 3600 });
@@ -157,6 +157,7 @@ try {
   await healthy(origin + '/__ephemeral_ready');
   await verifyPr01(c, {
     label, rehearseFlag: true, browserOptions: { channel: 'chrome' },
+    onPass: key => { results.checks[key] = 'PASS'; },
     attestTarget: async () => ({ commit: sha, planCompletionEnabled: process.env.PLAN_COMPLETION_ENABLED === 'true' }),
     setFlag: enabled => { process.env.PLAN_COMPLETION_ENABLED = String(enabled); },
     prepare: async (fixture, seedCase) => {
@@ -188,6 +189,7 @@ try {
         await new Promise(resolve => setTimeout(resolve, 250));
       }
       results.migration = 'PASS: pre-existing synthetic Plan and Activity rows unchanged';
+      results.checks.additive_migration = 'PASS';
       console.log(label, results.migration);
     },
   });
