@@ -90,7 +90,8 @@ test('Plan completion migration preserves populated rows and atomically scopes, 
     await db.query('UPDATE plan_items SET payload=$1,updated_at=clock_timestamp() WHERE user_id=$2 AND id=$3', [JSON.stringify(note), named, note.id]);
     const read = async () => (await db.query('SELECT payload FROM plan_items WHERE user_id=$1 AND id=$2', [named, note.id])).rows[0].payload;
     assert.deepEqual(await read(), first.record);
-    const reopened = { ...first.record, done: false, date: '2026-11-19', updatedAt: '2026-11-20T00:00:00.000Z' };
+    const updatedAt = new Date(Date.parse(first.record.updatedAt) + 1000).toISOString();
+    const reopened = { ...first.record, done: false, date: '2026-11-19', updatedAt };
     delete reopened.doneAt;
     await db.query('UPDATE plan_items SET payload=$1,updated_at=$2 WHERE user_id=$3 AND id=$4',
       [JSON.stringify(reopened), reopened.updatedAt, named, note.id]);
