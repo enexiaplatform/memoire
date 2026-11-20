@@ -69,6 +69,7 @@ test('changed identity, command, target, payload and source bindings conflict', 
     conflict('action_id_changed'));
   for (const patch of [{ targetRevision: 'target-2' }, { payloadRevision: 'payload-2' }, { command: 'list-commitments' }]) {
     const revisedAction = { ...action, ...patch };
+    assert.deepEqual(evaluate({ action: revisedAction }, old), conflict('action_binding_changed'));
     assert.deepEqual(evaluate({ action: revisedAction, approval: { ...approval, action: revisedAction } }, old),
       conflict('action_binding_changed'));
   }

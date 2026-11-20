@@ -161,6 +161,16 @@ export function evaluateAdvisoryActionReceipt(
   const actionBinding: ActionBinding = [action.identity.id, action.identity.revision, action.targetRevision,
     action.payloadRevision, action.command, actionClass, action.sourceNamespace ?? null];
   if (!validAction(actionBinding)) return rejection('invalid_action_binding');
+
+  const prior = isReceipt(previous) ? previous : null;
+  if (previous !== undefined && !prior) return rejection('malformed_receipt');
+  if (prior) {
+    if (!sameBinding(prior.scope, scope)) return conflict('scope_changed');
+    if (prior.action[0] !== actionBinding[0]) return conflict('action_id_changed');
+    if (prior.action[1] !== actionBinding[1]) return conflict('action_revision_changed');
+    if (!sameBinding(prior.action, actionBinding)) return conflict('action_binding_changed');
+  }
+
   if (actionClass === 'observation_intake' && context.grant?.status === 'active'
     && expiration(context.grant.authority?.expiresAt) === null) return rejection('invalid_context');
 
@@ -188,18 +198,13 @@ export function evaluateAdvisoryActionReceipt(
     scope, action: actionBinding, approval: approvalBinding, retryIdentity: retryKey(scope, actionBinding, approvalBinding),
     evaluatedAt: now, authorization,
   };
-  if (previous === undefined) return { status: 'evaluated', receipt };
-  if (!isReceipt(previous)) return rejection('malformed_receipt');
-  if (!sameBinding(previous.scope, scope)) return conflict('scope_changed');
-  if (previous.action[0] !== actionBinding[0]) return conflict('action_id_changed');
-  if (previous.action[1] !== actionBinding[1]) return conflict('action_revision_changed');
-  if (!sameBinding(previous.action, actionBinding)) return conflict('action_binding_changed');
-  if (approvalBinding ? !previous.approval || !sameBinding(previous.approval, approvalBinding) : previous.approval !== null) {
+  if (!prior) return { status: 'evaluated', receipt };
+  if (approvalBinding ? !prior.approval || !sameBinding(prior.approval, approvalBinding) : prior.approval !== null) {
     return conflict('approval_changed');
   }
-  if (previous.evaluatedAt > now) return conflict('stale_evaluation');
-  if (previous.authorization.decision !== authorization.decision
-    || (previous.authorization.decision === 'deny' && authorization.decision === 'deny'
-      && previous.authorization.reason !== authorization.reason)) return conflict('authorization_changed');
+  if (prior.evaluatedAt > now) return conflict('stale_evaluation');
+  if (prior.authorization.decision !== authorization.decision
+    || (prior.authorization.decision === 'deny' && authorization.decision === 'deny'
+      && prior.authorization.reason !== authorization.reason)) return conflict('authorization_changed');
   return { status: 'retry', receipt };
 }
