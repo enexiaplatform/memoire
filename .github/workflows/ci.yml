@@ -49,8 +49,8 @@ jobs:
 
   plan-completion-postgrest:
     name: Plan completion on PostgreSQL and PostgREST
-    runs-on: ubuntu-latest
-    timeout-minutes: 8
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     services:
       pg:
         image: pgvector/pgvector:pg16
@@ -79,7 +79,12 @@ jobs:
 
   plan-completion-ephemeral:
     name: PR-01 ephemeral Auth and browser integration
-    if: github.event_name == 'pull_request' && github.head_ref == 'codex/enexia-staging-foundation' && github.event.repository.visibility == 'public'
+    if: >-
+      github.event.repository.visibility == 'public' &&
+      ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository &&
+        (github.head_ref == 'codex/enexia-staging-foundation' || startsWith(github.head_ref, 'codex/pr01-staging-'))) ||
+       (github.event_name == 'workflow_dispatch' && github.ref_type == 'branch' &&
+        (github.ref_name == 'codex/enexia-staging-foundation' || startsWith(github.ref_name, 'codex/pr01-staging-'))))
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     permissions:
@@ -99,17 +104,19 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm ci
+      - run: npx playwright install --with-deps chromium
       - name: Run disposable integration without repository secrets
         run: |
-          env -i PATH="$PATH" HOME="$HOME" CI=true GITHUB_SHA="$CANDIDATE_SHA"             PLAN_TEST_PG_CONTAINER="$PG_CONTAINER" node scripts/staging/ephemeral-pr01.mjs
+          env -i PATH="$PATH" HOME="$HOME" CI=true GITHUB_SHA="$CANDIDATE_SHA" \
+            PLAN_TEST_PG_CONTAINER="$PG_CONTAINER" node scripts/staging/ephemeral-pr01.mjs
         env:
-          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha }}
+          CANDIDATE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
           PG_CONTAINER: ${{ job.services.pg.id }}
       - uses: actions/upload-artifact@v4
         if: always()
