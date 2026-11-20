@@ -125,14 +125,15 @@ function sameBinding(left: readonly unknown[], right: readonly unknown[]) {
   return left.length === right.length && right.every((value, index) => left[index] === value);
 }
 
-function isReceipt(value: unknown): value is AdvisoryActionReceipt {
+export function isAdvisoryActionReceipt(value: unknown): value is AdvisoryActionReceipt {
   if (!record(value) || !keys(value, ['version', 'kind', 'executionOutcome', 'scope', 'action', 'approval',
     'retryIdentity', 'evaluatedAt', 'authorization'])) return false;
+  const approval = validApproval(value.approval) ? value.approval : null;
   return value.version === 1 && value.kind === 'advisory-action-evaluation' && value.executionOutcome === 'unknown'
     && validScope(value.scope) && validAction(value.action)
-    && (value.approval === null || (value.action[5] === 'consequential_action' && validApproval(value.approval)))
+    && (value.approval === null || (value.action[5] === 'consequential_action' && approval !== null))
     && timestamp(value.evaluatedAt) && validAuthorization(value.authorization)
-    && value.retryIdentity === retryKey(value.scope, value.action, value.approval);
+    && value.retryIdentity === retryKey(value.scope, value.action, approval);
 }
 
 function rejection(reason: RejectionReason) {
@@ -162,7 +163,7 @@ export function evaluateAdvisoryActionReceipt(
     action.payloadRevision, action.command, actionClass, action.sourceNamespace ?? null];
   if (!validAction(actionBinding)) return rejection('invalid_action_binding');
 
-  const prior = isReceipt(previous) ? previous : null;
+  const prior = isAdvisoryActionReceipt(previous) ? previous : null;
   if (previous !== undefined && !prior) return rejection('malformed_receipt');
   if (prior) {
     if (!sameBinding(prior.scope, scope)) return conflict('scope_changed');
