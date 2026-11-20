@@ -1,4 +1,5 @@
 {
+  "git": { "deploymentEnabled": { "codex/sdk-lint-repeatability": false } },
   "trailingSlash": false,
   "headers": [
     {
