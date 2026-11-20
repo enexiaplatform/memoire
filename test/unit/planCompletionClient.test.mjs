@@ -49,8 +49,9 @@ registerHooks({
     return nextLoad(url, context);
   },
 });
-const { confirmExistingPlanActivity, countPendingPlanCompletions, flushPendingPlanCompletions } =
+const { confirmExistingPlanActivity, flushPendingPlanCompletions, getPlanCompletionJournalStatus } =
   await import('../../src/services/planCompletionClient.ts');
+const countPendingPlanCompletions = ownerId => getPlanCompletionJournalStatus(ownerId).pending;
 
 test('offline intent waits for its Capture dependency and a valid receipt, including a lost response', async () => {
   const requests = [];
@@ -161,4 +162,30 @@ test('API checks explicit scope, derives actor/session from verified token, and 
   assert.equal(invoked.args.p_workspace, named);
   env.PLAN_COMPLETION_ENABLED = 'false';
   assert.equal((await call({ authorization: 'Bearer ' + jwt, 'x-memoire-data-workspace': named })).data.status, 'paused');
+});
+
+test('unreadable journal entries remain preserved without blocking a valid queued completion', async () => {
+  const key = 'memoire.plan-completion.v1.' + login + '.' + randomUUID();
+  entries.set(key, '{unreadable');
+  online = false;
+  saved = undefined;
+  const requests = [];
+  globalThis.fetch = async (_url, init) => {
+    requests.push(JSON.parse(init.body));
+    return Response.json(receipt);
+  };
+  try {
+    assert.equal((await confirmExistingPlanActivity(login, item, record, activity, record)).status, 'pending');
+    assert.deepEqual(getPlanCompletionJournalStatus(login), { pending: 1, unreadable: 1 });
+    assert.deepEqual(getPlanCompletionJournalStatus(randomUUID()), { pending: 0, unreadable: 0 });
+    online = true;
+    await flushPendingPlanCompletions(login);
+    assert.equal(requests.length, 1);
+    assert.equal(saved.completionActivityId, activity);
+    assert.deepEqual(getPlanCompletionJournalStatus(login), { pending: 0, unreadable: 1 });
+    assert.equal(entries.get(key), '{unreadable');
+  } finally {
+    online = true;
+    entries.delete(key);
+  }
 });

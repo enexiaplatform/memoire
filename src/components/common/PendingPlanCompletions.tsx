@@ -2,28 +2,30 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuthContext } from '../../auth/authContext';
 import { dataOwnerForLogin } from '../../services/activeWorkspaceScope';
 import {
-  countPendingPlanCompletions,
+  getPlanCompletionJournalStatus,
   flushPendingPlanCompletions,
   PLAN_COMPLETION_CHANGED,
 } from '../../services/planCompletionClient';
 import { hasLocalSampleData } from '../../utils/dataMode';
 
+const emptyJournal = { pending: 0, unreadable: 0 };
+
 export function PendingPlanCompletions() {
   const { user } = useAuthContext();
   const ownerId = hasLocalSampleData() ? undefined : dataOwnerForLogin(user?.id);
-  const [pending, setPending] = useState(0);
+  const [{ pending, unreadable }, setJournal] = useState(emptyJournal);
   const [conflict, setConflict] = useState(false);
   const running = useRef(false);
 
-  const count = useCallback(() => {
+  const readJournal = useCallback(() => {
     try {
-      return ownerId ? countPendingPlanCompletions(ownerId) : 0;
+      return ownerId ? getPlanCompletionJournalStatus(ownerId) : emptyJournal;
     } catch {
-      return 0;
+      return emptyJournal;
     }
   }, [ownerId]);
   const flush = useCallback(async () => {
-    if (!ownerId || running.current || navigator.onLine === false || !count()) return;
+    if (!ownerId || running.current || navigator.onLine === false || !readJournal().pending) return;
     running.current = true;
     try {
       await flushPendingPlanCompletions(ownerId);
@@ -32,13 +34,13 @@ export function PendingPlanCompletions() {
     } finally {
       running.current = false;
     }
-  }, [count, ownerId]);
+  }, [readJournal, ownerId]);
 
   useEffect(() => {
-    setPending(count());
+    setJournal(readJournal());
     setConflict(false);
     const changed = (event: Event) => {
-      setPending(count());
+      setJournal(readJournal());
       if ((event as CustomEvent).detail?.status === 'conflict') setConflict(true);
     };
     const sync = () => { void flush(); };
@@ -53,9 +55,9 @@ export function PendingPlanCompletions() {
       window.removeEventListener('online', sync);
       window.clearInterval(timer);
     };
-  }, [count, flush]);
+  }, [readJournal, flush]);
 
-  if (!ownerId || (!pending && !conflict)) return null;
+  if (!ownerId || (!pending && !unreadable && !conflict)) return null;
   return (
     <div role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-sm text-amber-900">
       {pending > 0 && (
@@ -69,6 +71,9 @@ export function PendingPlanCompletions() {
           An Activity link could not be confirmed. Review the current item in Plan.{' '}
           <button type="button" className="font-semibold underline" onClick={() => setConflict(false)}>Dismiss</button>
         </p>
+      )}
+      {unreadable > 0 && (
+        <p>Some saved Plan completions could not be read. Check the current item in Plan before trying again.</p>
       )}
     </div>
   );

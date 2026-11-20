@@ -34,10 +34,13 @@ async function scenario(named, surface) {
     let dropped = false;
     let releaseResponse;
     const firstResponse = new Promise(resolve => { releaseResponse = resolve; });
-    await context.addInitScript(({ auth, book }) => {
+    const corruptKey = (named ? 'memoire.workspace.v1.' + login + '.' + workspace + '.' : '')
+      + 'memoire.plan-completion.v1.' + login + '.' + randomUUID();
+    await context.addInitScript(({ auth, book, corruptKey }) => {
       localStorage.setItem('memoire.supabase.auth', JSON.stringify(auth));
       if (book) sessionStorage.setItem('memoire.active-data-workspace.v1:' + auth.user.id, book);
-    }, { auth: session, book: named ? workspace : null });
+      if (corruptKey) localStorage.setItem(corruptKey, '{unreadable');
+    }, { auth: session, book: named ? workspace : null, corruptKey: fromPlan ? corruptKey : null });
     await context.route('https://memoire-plan.example.test/**', async route => {
       const req = route.request();
       const path = new URL(req.url()).pathname;
@@ -83,6 +86,7 @@ async function scenario(named, surface) {
     page.on('pageerror', error => errors.push(error.message));
     if (fromPlan) {
       await page.goto(base + '/app/timeline?view=upcoming');
+      await page.getByText('Some saved Plan completions could not be read.', { exact: false }).waitFor();
       const box = page.getByRole('checkbox', { name: 'Mark "Call the fixture account" done', exact: true });
       await box.click().catch(async error => { console.error((await page.locator('body').innerText()).slice(-3000)); throw error; });
       await page.getByLabel('Activity entry').selectOption(activityId);
@@ -104,6 +108,7 @@ async function scenario(named, surface) {
       await page.getByRole('button', { name: 'Link and mark done', exact: true }).click();
       await page.getByRole('checkbox', { name: 'Mark "Call the fixture account" not done', exact: true }).waitFor();
       assert.deepEqual(requests[0], requests[1]);
+      assert.equal(await page.evaluate(key => localStorage.getItem(key), corruptKey), '{unreadable');
     } else {
       await page.goto(base + '/app/capture?mode=quick&account=Fixture%20account');
       await page.locator('label').filter({ hasText: 'What happened?' }).locator('textarea').fill('Completed the scheduled account call.')

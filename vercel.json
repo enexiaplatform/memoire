@@ -1,4 +1,5 @@
 {
+  "git": { "deploymentEnabled": { "codex/plan-journal-recovery": false } },
   "trailingSlash": false,
   "headers": [
     {
