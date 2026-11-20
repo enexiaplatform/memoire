@@ -154,11 +154,13 @@ test('API checks explicit scope, derives actor/session from verified token, and 
   const named = randomUUID();
   assert.equal((await call({ authorization: 'Bearer ' + jwt, 'x-memoire-data-workspace': named }, { ...body, actorId: randomUUID() })).code, 400);
   assert.equal(invoked, undefined);
-  const ok = await call({ authorization: 'Bearer ' + jwt, 'x-memoire-data-workspace': named });
+  const ok = await call({ authorization: 'Bearer ' + jwt, 'x-memoire-data-workspace': named.toUpperCase() });
   assert.equal(ok.code, 200);
   assert.equal(invoked.args.p_actor, login);
   assert.equal(invoked.args.p_session, session);
   assert.equal(invoked.args.p_workspace, named);
+  assert.equal((await call({ authorization: 'Bearer ' + jwt, 'x-memoire-data-workspace': 'default' })).code, 200);
+  assert.equal(invoked.args.p_workspace, null);
   env.PLAN_COMPLETION_ENABLED = 'false';
   assert.equal((await call({ authorization: 'Bearer ' + jwt, 'x-memoire-data-workspace': named })).data.status, 'paused');
 });
