@@ -3,7 +3,11 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "exports": {".": {"types": "./dist/index.d.ts", "import": "./dist/index.js"}, "./agent-runtime": {"types": "./dist/agent-runtime.d.ts", "import": "./dist/agent-runtime.js"}},
+  "exports": {
+    ".": {"types": "./dist/index.d.ts", "import": "./dist/index.js"},
+    "./agent-runtime": {"types": "./dist/agent-runtime.d.ts", "import": "./dist/agent-runtime.js"},
+    "./agent-action-receipt": {"types": "./dist/agent-action-receipt.d.ts", "import": "./dist/agent-action-receipt.js"}
+  },
   "files": ["dist", "README.md"],
   "scripts": {"build": "tsc -p tsconfig.json"}
 }

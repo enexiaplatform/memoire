@@ -19,6 +19,10 @@ const actionClasses = {
 export type AgentCommand = keyof typeof actionClasses;
 export type AgentActionClass = (typeof actionClasses)[AgentCommand];
 
+export function classifyAgentCommand(command: unknown): AgentActionClass | null {
+  return typeof command === 'string' && Object.hasOwn(actionClasses, command) ? actionClasses[command as AgentCommand] : null;
+}
+
 export interface AgentActionIdentity {
   readonly id: string;
   /** The host changes this revision whenever the command, target or payload changes. */
@@ -71,20 +75,25 @@ export interface AgentAuthorizationContext {
   readonly now: number;
 }
 
-type DenyReason = 'invalid_request' | 'invalid_context' | 'action_unavailable' | 'unknown_action'
-  | 'workspace_mismatch' | 'principal_mismatch' | 'grant_required' | 'grant_scope_mismatch'
-  | 'grant_revoked' | 'grant_expired' | 'namespace_denied' | 'approval_required'
-  | 'approval_mismatch' | 'approval_inactive' | 'approval_expired' | 'action_disabled';
+const denyReasons = ['invalid_request', 'invalid_context', 'action_unavailable', 'unknown_action',
+  'workspace_mismatch', 'principal_mismatch', 'grant_required', 'grant_scope_mismatch',
+  'grant_revoked', 'grant_expired', 'namespace_denied', 'approval_required',
+  'approval_mismatch', 'approval_inactive', 'approval_expired', 'action_disabled'] as const;
+export type AgentAuthorizationDenyReason = (typeof denyReasons)[number];
 
-function samePrincipal(left: AgentPrincipal, right: AgentPrincipal) {
+export function isAgentAuthorizationDenyReason(value: unknown): value is AgentAuthorizationDenyReason {
+  return typeof value === 'string' && denyReasons.some(reason => reason === value);
+}
+
+export function samePrincipal(left: AgentPrincipal, right: AgentPrincipal) {
   return left.accountId === right.accountId && left.agentId === right.agentId;
 }
 
-function sameWorkspace(left: AgentWorkspaceScope, right: AgentWorkspaceScope) {
+export function sameWorkspace(left: AgentWorkspaceScope, right: AgentWorkspaceScope) {
   return left.workspaceId === right.workspaceId && left.dataOwnerId === right.dataOwnerId;
 }
 
-function isActionReference(input: unknown): input is AgentActionIdentity {
+export function isActionReference(input: unknown): input is AgentActionIdentity {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return false;
   const keys = Object.keys(input);
   const candidate = input as Partial<AgentActionIdentity>;
@@ -93,7 +102,7 @@ function isActionReference(input: unknown): input is AgentActionIdentity {
     && typeof candidate.revision === 'string' && candidate.revision.length > 0 && candidate.revision.length <= 200;
 }
 
-function sameAction(left: AgentAction, right: AgentAction) {
+export function sameAction(left: AgentAction, right: AgentAction) {
   return left.identity.id === right.identity.id && left.identity.revision === right.identity.revision
     && left.command === right.command && left.sourceNamespace === right.sourceNamespace
     && samePrincipal(left.principal, right.principal) && sameWorkspace(left.workspace, right.workspace);
@@ -105,7 +114,7 @@ function sameAction(left: AgentAction, right: AgentAction) {
  */
 export function evaluateAgentAuthorization(reference: unknown, context: AgentAuthorizationContext) {
   const { action, principal, workspace, now, grant, approval } = context;
-  const actionClass = action && Object.hasOwn(actionClasses, action.command) ? actionClasses[action.command] : null;
+  const actionClass = classifyAgentCommand(action?.command);
   const audit = {
     version: 1 as const,
     accountId: principal.accountId,
@@ -117,7 +126,7 @@ export function evaluateAgentAuthorization(reference: unknown, context: AgentAut
     actionClass,
     evaluatedAt: Number.isSafeInteger(now) && now >= 0 ? now : null,
   };
-  const deny = (reason: DenyReason) => ({ decision: 'deny', reason, audit } as const);
+  const deny = (reason: AgentAuthorizationDenyReason) => ({ decision: 'deny', reason, audit } as const);
   const allow = () => ({ decision: 'allow', audit } as const);
 
   if (!isActionReference(reference)) return deny('invalid_request');

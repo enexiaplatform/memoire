@@ -1,5 +1,5 @@
 {
-  "git": { "deploymentEnabled": { "codex/agent-authorization-foundation": false } },
+  "git": { "deploymentEnabled": { "codex/agent-authorization-foundation": false, "codex/advisory-action-receipt": false } },
   "trailingSlash": false,
   "headers": [
     {
