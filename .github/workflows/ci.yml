@@ -74,5 +74,7 @@ jobs:
       - if: failure()
         run: docker logs plan-completion-postgrest
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: node scripts/verify-plan-completion-browser.mjs
+      - name: Smoke test with the runner's installed Chrome
+        run: |
+          google-chrome --version
+          node scripts/verify-plan-completion-browser.mjs --system-chrome

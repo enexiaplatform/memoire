@@ -10,7 +10,7 @@ process.env.VITE_ENABLE_NATIVE_WORKSPACES = 'true';
 const server = await createServer({ configFile: false, envDir: false, plugins: [react()], server: { host: '127.0.0.1', port: 0 } });
 await server.listen();
 const base = server.resolvedUrls.local[0].replace(/\/$/, '');
-const browser = await chromium.launch();
+const browser = await chromium.launch(process.argv.includes('--system-chrome') ? { channel: 'chrome' } : {});
 const login = '11111111-1111-4111-8111-111111111111';
 const workspace = 'bbbbbbbb-1111-4111-8111-111111111111';
 const owner = '33333333-3333-4333-8333-333333333333';
