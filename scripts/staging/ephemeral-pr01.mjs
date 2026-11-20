@@ -10,12 +10,7 @@ const label = 'EPHEMERAL INTEGRATION';
 const artifact = 'ephemeral-evidence/pr01.json';
 const sha = process.env.GITHUB_SHA;
 const container = process.env.PLAN_TEST_PG_CONTAINER;
-assert.match(sha ?? '', /^[a-f0-9]{40}$/);
-assert.match(container ?? '', /^[a-f0-9]{64}$/);
-assert.equal(process.env.CI, 'true');
-assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), sha);
-assert.ok(!Object.keys(process.env).some(key => /^(SUPABASE|VERCEL|VITE_|MEMOIRE_STAGING|PGPASSWORD)/.test(key)), 'Use a clean process without application credentials.');
-assert.ok(!readdirSync('.').some(name => /^\.env(?:$|\.(?!example$))/.test(name)), 'A checked-out dotenv file could introduce external credentials.');
+const validSha = /^[a-f0-9]{40}$/.test(sha ?? '');
 
 const origin = 'http://127.0.0.1:4175';
 const authOrigin = 'http://127.0.0.1:9999';
@@ -23,7 +18,17 @@ const restOrigin = 'http://127.0.0.1:3301';
 const secret = randomBytes(40).toString('hex');
 const databasePassword = randomBytes(20).toString('hex');
 const targetMigration = '20261118053205_plan_completion_receipts.sql';
-const results = { label, sha, hosted: false, app: 'built frontend and real api/commercial.ts', credentials: 'run-local random values', migration: 'NOT RUN', integration: 'NOT RUN', checks: {} };
+const results = { label, sha: validSha ? sha : null, hosted: false, app: 'built frontend and real api/commercial.ts', credentials: 'run-local random values', preflight: 'NOT RUN', migration: 'NOT RUN', integration: 'NOT RUN', checks: {} };
+const services = [];
+
+function assertIsolatedRunner() {
+  assert.ok(validSha, 'An exact Git commit is required.');
+  assert.match(container ?? '', /^[a-f0-9]{64}$/, 'A disposable PostgreSQL container ID is required.');
+  assert.equal(process.env.CI, 'true', 'Use a CI process.');
+  assert.ok(!Object.keys(process.env).some(key => /^(SUPABASE|VERCEL|VITE_|MEMOIRE_STAGING|PGPASSWORD)/i.test(key)), 'Use a clean process without application credentials.');
+  assert.ok(!readdirSync('.').some(name => /^\.env(?:$|\.(?!example$))/i.test(name)), 'A checked-out dotenv file could introduce external credentials.');
+  assert.equal(execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim(), sha, 'Checkout differs from the requested commit.');
+}
 const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
 function key(role) {
   const input = encode({ alg: 'HS256', typ: 'JWT' }) + '.' + encode({ role, iss: 'ephemeral', exp: Math.floor(Date.now() / 1000) + 3600 });
@@ -39,15 +44,22 @@ const c = {
   },
 };
 
+function docker(args, options = {}) {
+  return execFileSync('docker', ['--host', 'unix:///var/run/docker.sock', ...args], options);
+}
+
 function sql(input) {
-  return execFileSync('docker', ['exec', '-i', container, 'psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres'], {
-    input, encoding: 'utf8', maxBuffer: 2_000_000,
+  return docker(['exec', '-i', container, 'psql', '-X', '-qAt', '-v', 'ON_ERROR_STOP=1', '-U', 'postgres'], {
+    input, encoding: 'utf8', maxBuffer: 2_000_000, timeout: 20_000,
   }).trim();
 }
 
 function service(name, image, variables) {
   const options = Object.entries(variables).flatMap(([key, value]) => ['-e', key + '=' + value]);
-  execFileSync('docker', ['run', '-d', '--name', name, '--network', 'host', ...options, image], { stdio: 'ignore' });
+  const id = docker(['run', '-d', '--name', name, '--network', 'host', ...options, image],
+    { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 90_000 }).trim();
+  assert.match(id, /^[a-f0-9]{64}$/);
+  services.push(id);
 }
 
 async function healthy(url) {
@@ -112,6 +124,8 @@ function serve(handler) {
 
 let server;
 try {
+  assertIsolatedRunner();
+  results.preflight = 'PASS';
   sql(`
     CREATE ROLE anon NOLOGIN;
     CREATE ROLE authenticated NOLOGIN;
@@ -156,7 +170,7 @@ try {
   server = serve(handler).listen(4175, '127.0.0.1');
   await healthy(origin + '/__ephemeral_ready');
   await verifyPr01(c, {
-    label, rehearseFlag: true, browserOptions: { channel: 'chrome' },
+    label, rehearseFlag: true,
     onPass: key => { results.checks[key] = 'PASS'; },
     attestTarget: async () => ({ commit: sha, planCompletionEnabled: process.env.PLAN_COMPLETION_ENABLED === 'true' }),
     setFlag: enabled => { process.env.PLAN_COMPLETION_ENABLED = String(enabled); },
@@ -195,11 +209,16 @@ try {
   });
   results.integration = 'PASS: Auth/revocation, offline Capture/Plan, switch with withheld acknowledgment, legacy/replay and flag pause/resume';
 } catch (error) {
-  results.integration = 'FAIL: see job log for the failing step';
-  console.error(error.message);
-  for (const name of ['memoire-ephemeral-auth', 'memoire-ephemeral-rest']) {
+  if (results.preflight === 'PASS') {
+    results.integration = 'FAIL: see job log for the failing step';
+    console.error(error.message.replaceAll(secret, '[redacted]').replaceAll(databasePassword, '[redacted]'));
+  } else {
+    results.preflight = 'FAIL';
+    console.error('Ephemeral runner refused the environment or checkout.');
+  }
+  for (const id of services) {
     try {
-      const log = execFileSync('docker', ['logs', '--tail', '20', name], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] });
+      const log = docker(['logs', '--tail', '20', id], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'], timeout: 5_000 });
       console.error(log.replaceAll(secret, '[redacted]').replaceAll(databasePassword, '[redacted]'));
     } catch { /* Service may not have started. */ }
   }
@@ -209,7 +228,7 @@ try {
   writeFileSync(artifact, JSON.stringify(results, null, 2) + '\n');
   server?.closeAllConnections();
   server?.close();
-  for (const name of ['memoire-ephemeral-rest', 'memoire-ephemeral-auth']) {
-    try { execFileSync('docker', ['rm', '-f', name], { stdio: 'ignore' }); } catch { /* VM is disposable. */ }
+  for (const id of services.reverse()) {
+    try { docker(['rm', '-f', id], { stdio: 'ignore', timeout: 10_000 }); } catch { /* VM is disposable. */ }
   }
 }
