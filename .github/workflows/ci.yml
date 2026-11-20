@@ -49,8 +49,8 @@ jobs:
 
   plan-completion-postgrest:
     name: Plan completion on PostgreSQL and PostgREST
-    runs-on: ubuntu-latest
-    timeout-minutes: 8
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
     services:
       pg:
         image: pgvector/pgvector:pg16
@@ -74,5 +74,7 @@ jobs:
       - if: failure()
         run: docker logs plan-completion-postgrest
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
-      - run: node scripts/verify-plan-completion-browser.mjs
+      - name: Smoke test with the runner's installed Chrome
+        run: |
+          google-chrome --version
+          node scripts/verify-plan-completion-browser.mjs --system-chrome
