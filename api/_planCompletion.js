@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { getBearerToken, verifyUserToken } from './_auth.js';
 import { getSupabaseUrl, getSupabaseServiceRoleKey } from './_env.js';
 import { enforceRateLimit } from './_rateLimit.js';
-import { DATA_WORKSPACE_HEADER } from './_workspaceScope.js';
+import { parseWorkspaceSelector } from './_workspaceScope.js';
 
 const isUuid = value => typeof value === 'string' && /^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(value);
 const text = (value, max) => typeof value === 'string' && value.length <= max;
@@ -30,10 +30,8 @@ export function createPlanCompletionHandler({
       return reply(405, { status: 'method_not_allowed' });
     }
     if (env.PLAN_COMPLETION_ENABLED !== 'true') return reply(503, { status: 'paused' });
-    const workspace = req.headers?.[DATA_WORKSPACE_HEADER];
-    if ((workspace !== 'default' && !isUuid(workspace)) || req.headers?.['x-memoire-workspace'] !== undefined) {
-      return reply(400, { status: 'invalid_scope' });
-    }
+    const selection = parseWorkspaceSelector(req.headers, { explicitDefault: true });
+    if (selection.kind === 'invalid') return reply(400, { status: 'invalid_scope' });
     const body = req.body;
     if (!body || Object.keys(body).sort().join(',') !== fields
       || !isUuid(body.requestId) || !isUuid(body.activityId)
@@ -50,7 +48,7 @@ export function createPlanCompletionHandler({
       if (!user) return reply(401, { status: 'unauthorized' });
       if (!rateLimit(req, 'plan-completion-owner', user.id, 60).allowed) return reply(429, { status: 'rate_limited' });
       const { data, error } = await database().rpc('memoire_confirm_plan_completion', {
-        p_actor: user.id, p_session: session, p_workspace: workspace === 'default' ? null : workspace,
+        p_actor: user.id, p_session: session, p_workspace: selection.workspaceId,
         p_request: body.requestId, p_activity: body.activityId, p_plan_id: body.planId,
         p_derived_key: body.derivedKey, p_expected: body.expectedUpdatedAt, p_label: body.label, p_tag: body.tag,
       });

@@ -1,4 +1,5 @@
 {
+  "git": { "deploymentEnabled": { "codex/workspace-selector-contract": false } },
   "trailingSlash": false,
   "headers": [
     {
