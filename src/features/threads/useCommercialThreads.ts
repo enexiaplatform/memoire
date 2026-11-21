@@ -1,6 +1,6 @@
 import type { CommercialIncident } from '../../domain/commercialKernel/commercialIncident';
 import { loadCommercialIncidents, loadCommercialIncidentsForWorkspace, INCIDENT_UPDATED_EVENT } from '../../services/commercialKernel/incidentStore';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthContext } from '../../auth/authContext';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
@@ -35,6 +35,9 @@ import type { PlanRecord } from '../../utils/weeklyPlan';
 import {attachMoneyConsequenceContext,deriveMoneyConsequences} from '../../domain/commercialKernel/deriveMoneyConsequences';
 import {todayDateKey} from '../../utils/safeDate';
 import {canonicalReviewOutcomes} from '../../utils/outcomeScoreboard';
+import { getActiveWorkspaceScope } from '../../services/activeWorkspaceScope';
+import { captureLocalWorkspaceScope } from '../../services/localWorkspaceOwner';
+import { indexCommercialReviewSources } from './commercialReviewSources';
 
 /**
  * Resolves the workspace's commercial threads and the recommendations the
@@ -44,86 +47,116 @@ import {canonicalReviewOutcomes} from '../../utils/outcomeScoreboard';
  * disagree are worse than either alone: the seller cannot tell which one is
  * stale, so they stop believing both.
  */
-export function useCommercialThreads() {
-  const { user } = useAuthContext();
+export function useCommercialThreads(requireFreshWorkspace = false) {
+  const { user, session } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+  const activeWorkspace = getActiveWorkspaceScope();
+  const nativeWorkspace = activeWorkspace?.dataOwnerId === dataUserId ? activeWorkspace : null;
+  const workspaceName = sampleDataActive ? 'Sample workspace' : nativeWorkspace?.name ?? 'Personal workspace';
+  const snapshotScope = JSON.stringify([session?.user.id, dataUserId, nativeWorkspace?.workspaceId, sampleDataActive]);
 
-  const [workspace, setWorkspace] = useState(() => getCachedSalesWorkspaceData(dataUserId));
-  const [loading, setLoading] = useState(() => !getCachedSalesWorkspaceData(dataUserId));
-  const [refreshToken, setRefreshToken] = useState(0);
-  const [targets, setTargets] = useState<CommercialTarget[]>(() => loadTargets());
+  const [snapshot, setSnapshot] = useState(() => {
+    const data = requireFreshWorkspace ? null : getCachedSalesWorkspaceData(dataUserId);
+    return { scope: snapshotScope, data, unavailable: false };
+  });
+  const workspace = snapshot.scope === snapshotScope ? snapshot.data : null;
+  const workspaceUnavailable = snapshot.scope === snapshotScope && snapshot.unavailable;
+  const loading = !workspace && !workspaceUnavailable;
+  const retry = useRef<{ scope: string; run: () => void } | null>(null);
+  const [retryScope, setRetryScope] = useState<string | null>(null);
+  const attentionRetrying = retryScope === snapshotScope;
+  const [targetState, setTargetState] = useState(() => ({scope: snapshotScope, rows: loadTargets()}));
+  const targets = useMemo(() => targetState.scope === snapshotScope ? targetState.rows : [], [targetState, snapshotScope]);
   const [incidentState, setIncidentState] = useState<{scope: string; rows: CommercialIncident[]; error: string} | null>(null);
-  const incidentScope = `${dataUserId || 'local'}:${sampleDataActive}`;
+  const incidentScope = snapshotScope;
   const incidents = useMemo(() => incidentState?.scope === incidentScope ? incidentState.rows : [], [incidentState, incidentScope]);
   const attentionError = incidentState?.scope === incidentScope ? incidentState.error : '';
-  const [planItems, setPlanItems] = useState<PlanRecord[]>([]);
+  const [planState, setPlanState] = useState<{scope: string; rows: PlanRecord[]; error?: string} | null>(null);
+  const planItems = useMemo(() => planState?.scope === snapshotScope ? planState.rows : [], [planState, snapshotScope]);
+  const attentionLoading = attentionRetrying || loading || (!workspaceUnavailable && (planState?.scope !== snapshotScope || incidentState?.scope !== snapshotScope));
+  const attentionUnavailable = workspaceUnavailable || Boolean(planState?.scope === snapshotScope && planState.error);
+  const retryAttention = useCallback(() => {
+    if (retry.current?.scope === snapshotScope) retry.current.run();
+  }, [snapshotScope]);
 
   useEffect(() => {
     let active = true;
     void loadTargetsForWorkspace(dataUserId, sampleDataActive)
-      .then((loaded) => { if (active) setTargets(loaded); })
+      .then((rows) => { if (active) setTargetState({scope: snapshotScope, rows}); })
       .catch(() => undefined);
 
     const onTargets = (event: Event) => {
       const detail = (event as CustomEvent<CommercialTarget[]>).detail;
-      if (Array.isArray(detail)) setTargets(detail);
+      if (Array.isArray(detail)) setTargetState({scope: snapshotScope, rows: detail});
     };
     window.addEventListener(TARGETS_UPDATED_EVENT, onTargets);
     return () => { active = false; window.removeEventListener(TARGETS_UPDATED_EVENT, onTargets); };
-  }, [dataUserId, sampleDataActive]);
+  }, [dataUserId, sampleDataActive, snapshotScope]);
 
   useEffect(() => {
     let active = true;
-    void loadSalesWorkspaceData(dataUserId)
-      .then((data) => { if (active) setWorkspace(data); })
-      .catch(() => undefined)
-      .finally(() => { if (active) setLoading(false); });
-    return () => { active = false; };
-    // `sampleDataActive` belongs in the dependency list even though it is not
-    // read in the effect: loading or clearing the demo replaces the whole
-    // workspace without changing the user id, and without this the thread list
-    // stayed empty over a demo pipeline full of deals.
-  }, [dataUserId, sampleDataActive, refreshToken]);
+    let inFlight = false;
+    let refreshQueued = false;
+    const failed = { workspace: false, incidents: false, plan: false };
+    let firstRead = true;
+    const isCurrentScope = captureLocalWorkspaceScope(dataUserId);
+    const isCurrent = () => active && isCurrentScope();
+    const incidentError = 'Incident responses could not be loaded. This review is incomplete.';
+    setRetryScope(null);
 
-  useEffect(() => {
-    let active = true;
-    void loadCommercialIncidentsForWorkspace(dataUserId, sampleDataActive)
-      .then(rows => { if (active) setIncidentState({scope: incidentScope, rows, error: ''}); })
-      .catch(() => { if (active) setIncidentState({scope: incidentScope, rows: [], error: 'Incident responses could not be loaded. This review is incomplete.'}); });
-    return () => { active = false; };
-  }, [dataUserId, sampleDataActive, incidentScope, refreshToken]);
+    const load = async (manual = false) => {
+      if (!isCurrent() || (manual && !Object.values(failed).some(Boolean))) return;
+      if (inFlight) {
+        if (manual) setRetryScope(snapshotScope);
+        else refreshQueued = true;
+        return;
+      }
+      inFlight = true;
+      if (manual) setRetryScope(snapshotScope);
+      const fresh = requireFreshWorkspace && (firstRead || manual);
+      firstRead = false;
+      const read = async <T,>(source: keyof typeof failed, fetch: () => Promise<T>, receive: (result: T | null) => void) => {
+        if (manual && !failed[source]) return;
+        const result = await fetch().catch(() => null);
+        if (!isCurrent()) return;
+        failed[source] = result === null;
+        receive(result);
+      };
+      await Promise.allSettled([
+        read('workspace', () => loadSalesWorkspaceData(dataUserId, { force: fresh, waitForCloud: fresh }), data =>
+          setSnapshot({ scope: snapshotScope, data, unavailable: data === null })),
+        read('incidents', () => loadCommercialIncidentsForWorkspace(dataUserId, sampleDataActive), rows =>
+          setIncidentState({ scope: snapshotScope, rows: rows ?? [], error: rows ? '' : incidentError })),
+        read('plan', () => loadPlanItemsForWorkspace(dataUserId, sampleDataActive), rows =>
+          setPlanState({ scope: snapshotScope, rows: rows ?? [], error: rows ? undefined : 'Plan is unavailable.' })),
+      ]);
+      inFlight = false;
+      if (!isCurrent()) return;
+      setRetryScope(null);
+      if (refreshQueued) {
+        refreshQueued = false;
+        void load();
+      }
+    };
 
-  useEffect(() => {
+    retry.current = { scope: snapshotScope, run: () => { void load(true); } };
+    const bump = () => { void load(); };
     const onIncidents = () => {
+      if (!isCurrent()) return;
       try {
         const rows = loadCommercialIncidents().filter(row => row.userId === (dataUserId || null) && Boolean(row.isSample) === sampleDataActive);
-        setIncidentState({scope: incidentScope, rows, error: ''});
-      } catch { setIncidentState({scope: incidentScope, rows: [], error: 'Incident responses could not be loaded. This review is incomplete.'}); }
+        setIncidentState({ scope: snapshotScope, rows, error: failed.incidents ? incidentError : '' });
+      } catch {
+        failed.incidents = true;
+        setIncidentState({ scope: snapshotScope, rows: [], error: incidentError });
+      }
     };
-    window.addEventListener(INCIDENT_UPDATED_EVENT, onIncidents);
-    return () => window.removeEventListener(INCIDENT_UPDATED_EVENT, onIncidents);
-  }, [dataUserId, sampleDataActive, incidentScope]);
-
-  // The Plan holds the promises a capture made, and the ledger holds the ones
-  // recorded by hand. A thread that asks "what is scheduled to move this?" has
-  // to see both, or it warns about silence over a promise due on Tuesday.
-  useEffect(() => {
-    let active = true;
-    void loadPlanItemsForWorkspace(dataUserId, sampleDataActive)
-      .then((records) => { if (active) setPlanItems(records); })
-      .catch(() => undefined);
-    return () => { active = false; };
-  }, [dataUserId, sampleDataActive, refreshToken]);
-
-  // A commitment ticked anywhere changes both the thread's waiting party and
-  // the recommendations about it, so the kernel's own events drive the refresh.
-  useEffect(() => {
-    const bump = () => setRefreshToken((token) => token + 1);
     const onPlanItems = (event: Event) => {
       const detail = (event as CustomEvent<PlanRecord[]>).detail;
-      if (Array.isArray(detail)) setPlanItems(detail);
+      if (isCurrent() && Array.isArray(detail)) setPlanState({scope: snapshotScope, rows: detail});
     };
+    window.addEventListener(INCIDENT_UPDATED_EVENT, onIncidents);
     window.addEventListener(COMMITMENTS_UPDATED_EVENT, bump);
     window.addEventListener(THREADS_UPDATED_EVENT, bump);
     window.addEventListener(CONDITION_UPDATED_EVENT, bump);
@@ -131,7 +164,11 @@ export function useCommercialThreads() {
     window.addEventListener(DEPENDENCY_UPDATED_EVENT, bump);
     window.addEventListener(TIMING_UPDATED_EVENT, bump);
     window.addEventListener(PLAN_ITEMS_UPDATED_EVENT, onPlanItems);
+    void load();
     return () => {
+      active = false;
+      retry.current = null;
+      window.removeEventListener(INCIDENT_UPDATED_EVENT, onIncidents);
       window.removeEventListener(COMMITMENTS_UPDATED_EVENT, bump);
       window.removeEventListener(THREADS_UPDATED_EVENT, bump);
       window.removeEventListener(CONDITION_UPDATED_EVENT, bump);
@@ -140,7 +177,7 @@ export function useCommercialThreads() {
       window.removeEventListener(TIMING_UPDATED_EVENT, bump);
       window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, onPlanItems);
     };
-  }, []);
+  }, [dataUserId, requireFreshWorkspace, sampleDataActive, snapshotScope]);
 
   const commitments = useMemo(
     () => mergePlanCommitments(workspace?.commitments || [], {
@@ -161,6 +198,9 @@ export function useCommercialThreads() {
       commitments,
     });
   }, [commitments, workspace]);
+  const attentionSources = useMemo(() => workspace
+    ? indexCommercialReviewSources(workspace, threads, commitments, sampleDataActive)
+    : undefined, [workspace, threads, commitments, sampleDataActive]);
 
   // Coverage feeds the two quarter-level rules. Built here rather than in the
   // Money page so Today can raise a coverage warning without Money being open -
@@ -282,7 +322,13 @@ export function useCommercialThreads() {
   return {
     threads,
     attentionError,
+    attentionLoading,
+    attentionUnavailable,
+    attentionRetrying,
+    retryAttention,
     attentionScope: incidentScope,
+    attentionSources,
+    workspaceName,
     recommendations,
     /**
      * The ledger plus the promises derived from the Plan and from captures.

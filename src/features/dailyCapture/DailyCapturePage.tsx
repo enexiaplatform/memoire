@@ -42,7 +42,7 @@ import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportuni
 import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import { suggestQuoteStateChanges, type QuoteStateSuggestion } from '../../utils/quoteStateSuggestions';
 import { updateQuote, type QuoteRecord } from '../../services/quoteStore';
-import { confirmExistingPlanActivity, PLAN_COMPLETION_CHANGED } from '../../services/planCompletionClient';
+import { confirmExistingPlanActivity, PLAN_COMPLETION_CHANGED, type PlanCompletionOutcome } from '../../services/planCompletionClient';
 import { loadPlanItemsForWorkspace, savePlanItem } from '../../services/planItemStore';
 import {
   findClosablePlanItems,
@@ -366,6 +366,9 @@ export function DailyCapturePage() {
   const [quoteSuggestionMessage, setQuoteSuggestionMessage] = useState('');
   const [lastSavedActivity, setLastSavedActivity] = useState<SalesActivityRecord | null>(null);
   const [planRecords, setPlanRecords] = useState<PlanRecord[]>([]);
+  const [planFeedback, setPlanFeedback] = useState<{
+    owner: string; activityId: string; planId: string; date: string; status: 'saving' | 'pending' | 'confirmed' | 'conflict' | 'failed';
+  } | null>(null);
   const [planCloseDismissed, setPlanCloseDismissed] = useState(false);
   const [markedDoneKeys, setMarkedDoneKeys] = useState<string[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
@@ -1152,13 +1155,15 @@ export function DailyCapturePage() {
 
   useEffect(() => {
     const onCompletion = (event: Event) => {
-      const outcome = (event as CustomEvent).detail;
+      const outcome = (event as CustomEvent<PlanCompletionOutcome | undefined>).detail;
       if (outcome?.status === 'confirmed') {
-        const record = outcome.record as PlanRecord;
+        const record = outcome.record;
         setPlanRecords(current => [record, ...current.filter(row => row.id !== record.id)]);
-        setMessage(current => current === 'Plan completion saved on this device, waiting for workspace confirmation.'
-          ? 'Plan completion confirmed.' : current);
+        setPlanFeedback(current => current && current.owner === dataUserId && current.planId === record.id
+          && current.activityId === record.completionActivityId ? { ...current, date: record.date, status: 'confirmed' } : current);
       } else if (outcome?.status === 'conflict') {
+        setPlanFeedback(current => current && current.owner === dataUserId && current.planId === outcome.planId
+          && current.activityId === outcome.activityId && current.status !== 'confirmed' ? { ...current, status: 'conflict' } : current);
         void loadPlanItemsForWorkspace(dataUserId, sampleDataActive).then(setPlanRecords).catch(() => {});
       }
     };
@@ -1175,15 +1180,16 @@ export function DailyCapturePage() {
     });
     if (!record) return;
     if (dataUserId && !sampleDataActive) {
+      const attempt = { owner: dataUserId, activityId: lastSavedActivity.id, planId: record.id, date: record.date, status: 'saving' } as const;
+      setPlanFeedback(attempt);
       try {
         const result = await confirmExistingPlanActivity(
           dataUserId, item, record, lastSavedActivity.id, planRecords.find(row => row.id === record.id),
         );
-        if (result.status === 'confirmed') setMessage('Plan completion confirmed.');
-        if (result.status === 'pending') setMessage('Plan completion saved on this device, waiting for workspace confirmation.');
-        if (result.status === 'conflict') setMessage('The Activity link could not be confirmed. Review the latest item in Plan.');
+        setPlanFeedback(current => current === attempt ? { ...attempt, status: result.status } : current);
       } catch (error) {
-        if (!(error instanceof WorkspaceScopeChangedError)) setMessage('Could not save the completion to this device. Free storage and try again.');
+        const failure = error instanceof WorkspaceScopeChangedError ? null : { ...attempt, status: 'failed' } as const;
+        setPlanFeedback(current => current === attempt ? failure : current);
       }
       return;
     }
@@ -1191,6 +1197,9 @@ export function DailyCapturePage() {
     setMarkedDoneKeys((current) => [...current, closableKey(item)]);
     trackProductEvent('commitment_completed');
   }, [dataUserId, lastSavedActivity, planRecords, sampleDataActive]);
+
+  const currentPlanFeedback = planFeedback?.owner === dataUserId
+    && planFeedback?.activityId === lastSavedActivity?.id ? planFeedback : null;
 
   // Quote state is not a fact read out of the note - it is an existing quote
   // advancing its own lifecycle - so it stays its own suggestion rather than
@@ -1691,6 +1700,24 @@ export function DailyCapturePage() {
           onIgnore={() => handleIgnoreActivityLink(lastSavedActivity)}
           onUnlink={() => handleUnlinkActivity(lastSavedActivity)}
         />
+      )}
+
+      {currentPlanFeedback && (
+        <div role="status" className="rounded-panel bg-tint-blue-bg px-4 py-3 text-sm text-tint-blue-ink">
+          <p>{{
+            saving: 'Saving Plan completion…',
+            pending: 'Plan completion saved on this device, waiting for workspace confirmation.',
+            confirmed: 'Plan completion confirmed.',
+            conflict: 'The Activity link could not be confirmed. Review the latest item in Plan.',
+            failed: 'Could not save the completion to this device. Free storage and try again.',
+          }[currentPlanFeedback.status]}</p>
+          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 font-semibold underline">
+            <Link to={`/app/timeline?view=upcoming&date=${encodeURIComponent(currentPlanFeedback.date)}`}>Review in Plan</Link>
+            {currentPlanFeedback.status === 'confirmed' && (
+              <Link to={`/app/timeline?view=history&activityId=${encodeURIComponent(currentPlanFeedback.activityId)}`}>View linked activity</Link>
+            )}
+          </div>
+        </div>
       )}
 
       {lastSavedActivity && !planCloseDismissed && (planScheduledEntries.length > 0 || closablePlanItems.length > 0) && (

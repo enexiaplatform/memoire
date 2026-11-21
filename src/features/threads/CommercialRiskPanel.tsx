@@ -6,6 +6,9 @@ import { AlertTriangle, Info } from 'lucide-react';
 import type { Severity } from '../../domain/commercialKernel/policyEngine';
 import type { RankedRecommendation } from '../../domain/commercialKernel/rankRecommendations';
 import { SavedByMemoirePrompt } from '../value/SavedByMemoirePrompt';
+import { resolveCommercialReviewSources, type ReviewSources } from './commercialReviewSources';
+import { readReviewPlanOrigin } from '../../utils/reviewPlanDraft';
+import { todayDateKey } from '../../utils/safeDate';
 
 const severityTone: Record<Severity, string> = {
   critical: 'border-red-200 bg-red-50/60',
@@ -62,6 +65,13 @@ export function CommercialRiskPanel({
   title = 'Going silent',
   attention = false,
   loadError = '',
+  loading = false,
+  unavailable = false,
+  retrying = false,
+  onRetryEvidence,
+  workspaceName,
+  reviewSources,
+  planDraftScope,
 }: {
   /**
    * Ranked by the kernel, and rendered in the order it hands them over. This
@@ -73,6 +83,13 @@ export function CommercialRiskPanel({
   title?: string;
   attention?: boolean;
   loadError?: string;
+  loading?: boolean;
+  unavailable?: boolean;
+  retrying?: boolean;
+  onRetryEvidence?: () => void;
+  workspaceName?: string;
+  reviewSources?: ReviewSources;
+  planDraftScope?: string;
 }) {
   const [explaining, setExplaining] = useState('');
   const [capacity, setCapacity] = useState(3);
@@ -83,37 +100,37 @@ export function CommercialRiskPanel({
   // Measured once per mount, and only when there is something to see: the pair
   // that matters is risks shown against risks acted on, and counting empty
   // renders would make the ratio meaningless.
-  const shown = recommendations.length;
+  const shown = loading || unavailable ? 0 : recommendations.length;
   useEffect(() => {
     if (shown > 0) trackProductEvent('commercial_risk_viewed');
   }, [shown]);
-
-  if (recommendations.length === 0 && !attention) {
-    return (
-      <section className="rounded-xl border border-emerald-100 bg-emerald-50/50 p-4 shadow-sm" aria-label={title}>
-        <h2 className="text-sm font-bold text-ink">Nothing is going silent</h2>
-        <p className="mt-1 text-xs leading-5 text-gray-600">
-          Every commercial thread has a next commitment, and nothing is overdue.
-        </p>
-      </section>
-    );
-  }
 
   const included = new Set([...budget.chosen, ...budget.suggested].map(item => item.id));
   const visible = attention ? (showAll ? recommendations : recommendations.filter(item => included.has(item.id))) : recommendations.slice(0, limit);
 
   return (
-    <section className="rounded-panel bg-white shadow-panel p-4" aria-label={title}>
+    <section className="rounded-panel bg-white shadow-panel p-4" aria-label={title} aria-busy={retrying || (loading && !unavailable)}>
       <div className="flex items-center gap-2">
         <AlertTriangle className="h-4 w-4 text-amber-600" />
         <h2 className="text-sm font-bold text-ink">{title}</h2>
-        <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-bold text-gray-600">
+        {!loading && !unavailable && <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-bold text-gray-600">
           {recommendations.length}
-        </span>
+        </span>}
       </div>
-
+      {workspaceName && <p className="mt-1 break-words text-xs text-muted">{workspaceName}</p>}
+      {(retrying || unavailable || loadError) && onRetryEvidence && (
+        <button type="button" onClick={onRetryEvidence} disabled={loading}
+          className="mt-2 min-h-11 rounded-lg border border-line px-3 text-sm font-semibold text-brand-blue focus-visible:ring-2 focus-visible:ring-brand-blue disabled:opacity-70">
+          {retrying ? 'Retrying evidence…' : 'Retry evidence'}
+        </button>
+      )}
+      {retrying ? <p role="status" className="mt-2 text-sm text-muted">Refreshing workspace evidence…</p>
+        : unavailable ? <p role="alert" className="mt-2 text-sm text-tint-amber-ink">Workspace evidence is unavailable.</p>
+        : loading ? <p role="status" className="mt-2 text-sm text-muted">Loading workspace evidence…</p>
+        : <>
       {loadError && <p role="alert" className="mt-2 text-sm text-tint-amber-ink">{loadError}</p>}
-      {attention && <div className="mt-3 space-y-2 text-sm text-muted">
+      {recommendations.length === 0 && !loadError && <p className="mt-2 text-sm text-muted">No review proposals in the loaded workspace.</p>}
+      {attention && (recommendations.length > 0 || selected.length > 0) && <div className="mt-3 space-y-2 text-sm text-muted">
         <p>Choose what you have room to review. Selection lasts while this panel is open and does not assign, schedule or complete work.</p>
         <label className="flex items-center gap-2">Attention budget
           <select aria-label="Attention budget" value={capacity} onChange={event => setCapacity(Number(event.target.value))} className="rounded-lg border border-line bg-white p-2 text-ink">
@@ -125,15 +142,18 @@ export function CommercialRiskPanel({
         {budget.unavailableIds.length > 0 && <p role="status">{budget.unavailableIds.length} earlier choices are no longer in the current reading. No completion is implied.</p>}
         <details><summary className="cursor-pointer text-brand-blue">How the order works</summary><p>Urgency, then unblocking, then evidence, then recorded value. Dates break remaining ties. An open incident without its own due date gets no invented deadline. Suggestions are never selected for you.</p></details>
         <button type="button" className="font-semibold text-brand-blue" onClick={() => setShowAll(!showAll)}>{showAll ? 'Show this budget' : 'Review all candidates'}</button>
-        {recommendations.length === 0 && <p>No review candidates in the loaded records.</p>}
       </div>}
       <ul className="mt-3 space-y-2">
-        {visible.map((item) => (
+        {visible.map((item) => {
+          const origin = planDraftScope && item.accountName && (item.threadId || item.opportunityId || item.commitmentId)
+            && item.sourceRecordIds.every(id => typeof reviewSources?.get(id) === 'string')
+            && readReviewPlanOrigin({ proposalId: item.id, sourceRecordIds: item.sourceRecordIds });
+          return (
           <li key={item.id} className={`rounded-lg border p-3 ${severityTone[item.severity]}`}>
             {attention && <label className="mb-2 flex items-center gap-2 text-sm text-ink"><input type="checkbox" checked={budget.chosen.some(row => row.id === item.id)}
               onChange={event => setSelected(previous => event.target.checked ? [...previous, item.id] : previous.filter(id => id !== item.id))} />Choose for this review: {item.candidateAction || item.recommendedAction}</label>}
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <p className="min-w-0 flex-1 text-sm leading-5 text-gray-900">{item.reasonText}</p>
+              <p className="min-w-0 flex-1 break-words text-sm leading-5 text-gray-900">{item.reasonText}</p>
               <div className="flex shrink-0 items-center gap-1.5">
                 {/* Said once, on the one it applies to. A list where every row
                     is labelled is a list with no first row. */}
@@ -151,6 +171,13 @@ export function CommercialRiskPanel({
             {item.question && <p className="mt-2 text-sm font-semibold text-ink">{item.question}</p>}
 
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              {origin && (
+                <Link to={`/app/timeline?view=upcoming&date=${todayDateKey()}`}
+                  state={{ reviewPlanDraft: { ...origin, scope: planDraftScope } }}
+                  className="inline-flex min-h-11 items-center rounded-lg border border-line px-3 text-sm font-semibold text-brand-blue focus-visible:ring-2 focus-visible:ring-brand-blue">
+                  Plan follow-up<span className="sr-only"> for {item.accountName}</span>
+                </Link>
+              )}
               <Link
                 to={item.href}
                 onClick={() => trackProductEvent('commercial_risk_acted_on')}
@@ -160,8 +187,9 @@ export function CommercialRiskPanel({
               </Link>
               <button
                 type="button"
+                aria-expanded={explaining === item.id}
                 onClick={() => setExplaining(explaining === item.id ? '' : item.id)}
-                className="inline-flex min-h-[24px] items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-800"
+                className="inline-flex min-h-11 items-center gap-1 rounded text-xs font-semibold text-gray-600 hover:text-gray-800 focus-visible:ring-2 focus-visible:ring-brand-blue"
               >
                 <Info className="h-3 w-3" />
                 Why am I seeing this?
@@ -170,7 +198,12 @@ export function CommercialRiskPanel({
             </div>
 
             {explaining === item.id && (
-              <dl className="mt-2 rounded-lg bg-white/70 p-2 text-[11px] leading-5 text-gray-600 ring-1 ring-gray-100">
+              <dl className="mt-2 break-words rounded-lg bg-white/70 p-3 text-xs leading-5 text-gray-600 ring-1 ring-gray-100">
+                <div className="mb-1.5">
+                  <dt className="font-bold text-ink">Review proposal</dt>
+                  <dd>{item.candidateAction || item.recommendedAction}</dd>
+                  <dd>{selected.includes(item.id) ? 'Selected for this review' : 'Suggested for human review'}</dd>
+                </div>
                 {/* Why it sits where it sits, in sentences. There is no score to
                     show, because the order is decided by named dimensions in a
                     fixed precedence rather than by a weighted total. */}
@@ -190,19 +223,23 @@ export function CommercialRiskPanel({
                     {urgencyLabel[item.urgency]} · {unblockingLabel[item.unblocking]} · {evidenceLabel[item.evidence]}
                   </dd>
                 </div>
-                <div className="flex gap-2">
-                  <dt className="font-bold text-gray-500">Rule:</dt>
-                  <dd><code>{item.reasonCode}</code></dd>
-                </div>
-                {item.requirementId && <div className="flex gap-2"><dt className="font-bold text-gray-500">Requirement:</dt><dd>{item.requirementId} · {item.requirementRole?.replaceAll('_',' ')} · {item.conditionState}</dd></div>}
+                {item.requirementId && <div className="flex gap-2"><dt className="font-bold text-gray-500">Requirement status:</dt><dd>{item.requirementRole?.replaceAll('_',' ')} · {item.conditionState}</dd></div>}
                 <div className="flex gap-2">
                   <dt className="font-bold text-gray-500">Threshold:</dt>
                   <dd>{item.reasonCode === 'OUTCOME_REQUIREMENT_QUESTION' ? 'Explicitly marked required now' : item.threshold}</dd>
                 </div>
-                <div className="flex gap-2">
-                  <dt className="font-bold text-gray-500">From records:</dt>
-                  <dd className="truncate" title={item.sourceRecordIds.join(', ')}>
-                    {item.sourceRecordIds.join(', ')}
+                <div>
+                  <dt className="font-bold text-gray-500">Source evidence</dt>
+                  <dd>
+                    {item.sourceRecordIds.length ? (
+                      <ul className="list-disc space-y-0.5 pl-4">
+                        {resolveCommercialReviewSources(item.sourceRecordIds, reviewSources).map(source => (
+                          <li key={source.id}>{source.status === 'available' ? source.label
+                            : source.status === 'conflicting' ? 'Conflicting source references. Check the workspace records.'
+                            : 'Source details unavailable in this workspace.'}</li>
+                        ))}
+                      </ul>
+                    ) : 'No source record cited by this rule.'}
                   </dd>
                 </div>
                 <div className="flex gap-2">
@@ -215,7 +252,8 @@ export function CommercialRiskPanel({
               </dl>
             )}
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       {!attention && recommendations.length > visible.length && (
@@ -223,6 +261,7 @@ export function CommercialRiskPanel({
           +{recommendations.length - visible.length} more, in Review.
         </p>
       )}
+        </>}
     </section>
   );
 }

@@ -12,6 +12,7 @@ import type { PlanBoardWindow } from '../../domain/commercialKernel/derivePlanCo
 import { getPlanRange, planDateKeyToDate } from '../../utils/weeklyPlan';
 import { todayDateKey, isValidBusinessDate } from '../../utils/safeDate';
 import { formatCount } from '../../utils/numberFormat';
+import { readReviewPlanHandoff } from '../../utils/reviewPlanDraft';
 
 export type TimelineView = 'upcoming' | 'history';
 
@@ -46,6 +47,7 @@ export function TimelinePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const view = readView(searchParams.get('view'));
   const location = useLocation();
+  const reviewPlanDraft = readReviewPlanHandoff(location.state);
   const dateParam = searchParams.get('date');
   const requestedDate = isValidBusinessDate(dateParam) ? dateParam : null;
   // Seeded with the week the board opens on, so the panel above it is already
@@ -137,6 +139,7 @@ export function TimelinePage() {
               onRangeChange={setBoardWindow}
               onHeadingChange={setHeading}
               focusRequest={focusRequest}
+              reviewPlanDraft={reviewPlanDraft}
               beforeBoard={(
                 /* Handed the days the board is drawing, so it stops re-listing
                    the promises that board is about to show and counts them on

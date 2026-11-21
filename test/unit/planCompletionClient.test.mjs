@@ -168,7 +168,11 @@ test('API checks explicit scope, derives actor/session from verified token, and 
 
 test('unreadable journal entries remain preserved without blocking a valid queued completion', async () => {
   const key = 'memoire.plan-completion.v1.' + login + '.' + randomUUID();
+  const partialRequestId = randomUUID();
+  const partialKey = 'memoire.plan-completion.v1.' + login + '.' + partialRequestId;
+  const partial = JSON.stringify({ requestId: partialRequestId, planId: item.id });
   entries.set(key, '{unreadable');
+  entries.set(partialKey, partial);
   online = false;
   saved = undefined;
   const requests = [];
@@ -178,16 +182,58 @@ test('unreadable journal entries remain preserved without blocking a valid queue
   };
   try {
     assert.equal((await confirmExistingPlanActivity(login, item, record, activity, record)).status, 'pending');
-    assert.deepEqual(getPlanCompletionJournalStatus(login), { pending: 1, unreadable: 1 });
+    assert.deepEqual(getPlanCompletionJournalStatus(login), { pending: 1, unreadable: 2 });
     assert.deepEqual(getPlanCompletionJournalStatus(randomUUID()), { pending: 0, unreadable: 0 });
     online = true;
     await flushPendingPlanCompletions(login);
     assert.equal(requests.length, 1);
     assert.equal(saved.completionActivityId, activity);
-    assert.deepEqual(getPlanCompletionJournalStatus(login), { pending: 0, unreadable: 1 });
+    assert.deepEqual(getPlanCompletionJournalStatus(login), { pending: 0, unreadable: 2 });
     assert.equal(entries.get(key), '{unreadable');
+    assert.equal(entries.get(partialKey), partial);
   } finally {
     online = true;
     entries.delete(key);
+    entries.delete(partialKey);
+  }
+});
+
+test('default workspace requests with equal journal IDs in different accounts do not share an in-flight response', async () => {
+  const nextLogin = randomUUID();
+  const requestId = randomUUID();
+  const firstKey = 'memoire.plan-completion.v1.' + login + '.' + requestId;
+  const nextKey = 'memoire.plan-completion.v1.' + nextLogin + '.' + requestId;
+  const first = { requestId, activityId: activity, planId: item.id, derivedKey: null, expectedUpdatedAt: null, label: 'First', tag: null };
+  const next = { ...first, activityId: randomUUID(), label: 'Next' };
+  entries.set(firstKey, JSON.stringify(first));
+  entries.set(nextKey, JSON.stringify(next));
+
+  const requests = [];
+  let release;
+  const held = new Promise(resolve => { release = resolve; });
+  let announce;
+  const sent = new Promise(resolve => { announce = resolve; });
+  globalThis.fetch = async (_url, init) => {
+    requests.push(JSON.parse(init.body));
+    if (requests.length === 1) {
+      announce();
+      await held;
+    }
+    return Response.json({ status: 'paused' }, { status: 503 });
+  };
+  const firstFlush = flushPendingPlanCompletions(login);
+  await sent;
+  globalThis.__planTest.login = nextLogin;
+  const nextFlush = flushPendingPlanCompletions(nextLogin);
+  release();
+  try {
+    await Promise.all([firstFlush, nextFlush]);
+    assert.deepEqual(requests, [first, next]);
+    assert.equal(countPendingPlanCompletions(login), 1);
+    assert.equal(countPendingPlanCompletions(nextLogin), 1);
+  } finally {
+    globalThis.__planTest.login = login;
+    entries.delete(firstKey);
+    entries.delete(nextKey);
   }
 });
