@@ -224,6 +224,7 @@ export function SalesReviewsPage() {
             <div className="flex flex-col gap-4 border-t border-line-soft p-5">
               <CommercialRiskPanel key={attentionScope} recommendations={reviewRecommendations} attention loadError={attentionError}
                 loading={attentionLoading} unavailable={attentionUnavailable} retrying={attentionRetrying} onRetryEvidence={retryAttention}
+                planDraftScope={reviewUser && !reviewSample && !attentionError ? attentionScope : undefined}
                 workspaceName={workspaceName} reviewSources={attentionSources} title="Commercial attention" />
               <TeamCoordinationPanel key={'team-'+attentionScope} scope={reviewScope} commitments={teamCommitments} opportunities={teamWorkspace?.opportunities||[]}/>
               <SharedWorkspacesPanel key={'shared-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>

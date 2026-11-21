@@ -47,7 +47,7 @@ import { indexCommercialReviewSources } from './commercialReviewSources';
  * disagree are worse than either alone: the seller cannot tell which one is
  * stale, so they stop believing both.
  */
-export function useCommercialThreads() {
+export function useCommercialThreads(requireFreshWorkspace = false) {
   const { user, session } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
@@ -57,7 +57,7 @@ export function useCommercialThreads() {
   const snapshotScope = JSON.stringify([session?.user.id, dataUserId, nativeWorkspace?.workspaceId, sampleDataActive]);
 
   const [snapshot, setSnapshot] = useState(() => {
-    const data = getCachedSalesWorkspaceData(dataUserId);
+    const data = requireFreshWorkspace ? null : getCachedSalesWorkspaceData(dataUserId);
     return { scope: snapshotScope, data, unavailable: false };
   });
   const workspace = snapshot.scope === snapshotScope ? snapshot.data : null;
@@ -99,6 +99,7 @@ export function useCommercialThreads() {
     let inFlight = false;
     let refreshQueued = false;
     const failed = { workspace: false, incidents: false, plan: false };
+    let firstRead = true;
     const isCurrentScope = captureLocalWorkspaceScope(dataUserId);
     const isCurrent = () => active && isCurrentScope();
     const incidentError = 'Incident responses could not be loaded. This review is incomplete.';
@@ -113,6 +114,8 @@ export function useCommercialThreads() {
       }
       inFlight = true;
       if (manual) setRetryScope(snapshotScope);
+      const fresh = requireFreshWorkspace && (firstRead || manual);
+      firstRead = false;
       const read = async <T,>(source: keyof typeof failed, fetch: () => Promise<T>, receive: (result: T | null) => void) => {
         if (manual && !failed[source]) return;
         const result = await fetch().catch(() => null);
@@ -121,7 +124,7 @@ export function useCommercialThreads() {
         receive(result);
       };
       await Promise.allSettled([
-        read('workspace', () => loadSalesWorkspaceData(dataUserId), data =>
+        read('workspace', () => loadSalesWorkspaceData(dataUserId, { force: fresh, waitForCloud: fresh }), data =>
           setSnapshot({ scope: snapshotScope, data, unavailable: data === null })),
         read('incidents', () => loadCommercialIncidentsForWorkspace(dataUserId, sampleDataActive), rows =>
           setIncidentState({ scope: snapshotScope, rows: rows ?? [], error: rows ? '' : incidentError })),
@@ -174,7 +177,7 @@ export function useCommercialThreads() {
       window.removeEventListener(TIMING_UPDATED_EVENT, bump);
       window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, onPlanItems);
     };
-  }, [dataUserId, sampleDataActive, snapshotScope]);
+  }, [dataUserId, requireFreshWorkspace, sampleDataActive, snapshotScope]);
 
   const commitments = useMemo(
     () => mergePlanCommitments(workspace?.commitments || [], {

@@ -108,6 +108,39 @@ const scoped = await fetch(endpoint + '/plan_items?select=id,payload&id=eq.race'
 });
 assert.equal(scoped.status, 200);
 assert.equal((await scoped.json())[0].payload.completionActivityId, committed.record.completionActivityId);
+
+const owner = sql(`SELECT data_owner_id FROM memoire_private.workspace_data_owners WHERE workspace_id='${firstBook}';`);
+const followUpId = 'review-plan-' + 'f'.repeat(64);
+async function createFollowUp(token, workspace, label) {
+  const response = await fetch(endpoint + '/plan_items?on_conflict=user_id,id&select=id', {
+    method: 'POST', signal: AbortSignal.timeout(10_000),
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token,
+      'x-memoire-data-workspace': workspace, Prefer: 'resolution=ignore-duplicates,return=representation' },
+    body: JSON.stringify({
+      user_id: owner, id: followUpId, created_at: stamp, updated_at: stamp,
+      payload: { id: followUpId, date: '2026-11-21', label, done: false, createdAt: stamp, updatedAt: stamp,
+        reviewProposal: { proposalId: 'proposal', sourceRecordIds: ['evidence'] } },
+    }),
+  });
+  return { code: response.status, data: await response.json() };
+}
+for (const [token, scope] of [[identity, secondBook], [jwt('authenticated', stranger), firstBook]]) {
+  assert.equal((await createFollowUp(token, scope, 'Unauthorized draft')).code, 403);
+}
+const labels = ['First tab wording', 'Second tab wording'];
+const draftWrites = await Promise.all(labels.map(label => createFollowUp(identity, firstBook, label)));
+assert.deepEqual(draftWrites.map(result => result.code), [201, 201]);
+assert.deepEqual(draftWrites.map(result => result.data.length).sort(), [0, 1]);
+const readPlan = await fetch(endpoint + '/plan_items?select=payload&id=eq.' + followUpId, {
+  headers: { Authorization: 'Bearer ' + identity, 'x-memoire-data-workspace': firstBook },
+});
+assert.equal(readPlan.status, 200);
+const [planned] = await readPlan.json();
+assert.equal(planned.payload.label, labels[draftWrites.findIndex(result => result.data[0]?.id === followUpId)]);
+assert.equal(planned.payload.done, false);
+assert.equal(planned.payload.completionActivityId, undefined);
+assert.equal(sql('SELECT count(*) FROM public.sales_activities;'), '3');
+console.log('Review handoff: concurrent authenticated saves created one open Plan item and preserved the first wording.');
 sql("DELETE FROM auth.sessions WHERE id='" + session + "';");
 assert.equal((await rpc(request('revoked', activityA))).data.status, 'unauthorized');
 console.log('PostgREST: explicit workspace scope, direct role denial, revocation, separate concurrent requests, stable receipts, and unchanged Activity count verified.');

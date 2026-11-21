@@ -7,6 +7,8 @@ import type { Severity } from '../../domain/commercialKernel/policyEngine';
 import type { RankedRecommendation } from '../../domain/commercialKernel/rankRecommendations';
 import { SavedByMemoirePrompt } from '../value/SavedByMemoirePrompt';
 import { resolveCommercialReviewSources, type ReviewSources } from './commercialReviewSources';
+import { readReviewPlanOrigin } from '../../utils/reviewPlanDraft';
+import { todayDateKey } from '../../utils/safeDate';
 
 const severityTone: Record<Severity, string> = {
   critical: 'border-red-200 bg-red-50/60',
@@ -69,6 +71,7 @@ export function CommercialRiskPanel({
   onRetryEvidence,
   workspaceName,
   reviewSources,
+  planDraftScope,
 }: {
   /**
    * Ranked by the kernel, and rendered in the order it hands them over. This
@@ -86,6 +89,7 @@ export function CommercialRiskPanel({
   onRetryEvidence?: () => void;
   workspaceName?: string;
   reviewSources?: ReviewSources;
+  planDraftScope?: string;
 }) {
   const [explaining, setExplaining] = useState('');
   const [capacity, setCapacity] = useState(3);
@@ -140,7 +144,11 @@ export function CommercialRiskPanel({
         <button type="button" className="font-semibold text-brand-blue" onClick={() => setShowAll(!showAll)}>{showAll ? 'Show this budget' : 'Review all candidates'}</button>
       </div>}
       <ul className="mt-3 space-y-2">
-        {visible.map((item) => (
+        {visible.map((item) => {
+          const origin = planDraftScope && item.accountName && (item.threadId || item.opportunityId || item.commitmentId)
+            && item.sourceRecordIds.every(id => typeof reviewSources?.get(id) === 'string')
+            && readReviewPlanOrigin({ proposalId: item.id, sourceRecordIds: item.sourceRecordIds });
+          return (
           <li key={item.id} className={`rounded-lg border p-3 ${severityTone[item.severity]}`}>
             {attention && <label className="mb-2 flex items-center gap-2 text-sm text-ink"><input type="checkbox" checked={budget.chosen.some(row => row.id === item.id)}
               onChange={event => setSelected(previous => event.target.checked ? [...previous, item.id] : previous.filter(id => id !== item.id))} />Choose for this review: {item.candidateAction || item.recommendedAction}</label>}
@@ -163,6 +171,13 @@ export function CommercialRiskPanel({
             {item.question && <p className="mt-2 text-sm font-semibold text-ink">{item.question}</p>}
 
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              {origin && (
+                <Link to={`/app/timeline?view=upcoming&date=${todayDateKey()}`}
+                  state={{ reviewPlanDraft: { ...origin, scope: planDraftScope } }}
+                  className="inline-flex min-h-11 items-center rounded-lg border border-line px-3 text-sm font-semibold text-brand-blue focus-visible:ring-2 focus-visible:ring-brand-blue">
+                  Plan follow-up<span className="sr-only"> for {item.accountName}</span>
+                </Link>
+              )}
               <Link
                 to={item.href}
                 onClick={() => trackProductEvent('commercial_risk_acted_on')}
@@ -237,7 +252,8 @@ export function CommercialRiskPanel({
               </dl>
             )}
           </li>
-        ))}
+          );
+        })}
       </ul>
 
       {!attention && recommendations.length > visible.length && (

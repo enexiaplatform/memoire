@@ -103,6 +103,7 @@ export type SalesWorkspaceData = {
 
 type LoadOptions = {
   force?: boolean;
+  waitForCloud?: boolean;
 };
 
 /**
@@ -270,7 +271,7 @@ export async function loadSalesWorkspaceData(userId?: string | null, options: Lo
     throw error;
   });
 
-  const promise = userId ? withLocalFallback(tracked, unsettled, userId, assertCurrent) : tracked;
+  const promise = userId ? withLocalFallback(tracked, unsettled, userId, assertCurrent, options.waitForCloud) : tracked;
   setCachedWorkspacePromise(blobKey, promise);
 
   try {
@@ -328,6 +329,7 @@ function withLocalFallback(
   unsettled: Set<string>,
   userId: string,
   assertCurrent: () => void,
+  waitForCloud = false,
 ): Promise<SalesWorkspaceData> {
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -340,7 +342,7 @@ function withLocalFallback(
     }
 
     const firstPaint = setTimeout(() => {
-      if (settled) return;
+      if (settled || waitForCloud) return;
       void loadLocalCopy().then((local) => {
         if (settled) return;
         if (!isLocalCopyComplete(userId, local as unknown as Record<string, unknown>)) {
@@ -376,6 +378,10 @@ function withLocalFallback(
       if (settled) return;
       settled = true;
       clearTimeout(firstPaint);
+      if (waitForCloud) {
+        reject(new Error('The workspace did not finish loading in time.'));
+        return;
+      }
       console.warn(
         `[Memoire] Cloud workspace load exceeded ${WORKSPACE_LOAD_TIMEOUT_MS}ms; showing the browser copy. Still waiting on: ${
           Array.from(unsettled).join(', ') || 'nothing (the merge itself stalled)'

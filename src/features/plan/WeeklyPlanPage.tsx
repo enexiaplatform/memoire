@@ -56,10 +56,13 @@ import {
   type PlanRecord,
 } from '../../utils/weeklyPlan';
 import {
+  createReviewPlanItem,
   deletePlanItem,
   loadPlanItemsForWorkspace,
   savePlanItem,
 } from '../../services/planItemStore';
+import { ReviewPlanDraftPanel } from './ReviewPlanDraftPanel';
+import { reviewPlanStatus, type ReviewPlanHandoff } from '../../utils/reviewPlanDraft';
 import {
   applyPersonalPlanEdit,
   buildCaptureEditChanges,
@@ -152,6 +155,7 @@ export function WeeklyPlanPage({
   onHeadingChange,
   focusRequest = null,
   beforeBoard = null,
+  reviewPlanDraft,
 }: {
   embedded?: boolean;
   /**
@@ -174,12 +178,14 @@ export function WeeklyPlanPage({
    * twice - see the comment where it is raised.
    */
   focusRequest?: { date: string; seq: number } | null;
+  reviewPlanDraft?: ReviewPlanHandoff;
 } = {}) {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
   // The same recommendations Today and Pipeline Defense show. The plan reads
   // them rather than recomputing, so a risk cannot say one thing on one page
   // and something else on another.
-  const { recommendations } = useCommercialThreads();
+  const commercialThreads = useCommercialThreads(Boolean(reviewPlanDraft));
+  const { recommendations } = commercialThreads;
   const promiseLedger = useCommitmentLedger();
   const [showBacklog, setShowBacklog] = useState(false);
   const [dayLimits, setDayLimits] = useState<Record<string, number>>({});
@@ -1002,6 +1008,7 @@ export function WeeklyPlanPage({
     ? displayedBoard.days.filter((day) => !day.isWeekend || day.items.length > 0)
     : displayedBoard.days;
   const today = todayDateKey();
+  const reviewPlanRecords = new Map(records.filter(record => record.reviewProposal).map(record => [record.id, record]));
 
   return (
     /* The anchor the commitment panel above scrolls to. Its "On your Plan"
@@ -1009,6 +1016,22 @@ export function WeeklyPlanPage({
        on - so the one route from a promise to the place it can be ticked was a
        link that did nothing. */
     <div id={PLAN_BOARD_ANCHOR_ID} className={embedded ? 'flex flex-col gap-4' : 'mx-auto flex max-w-[1600px] flex-col gap-4 px-4 py-6 sm:px-6'}>
+      {reviewPlanDraft && (
+        <ReviewPlanDraftPanel key={JSON.stringify([reviewPlanDraft.scope, reviewPlanDraft.proposalId])}
+          origin={reviewPlanDraft} date={focusRequest?.date || today} scope={commercialThreads.attentionScope}
+          ownerId={isAuthenticated ? dataUserId : undefined} workspaceName={commercialThreads.workspaceName}
+          proposal={commercialThreads.rankedRecommendations.find(item => item.id === reviewPlanDraft.proposalId)}
+          sources={commercialThreads.attentionSources} loading={commercialThreads.attentionLoading}
+          unavailable={commercialThreads.attentionUnavailable || Boolean(commercialThreads.attentionError)}
+          records={commercialThreads.planItems} retry={commercialThreads.retryAttention}
+          onSave={async (ownerId, record) => {
+            const next = await createReviewPlanItem(ownerId, record);
+            if (!next) return false;
+            setRecords(next);
+            trackProductEvent('commitment_created');
+            return true;
+          }} />
+      )}
       {/* The week's ranked moves, then what is already promised, then the days.
           The importers stay below the board.
 
@@ -1222,9 +1245,12 @@ export function WeeklyPlanPage({
                 // A finished line says whether it reached Activity, and with
                 // whom - the record is the point of finishing it.
                 const recorded = item.done ? completionFor(item) : undefined;
+                const reviewRecord = reviewPlanRecords.get(item.id);
+                const status = reviewRecord && reviewPlanStatus(reviewRecord, recorded?.id);
                 const meta = [
                   item.channel,
-                  state === 'done'
+                  status ? { planned: 'Planned from Review', reported_done: 'Reported done', verified_done: 'Done · Activity link confirmed' }[status]
+                    : state === 'done'
                     ? (recorded ? `done${recorded.stakeholderName ? ` · with ${recorded.stakeholderName}` : ' · recorded'}` : 'done · not recorded')
                     : state === 'late'
                       /* A carried promise says the day it was actually owed.

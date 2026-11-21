@@ -23,6 +23,7 @@ const session = { user, access_token: 'fixture-token', refresh_token: 'fixture-r
 
 async function scenario(named, surface) {
   const fromPlan = surface === "Plan";
+  const fromReview = surface === 'Review';
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, timezoneId: 'UTC' });
   let releaseScope;
   const scopeGate = new Promise(resolve => { releaseScope = resolve; });
@@ -42,6 +43,9 @@ async function scenario(named, surface) {
       summary: 'Existing fixture call', activity_type: 'Call', account_name: 'Fixture account', tags: [], created_at: stamp, updated_at: stamp,
     };
     const requests = [];
+    const reviewWrites = [];
+    let duplicate;
+    let hideActivities = false;
     let completed = null;
     let dropped = false;
     let releaseResponse;
@@ -73,13 +77,30 @@ async function scenario(named, surface) {
         const status = await incidentResponse;
         return status === 200 ? respond([]) : respond({ message: 'Fixture evidence unavailable' }, status);
       }
-      if (path.endsWith('/plan_items')) return respond([{ id: plan.id, payload: completed || plan, updated_at: (completed || plan).updatedAt }]);
+      if (path.endsWith('/plan_items')) {
+        if (!fromReview) return respond([{ id: plan.id, payload: completed || plan, updated_at: (completed || plan).updatedAt }]);
+        const namedRequest = req.headers()['x-memoire-data-workspace'] === workspace;
+        if (req.method() === 'POST') {
+          const row = req.postDataJSON();
+          assert.match(req.headers().prefer, /resolution=ignore-duplicates/);
+          assert.equal(row.user_id, namedRequest ? owner : login);
+          assert.equal(row.payload.done, false);
+          assert.equal(row.payload.completionActivityId, undefined);
+          assert.ok(row.payload.reviewProposal.sourceRecordIds.length);
+          reviewWrites.push(row);
+          return respond({ id: row.id }, 201);
+        }
+        return respond([...(duplicate && !namedRequest ? [duplicate] : []),
+          ...reviewWrites.filter(row => row.user_id === (namedRequest ? owner : login))]);
+      }
       if (path.endsWith('/sales_activities')) {
+        if (fromReview && req.method() !== 'GET') throw new Error('Review may never write Activity.');
         if (req.method() === 'POST') {
           const payload = req.postDataJSON();
           existing = { ...existing, ...payload, created_at: stamp, updated_at: stamp };
           return respond(existing);
         }
+        if (fromReview) return respond(hideActivities ? [] : [{ ...existing, user_id: req.headers()['x-memoire-data-workspace'] === workspace ? owner : login }]);
         if (!named && req.headers()['x-memoire-data-workspace'] === workspace) {
           await workspaceDataGate;
           return respond([{ ...existing, id: 'aaaaaaaa-1111-4111-8111-111111111111', user_id: owner, account_name: 'Second workspace account' }]);
@@ -110,7 +131,97 @@ async function scenario(named, surface) {
     page.setDefaultTimeout(15_000);
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
-    if (fromPlan) {
+    if (fromReview) {
+      const draft = page.getByRole('region', { name: 'Review follow-up draft' });
+      const followUp = draft.getByRole('textbox', { name: 'Follow-up' });
+      const save = draft.getByRole('button', { name: 'Save to Plan' });
+      const loadReview = async () => {
+        await page.goto(base + '/app/reviews');
+        await page.getByText('What this leaves for next week', { exact: true }).click();
+        const action = page.getByRole('link', { name: 'Plan follow-up for Fixture account', exact: true }).first();
+        await action.waitFor();
+        return action;
+      };
+      await page.setViewportSize({ width: 390, height: 844 });
+      const action = await loadReview();
+      await action.press('Enter');
+      await followUp.waitFor();
+      assert.equal(await followUp.evaluate(input => document.activeElement === input), true);
+      assert.ok(await draft.evaluate(panel => panel.scrollWidth <= panel.clientWidth));
+      const original = await followUp.inputValue();
+      await draft.getByText('Personal workspace · Proposed', { exact: true }).waitFor();
+      await draft.getByText('Commercial thread · Fixture account', { exact: false }).waitFor();
+      const defaultDate = await draft.getByLabel('Plan date').inputValue();
+      await page.goBack();
+      await page.goForward();
+      await followUp.waitFor();
+      assert.equal(await followUp.inputValue(), original);
+      await draft.getByRole('link', { name: 'Cancel draft' }).click();
+      await draft.waitFor({ state: 'detached' });
+      assert.equal(reviewWrites.length, 0);
+
+      const staleAction = await loadReview();
+      hideActivities = true;
+      await staleAction.press('Enter');
+      await draft.getByRole('alert').filter({ hasText: 'proposal or its source evidence changed' }).waitFor();
+      assert.equal(await save.count(), 0);
+      assert.equal(reviewWrites.length, 0);
+      hideActivities = false;
+
+      const staleBeforeSave = await loadReview();
+      await staleBeforeSave.press('Enter');
+      await followUp.waitFor();
+      await followUp.fill('Unsubmitted wording');
+      hideActivities = true;
+      await save.click();
+      await draft.getByRole('alert').filter({ hasText: 'proposal or its source evidence changed' }).waitFor();
+      assert.equal(reviewWrites.length, 0);
+      hideActivities = false;
+
+      const switchAction = await loadReview();
+      await switchAction.press('Enter');
+      await followUp.waitFor();
+      await page.setViewportSize({ width: 1440, height: 1000 });
+      const switched = page.waitForURL('**/app/today');
+      await page.getByLabel('Switch workspace').selectOption(workspace);
+      await switched;
+      await page.goBack();
+      await draft.getByRole('alert').filter({ hasText: 'belongs to another workspace' }).waitFor();
+      assert.equal(await followUp.count(), 0);
+      assert.equal(reviewWrites.length, 0);
+
+      const returned = page.waitForURL('**/app/today');
+      await page.getByLabel('Switch workspace').selectOption('');
+      await returned;
+      duplicate = { id: 'matching-plan-item', updated_at: stamp, payload: {
+        ...plan, id: 'matching-plan-item', label: 'Check a previous follow-up', date: defaultDate,
+        linkedAccountName: 'Fixture account',
+      } };
+      const matchingAction = await loadReview();
+      await matchingAction.press('Enter');
+      await followUp.fill('Check a previous follow-up');
+      await draft.getByRole('alert').filter({ hasText: 'Possible duplicate' }).waitFor();
+      assert.ok(await save.isDisabled());
+      await followUp.fill('Follow up on the revised terms');
+      await draft.getByLabel('Plan date').fill(planDate);
+      await save.evaluate(button => { button.click(); button.click(); });
+      await draft.waitFor({ state: 'detached' });
+      await page.getByRole('checkbox', { name: 'Mark "Follow up on the revised terms" done', exact: true }).waitFor();
+      await page.getByText('Planned from Review', { exact: true }).waitFor();
+      assert.equal(new URL(page.url()).searchParams.get('date'), planDate);
+      assert.equal(reviewWrites.length, 1);
+      assert.equal(reviewWrites[0].payload.date, planDate);
+      assert.equal(reviewWrites[0].payload.linkedAccountName, 'Fixture account');
+      assert.equal(requests.length, 0);
+      await page.goBack();
+      await page.goForward();
+      await page.getByRole('checkbox', { name: 'Mark "Follow up on the revised terms" done', exact: true }).waitFor();
+      assert.equal(await draft.count(), 0);
+      assert.equal(reviewWrites.length, 1);
+      assert.deepEqual(errors, []);
+      console.log('Review follow-up draft verified: explicit save, duplicate warning, scoped evidence, weekend, and history.');
+      return;
+    } else if (fromPlan) {
       await page.goto(base + '/app/timeline?view=upcoming');
       const box = page.getByRole('checkbox', { name: 'Mark "Call the fixture account" done', exact: true });
       if (named) {
@@ -291,6 +402,7 @@ try {
       await scenario(named, "Plan");
       await scenario(named, "Capture");
     }
+    await scenario(false, 'Review');
   }
 } finally {
   await browser?.close();
