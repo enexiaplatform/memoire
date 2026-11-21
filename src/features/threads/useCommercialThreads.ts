@@ -107,7 +107,8 @@ export function useCommercialThreads() {
     const load = async (manual = false) => {
       if (!isCurrent() || (manual && !Object.values(failed).some(Boolean))) return;
       if (inFlight) {
-        if (!manual) refreshQueued = true;
+        if (manual) setRetryScope(snapshotScope);
+        else refreshQueued = true;
         return;
       }
       inFlight = true;
@@ -129,7 +130,7 @@ export function useCommercialThreads() {
       ]);
       inFlight = false;
       if (!isCurrent()) return;
-      if (manual) setRetryScope(null);
+      setRetryScope(null);
       if (refreshQueued) {
         refreshQueued = false;
         void load();
@@ -139,7 +140,7 @@ export function useCommercialThreads() {
     retry.current = { scope: snapshotScope, run: () => { void load(true); } };
     const bump = () => { void load(); };
     const onIncidents = () => {
-      if (!isCurrent() || inFlight) return;
+      if (!isCurrent()) return;
       try {
         const rows = loadCommercialIncidents().filter(row => row.userId === (dataUserId || null) && Boolean(row.isSample) === sampleDataActive);
         setIncidentState({ scope: snapshotScope, rows, error: failed.incidents ? incidentError : '' });
