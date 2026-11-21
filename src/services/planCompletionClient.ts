@@ -21,6 +21,17 @@ type Command = {
 };
 type Outcome = { status: 'pending' | 'conflict' } | { status: 'confirmed'; record: PlanRecord; transitioned: boolean };
 const inFlight = new Map<string, Promise<Outcome>>();
+const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+const nullableCommandFields = ['derivedKey', 'expectedUpdatedAt', 'label', 'tag'] as const;
+
+function isStoredCommand(value: unknown): value is Command {
+  if (!value || typeof value !== 'object' || Object.keys(value).length !== 7) return false;
+  const command = value as Record<string, unknown>;
+  return typeof command.requestId === 'string' && uuid.test(command.requestId)
+    && typeof command.activityId === 'string' && uuid.test(command.activityId)
+    && typeof command.planId === 'string' && command.planId.length > 0
+    && nullableCommandFields.every(field => command[field] === null || typeof command[field] === 'string');
+}
 
 function scopeFor(ownerId: string) {
   const assertCurrent = guardLocalWorkspaceScope(ownerId);
@@ -46,8 +57,8 @@ function readPendingJournal(scope: ReturnType<typeof scopeFor>) {
     const raw = scope.storage.getItem(key);
     if (raw === null) continue;
     try {
-      const command = JSON.parse(raw) as Command | null;
-      if (typeof command?.requestId === 'string' && command.requestId && key === scope.prefix + command.requestId) {
+      const command: unknown = JSON.parse(raw);
+      if (isStoredCommand(command) && key === scope.prefix + command.requestId) {
         commands.push(command);
         continue;
       }
@@ -130,7 +141,7 @@ async function send(ownerId: string, scope: ReturnType<typeof scopeFor>, command
 }
 
 function dispatch(ownerId: string, scope: ReturnType<typeof scopeFor>, command: Command) {
-  const flightKey = scope.workspace + ':' + command.requestId;
+  const flightKey = JSON.stringify([scope.login, scope.workspace, ownerId, command.requestId]);
   const busy = inFlight.get(flightKey);
   if (busy) return busy;
   const work = send(ownerId, scope, command).finally(() => inFlight.delete(flightKey));
