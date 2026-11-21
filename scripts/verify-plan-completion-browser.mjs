@@ -109,6 +109,18 @@ async function scenario(named, surface) {
       await page.getByRole('checkbox', { name: 'Mark "Call the fixture account" not done', exact: true }).waitFor();
       assert.deepEqual(requests[0], requests[1]);
       assert.equal(await page.evaluate(key => localStorage.getItem(key), corruptKey), '{unreadable');
+      const completions = requests.length;
+      await page.goto(base + '/app/reviews');
+      await page.getByText('What this leaves for next week', { exact: true }).click();
+      const attention = page.getByRole('region', { name: 'Commercial attention' });
+      const why = attention.getByRole('button', { name: 'Why am I seeing this?' }).first();
+      await why.click().catch(async error => { console.error((await page.locator('body').innerText()).slice(-3500)); throw error; });
+      await attention.getByText('Review proposal', { exact: true }).waitFor();
+      await attention.getByText((named ? 'Fixture workspace' : 'Personal workspace') + ' · Suggested for human review', { exact: true }).waitFor();
+      await attention.getByText('Commercial thread · Fixture account', { exact: false }).waitFor();
+      await why.click();
+      assert.equal(await attention.getByText('Review proposal', { exact: true }).count(), 0);
+      assert.equal(requests.length, completions);
     } else {
       await page.goto(base + '/app/capture?mode=quick&account=Fixture%20account');
       await page.locator('label').filter({ hasText: 'What happened?' }).locator('textarea').fill('Completed the scheduled account call.')

@@ -21,7 +21,6 @@ import {
   loadTargets,
   loadTargetsForWorkspace,
   TARGETS_UPDATED_EVENT,
-  type CommercialTarget,
 } from '../../services/commercialKernel/targetStore';
 import { COMMITMENTS_UPDATED_EVENT } from '../../services/commercialKernel/commitmentStore';
 import { CONDITION_UPDATED_EVENT } from '../../services/commercialKernel/conditionStore';
@@ -35,6 +34,8 @@ import type { PlanRecord } from '../../utils/weeklyPlan';
 import {attachMoneyConsequenceContext,deriveMoneyConsequences} from '../../domain/commercialKernel/deriveMoneyConsequences';
 import {todayDateKey} from '../../utils/safeDate';
 import {canonicalReviewOutcomes} from '../../utils/outcomeScoreboard';
+import { getActiveWorkspaceScope } from '../../services/activeWorkspaceScope';
+import { indexCommercialReviewSources } from './commercialReviewSources';
 
 /**
  * Resolves the workspace's commercial threads and the recommendations the
@@ -48,35 +49,44 @@ export function useCommercialThreads() {
   const { user } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+  const activeWorkspace = getActiveWorkspaceScope();
+  const nativeWorkspace = activeWorkspace?.dataOwnerId === dataUserId ? activeWorkspace : null;
+  const workspaceName = sampleDataActive ? 'Sample workspace' : nativeWorkspace?.name ?? 'Personal workspace';
+  const snapshotScope = JSON.stringify([dataUserId, nativeWorkspace?.workspaceId, sampleDataActive]);
 
-  const [workspace, setWorkspace] = useState(() => getCachedSalesWorkspaceData(dataUserId));
+  const [snapshot, setSnapshot] = useState(() => ({
+    scope: snapshotScope, data: getCachedSalesWorkspaceData(dataUserId),
+  }));
+  const workspace = snapshot.scope === snapshotScope ? snapshot.data : null;
   const [loading, setLoading] = useState(() => !getCachedSalesWorkspaceData(dataUserId));
   const [refreshToken, setRefreshToken] = useState(0);
-  const [targets, setTargets] = useState<CommercialTarget[]>(() => loadTargets());
+  const [targetState, setTargetState] = useState(() => ({scope: snapshotScope, rows: loadTargets()}));
+  const targets = useMemo(() => targetState.scope === snapshotScope ? targetState.rows : [], [targetState, snapshotScope]);
   const [incidentState, setIncidentState] = useState<{scope: string; rows: CommercialIncident[]; error: string} | null>(null);
-  const incidentScope = `${dataUserId || 'local'}:${sampleDataActive}`;
+  const incidentScope = snapshotScope;
   const incidents = useMemo(() => incidentState?.scope === incidentScope ? incidentState.rows : [], [incidentState, incidentScope]);
   const attentionError = incidentState?.scope === incidentScope ? incidentState.error : '';
-  const [planItems, setPlanItems] = useState<PlanRecord[]>([]);
+  const [planState, setPlanState] = useState<{scope: string; rows: PlanRecord[]} | null>(null);
+  const planItems = useMemo(() => planState?.scope === snapshotScope ? planState.rows : [], [planState, snapshotScope]);
 
   useEffect(() => {
     let active = true;
     void loadTargetsForWorkspace(dataUserId, sampleDataActive)
-      .then((loaded) => { if (active) setTargets(loaded); })
+      .then((rows) => { if (active) setTargetState({scope: snapshotScope, rows}); })
       .catch(() => undefined);
 
     const onTargets = (event: Event) => {
       const detail = (event as CustomEvent<CommercialTarget[]>).detail;
-      if (Array.isArray(detail)) setTargets(detail);
+      if (Array.isArray(detail)) setTargetState({scope: snapshotScope, rows: detail});
     };
     window.addEventListener(TARGETS_UPDATED_EVENT, onTargets);
     return () => { active = false; window.removeEventListener(TARGETS_UPDATED_EVENT, onTargets); };
-  }, [dataUserId, sampleDataActive]);
+  }, [dataUserId, sampleDataActive, snapshotScope]);
 
   useEffect(() => {
     let active = true;
     void loadSalesWorkspaceData(dataUserId)
-      .then((data) => { if (active) setWorkspace(data); })
+      .then((data) => { if (active) setSnapshot({ scope: snapshotScope, data }); })
       .catch(() => undefined)
       .finally(() => { if (active) setLoading(false); });
     return () => { active = false; };
@@ -84,7 +94,7 @@ export function useCommercialThreads() {
     // read in the effect: loading or clearing the demo replaces the whole
     // workspace without changing the user id, and without this the thread list
     // stayed empty over a demo pipeline full of deals.
-  }, [dataUserId, sampleDataActive, refreshToken]);
+  }, [dataUserId, snapshotScope, refreshToken]);
 
   useEffect(() => {
     let active = true;
@@ -111,10 +121,10 @@ export function useCommercialThreads() {
   useEffect(() => {
     let active = true;
     void loadPlanItemsForWorkspace(dataUserId, sampleDataActive)
-      .then((records) => { if (active) setPlanItems(records); })
+      .then((rows) => { if (active) setPlanState({scope: snapshotScope, rows}); })
       .catch(() => undefined);
     return () => { active = false; };
-  }, [dataUserId, sampleDataActive, refreshToken]);
+  }, [dataUserId, sampleDataActive, snapshotScope, refreshToken]);
 
   // A commitment ticked anywhere changes both the thread's waiting party and
   // the recommendations about it, so the kernel's own events drive the refresh.
@@ -122,7 +132,7 @@ export function useCommercialThreads() {
     const bump = () => setRefreshToken((token) => token + 1);
     const onPlanItems = (event: Event) => {
       const detail = (event as CustomEvent<PlanRecord[]>).detail;
-      if (Array.isArray(detail)) setPlanItems(detail);
+      if (Array.isArray(detail)) setPlanState({scope: snapshotScope, rows: detail});
     };
     window.addEventListener(COMMITMENTS_UPDATED_EVENT, bump);
     window.addEventListener(THREADS_UPDATED_EVENT, bump);
@@ -140,7 +150,7 @@ export function useCommercialThreads() {
       window.removeEventListener(TIMING_UPDATED_EVENT, bump);
       window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, onPlanItems);
     };
-  }, []);
+  }, [snapshotScope]);
 
   const commitments = useMemo(
     () => mergePlanCommitments(workspace?.commitments || [], {
@@ -161,6 +171,9 @@ export function useCommercialThreads() {
       commitments,
     });
   }, [commitments, workspace]);
+  const attentionSources = useMemo(() => workspace
+    ? indexCommercialReviewSources(workspace, threads, commitments, sampleDataActive)
+    : undefined, [workspace, threads, commitments, sampleDataActive]);
 
   // Coverage feeds the two quarter-level rules. Built here rather than in the
   // Money page so Today can raise a coverage warning without Money being open -
@@ -283,6 +296,8 @@ export function useCommercialThreads() {
     threads,
     attentionError,
     attentionScope: incidentScope,
+    attentionSources,
+    workspaceName,
     recommendations,
     /**
      * The ledger plus the promises derived from the Plan and from captures.

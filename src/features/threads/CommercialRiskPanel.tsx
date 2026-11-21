@@ -6,6 +6,7 @@ import { AlertTriangle, Info } from 'lucide-react';
 import type { Severity } from '../../domain/commercialKernel/policyEngine';
 import type { RankedRecommendation } from '../../domain/commercialKernel/rankRecommendations';
 import { SavedByMemoirePrompt } from '../value/SavedByMemoirePrompt';
+import { resolveCommercialReviewSources, type ReviewSources } from './commercialReviewSources';
 
 const severityTone: Record<Severity, string> = {
   critical: 'border-red-200 bg-red-50/60',
@@ -62,6 +63,8 @@ export function CommercialRiskPanel({
   title = 'Going silent',
   attention = false,
   loadError = '',
+  workspaceName,
+  reviewSources,
 }: {
   /**
    * Ranked by the kernel, and rendered in the order it hands them over. This
@@ -73,6 +76,8 @@ export function CommercialRiskPanel({
   title?: string;
   attention?: boolean;
   loadError?: string;
+  workspaceName?: string;
+  reviewSources?: ReviewSources;
 }) {
   const [explaining, setExplaining] = useState('');
   const [capacity, setCapacity] = useState(3);
@@ -160,6 +165,7 @@ export function CommercialRiskPanel({
               </Link>
               <button
                 type="button"
+                aria-expanded={explaining === item.id}
                 onClick={() => setExplaining(explaining === item.id ? '' : item.id)}
                 className="inline-flex min-h-[24px] items-center gap-1 text-[11px] font-semibold text-gray-500 hover:text-gray-800"
               >
@@ -171,6 +177,11 @@ export function CommercialRiskPanel({
 
             {explaining === item.id && (
               <dl className="mt-2 rounded-lg bg-white/70 p-2 text-[11px] leading-5 text-gray-600 ring-1 ring-gray-100">
+                <div className="mb-1.5">
+                  <dt className="font-bold text-ink">Review proposal</dt>
+                  <dd>{item.candidateAction || item.recommendedAction}</dd>
+                  <dd>{workspaceName && `${workspaceName} · `}Suggested for human review</dd>
+                </div>
                 {/* Why it sits where it sits, in sentences. There is no score to
                     show, because the order is decided by named dimensions in a
                     fixed precedence rather than by a weighted total. */}
@@ -199,10 +210,16 @@ export function CommercialRiskPanel({
                   <dt className="font-bold text-gray-500">Threshold:</dt>
                   <dd>{item.reasonCode === 'OUTCOME_REQUIREMENT_QUESTION' ? 'Explicitly marked required now' : item.threshold}</dd>
                 </div>
-                <div className="flex gap-2">
-                  <dt className="font-bold text-gray-500">From records:</dt>
-                  <dd className="truncate" title={item.sourceRecordIds.join(', ')}>
-                    {item.sourceRecordIds.join(', ')}
+                <div>
+                  <dt className="font-bold text-gray-500">Source evidence</dt>
+                  <dd>
+                    {item.sourceRecordIds.length ? (
+                      <ul className="list-disc space-y-0.5 pl-4">
+                        {resolveCommercialReviewSources(item.sourceRecordIds, reviewSources).map(({ id, label }) => (
+                          <li className="break-all" key={id}>{label && <span className="mr-1 break-normal">{label}</span>}<code>{id}</code></li>
+                        ))}
+                      </ul>
+                    ) : 'No source record cited by this rule.'}
                   </dd>
                 </div>
                 <div className="flex gap-2">

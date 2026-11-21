@@ -112,7 +112,7 @@ export function SalesReviewsPage() {
   const { user: reviewUser } = useAuthContext();
   const reviewSample = hasLocalSampleData();
   const reviewScope = useMemo(() => ({userId:reviewSample?null:reviewUser?.id||null,sampleDataActive:reviewSample}),[reviewSample,reviewUser?.id]);
-  const { rankedRecommendations: reviewRecommendations, attentionError, attentionScope, commitments: teamCommitments, workspace: teamWorkspace } = useCommercialThreads();
+  const { rankedRecommendations: reviewRecommendations, attentionError, attentionScope, attentionSources, workspaceName, commitments: teamCommitments, workspace: teamWorkspace } = useCommercialThreads();
 
   // One period for the whole tab. The scoreboard declares it and the recap
   // below reads it: two period pickers on one page meant the headline and the
@@ -220,7 +220,8 @@ export function SalesReviewsPage() {
               </span>
             </summary>
             <div className="flex flex-col gap-4 border-t border-line-soft p-5">
-              <CommercialRiskPanel key={attentionScope} recommendations={reviewRecommendations} attention loadError={attentionError} title="Commercial attention" />
+              <CommercialRiskPanel key={attentionScope} recommendations={reviewRecommendations} attention loadError={attentionError}
+                workspaceName={workspaceName} reviewSources={attentionSources} title="Commercial attention" />
               <TeamCoordinationPanel key={'team-'+attentionScope} scope={reviewScope} commitments={teamCommitments} opportunities={teamWorkspace?.opportunities||[]}/>
               <SharedWorkspacesPanel key={'shared-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>
               <ExternalPromisesPanel key={'external-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>
