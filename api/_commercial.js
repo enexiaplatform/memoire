@@ -43,14 +43,15 @@ export function createCommercialHandler({verify=verifyUserToken,clientForToken=(
    const prepared=await prepareCommercialCommand(req.body,ownerId);
    if (prepared.status!=='prepared') return reply(prepared.status==='payload_too_large'?413:400,{error:prepared.status});
    const {event,effectId}=prepared;
-   // Ignore an existing identity during insert; then compare stored content. This is safe under concurrent retries.
+   // The partial idempotency index can win the race before the primary-key
+   // conflict target. In either case only the exact scoped row can confirm it.
    const result=await client.from('commercial_events').upsert(eventCodec.toRow(event,ownerId),{onConflict:'user_id,id',ignoreDuplicates:true}).select('*');
-   if(result.error)return reply(503,{error:'receipt_not_confirmed',retrySafe:true});
+   if(result.error&&result.error.code!=='23505')return reply(503,{error:'receipt_not_confirmed',retrySafe:true});
    const stored=await client.from('commercial_events').select('*').eq('user_id',ownerId).eq('id',effectId).maybeSingle();
    if(stored.error||!stored.data)return reply(503,{error:'receipt_not_confirmed',retrySafe:true});
    const outcome=evaluateCommercialReceipt(prepared,eventCodec.fromRow(stored.data));
    if (outcome.status!=='acknowledged') return reply(outcome.status==='source_version_conflict'?409:503,{error:outcome.status});
-   const duplicate=!result.data?.length;
+   const duplicate=Boolean(result.error)||!result.data?.length;
    return reply(duplicate?200:201,{command:prepared.command,duplicate,receipt:outcome.receipt});
   }catch{return reply(503,{error:'service_unavailable'});}
  };

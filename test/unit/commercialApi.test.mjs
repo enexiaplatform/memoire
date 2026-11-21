@@ -38,6 +38,30 @@ test('schema validation rejects unsupported facts and oversized payloads before 
  assert.equal((await callHandler(handler,{method:'POST',body:{...body,observation:{...observation,accepted:true}}})).code,400);
  assert.equal((await callHandler(handler,{method:'POST',body:{...body,observation:{...observation,rawText:'x'.repeat(128001)}}})).code,413);
 });
+test('an alternate unique index collision requires a matching persisted event in the caller scope', async () => {
+ const raceBody = {...body, observation: {...observation, sourceEventId: 'alternate-index-race'}};
+ const winner = await callHandler(handler, {method: 'POST', body: raceBody});
+ assert.equal(winner.code, 201);
+ const collision = createCommercialHandler({verify, rateLimit: () => ({allowed: true}), clientForToken: token => ({
+  from(table) {
+   const query = databaseClient(db, tokens[token]).from(table);
+   return {...query, upsert: () => ({
+    select: async () => ({data: null, error: {code: '23505'}}),
+   })};
+  },
+ })});
+ const retry = await callHandler(collision, {method: 'POST', body: raceBody});
+ assert.equal(retry.code, 200);
+ assert.deepEqual(retry.body, {...winner.body, duplicate: true});
+ const conflict = await callHandler(collision, {method: 'POST', body: {
+  ...raceBody, observation: {...raceBody.observation, rawText: 'Conflicting report'},
+ }});
+ assert.equal(conflict.code, 409);
+ assert.deepEqual(conflict.body, {version: 1, error: 'source_version_conflict'});
+ const foreign = await callHandler(collision, {method: 'POST', body: raceBody, headers: {authorization: 'Bearer owner-b'}});
+ assert.equal(foreign.code, 503);
+ assert.deepEqual(foreign.body, {version: 1, error: 'receipt_not_confirmed', retrySafe: true});
+});
 test('storage and quota failures are explicit and do not leak database details',async()=>{
  const limited=createCommercialHandler({rateLimit:()=>({allowed:false,retryAfterSeconds:9})});const response=await callHandler(limited,{});assert.equal(response.code,429);assert.equal(response.headers['Retry-After'],'9');
  const broken=createCommercialHandler({verify,clientForToken:()=>{throw new Error('private db credentials');},rateLimit:()=>({allowed:true})});const failure=await callHandler(broken,{});assert.equal(failure.code,503);assert.equal(JSON.stringify(failure.body).includes('credentials'),false);
