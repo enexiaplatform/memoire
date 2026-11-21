@@ -1,5 +1,5 @@
 {
-  "git": { "deploymentEnabled": { "codex/workspace-selector-contract": false } },
+  "git": { "deploymentEnabled": {"codex/workspace-selector-contract":false,"codex/plan-journal-recovery":false} },
   "trailingSlash": false,
   "headers": [
     {

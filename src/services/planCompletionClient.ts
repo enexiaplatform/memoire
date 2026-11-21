@@ -37,19 +37,31 @@ function notify(outcome?: Outcome) {
   window.dispatchEvent(new CustomEvent(PLAN_COMPLETION_CHANGED, { detail: outcome }));
 }
 
-function pendingCommands(scope: ReturnType<typeof scopeFor>) {
-  const pending: Command[] = [];
+function readPendingJournal(scope: ReturnType<typeof scopeFor>) {
+  const commands: Command[] = [];
+  let unreadable = 0;
   for (let index = 0; index < scope.storage.length; index++) {
     const key = scope.storage.key(index);
     if (!key?.startsWith(scope.prefix)) continue;
-    const command = JSON.parse(scope.storage.getItem(key) || 'null') as Command | null;
-    if (command?.requestId && key === scope.prefix + command.requestId) pending.push(command);
+    const raw = scope.storage.getItem(key);
+    if (raw === null) continue;
+    try {
+      const command = JSON.parse(raw) as Command | null;
+      if (typeof command?.requestId === 'string' && command.requestId && key === scope.prefix + command.requestId) {
+        commands.push(command);
+        continue;
+      }
+    } catch {
+      // Preserve the unreadable entry and continue scanning this workspace.
+    }
+    unreadable++;
   }
-  return pending;
+  return { commands, unreadable };
 }
 
-export function countPendingPlanCompletions(ownerId: string) {
-  return pendingCommands(scopeFor(ownerId)).length;
+export function getPlanCompletionJournalStatus(ownerId: string) {
+  const { commands, unreadable } = readPendingJournal(scopeFor(ownerId));
+  return { pending: commands.length, unreadable };
 }
 
 async function send(ownerId: string, scope: ReturnType<typeof scopeFor>, command: Command): Promise<Outcome> {
@@ -130,7 +142,7 @@ export async function confirmExistingPlanActivity(
   ownerId: string, item: PlanItem, completion: PlanRecord, activityId: string, current?: PlanRecord,
 ) {
   const scope = scopeFor(ownerId);
-  const queued = pendingCommands(scope).find(command => command.planId === completion.id);
+  const queued = readPendingJournal(scope).commands.find(command => command.planId === completion.id);
   if (queued) return queued.activityId === activityId && queued.derivedKey === (item.derivedKey ?? null)
     ? dispatch(ownerId, scope, queued) : { status: 'conflict' } as const;
 
@@ -146,7 +158,7 @@ export async function confirmExistingPlanActivity(
 
 export async function flushPendingPlanCompletions(ownerId: string) {
   const scope = scopeFor(ownerId);
-  for (const command of pendingCommands(scope)) {
+  for (const command of readPendingJournal(scope).commands) {
     scope.assertCurrent();
     await dispatch(ownerId, scope, command);
   }
