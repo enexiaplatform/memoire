@@ -24,6 +24,8 @@ const session = { user, access_token: 'fixture-token', refresh_token: 'fixture-r
 async function scenario(named, surface) {
   const fromPlan = surface === "Plan";
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, timezoneId: 'UTC' });
+  let releaseWorkspaceData;
+  const workspaceDataGate = new Promise(resolve => { releaseWorkspaceData = resolve; });
   try {
     const plan = { id: 'synthetic-plan', date: day, label: 'Call the fixture account', tag: 'Fixture account', createdAt: stamp, updatedAt: stamp, done: false, source: 'user' };
     const activityId = randomUUID();
@@ -63,6 +65,7 @@ async function scenario(named, surface) {
           return respond(existing);
         }
         if (!named && req.headers()['x-memoire-data-workspace'] === workspace) {
+          await workspaceDataGate;
           return respond([{ ...existing, id: 'aaaaaaaa-1111-4111-8111-111111111111', user_id: owner, account_name: 'Second workspace account' }]);
         }
         return respond([existing]);
@@ -147,7 +150,10 @@ async function scenario(named, surface) {
         await page.goto(base + '/app/reviews');
         await page.getByText('What this leaves for next week', { exact: true }).click();
         await attention.getByText('Fixture workspace', { exact: true }).waitFor();
+        await attention.getByText('Loading workspace evidence…', { exact: true }).waitFor();
         assert.equal(await attention.getByText('Review proposal', { exact: true }).count(), 0);
+        assert.equal(await attention.getByText('Commercial thread · Fixture account', { exact: false }).count(), 0);
+        releaseWorkspaceData();
         const namedProposal = attention.getByRole('button', { name: 'Why am I seeing this?' }).first();
         await namedProposal.press('Enter');
         await attention.getByText('Commercial thread · Second workspace account', { exact: false }).waitFor();
@@ -159,14 +165,36 @@ async function scenario(named, surface) {
       await page.locator('label').filter({ hasText: 'What happened?' }).locator('textarea').fill('Completed the scheduled account call.')
         .catch(async error => { console.error((await page.locator('body').innerText()).slice(-2500)); throw error; });
       await page.getByRole('button', { name: 'Save Quick Capture', exact: true }).click();
+      await page.evaluate(() => Object.defineProperty(navigator, 'onLine', { configurable: true, value: false }));
       await page.getByRole('button', { name: 'Mark done', exact: true }).click();
+      const pendingCapture = page.getByText('Plan completion saved on this device, waiting for workspace confirmation.', { exact: true });
+      await pendingCapture.waitFor();
+      await page.evaluate(async record => {
+        window.dispatchEvent(new CustomEvent('memoire:plan-completion-changed', { detail: { status: 'confirmed', record } }));
+        await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      }, { ...plan, id: 'unrelated-plan', label: 'Unrelated completion', done: true, completionActivityId: existing.id });
+      assert.equal(await pendingCapture.isVisible(), true);
+      assert.equal(await page.getByRole('link', { name: 'View linked activity' }).count(), 0);
+      assert.equal(requests.length, 0);
+      await page.evaluate(() => {
+        Object.defineProperty(navigator, 'onLine', { configurable: true, value: true });
+        window.dispatchEvent(new Event('online'));
+      });
       await page.getByText('Plan completion confirmed.', { exact: true }).waitFor();
       assert.equal(requests.length, 1);
+      const activityHref = '/app/timeline?view=history&activityId=' + existing.id;
+      assert.equal(await page.getByRole('link', { name: 'View linked activity' }).getAttribute('href'), activityHref);
+      await page.getByRole('link', { name: 'Review in Plan' }).click();
+      await page.getByRole('checkbox', { name: 'Mark "Call the fixture account" not done', exact: true }).waitFor();
+      const linkedActivity = page.getByRole('link', { name: 'View activity', exact: true }).and(page.locator(`a[href="${activityHref}"]`));
+      await linkedActivity.click();
+      await page.waitForURL(url => url.searchParams.get('activityId') === existing.id && url.searchParams.get('view') === 'history');
     }
     assert.equal(completed.completionActivityId, existing.id);
     assert.deepEqual(errors, []);
     console.log((named ? 'Named ' : 'Default ') + surface + ' browser path confirmed with the original Activity ID.');
   } finally {
+    releaseWorkspaceData();
     await context.close();
   }
 }

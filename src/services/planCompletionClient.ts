@@ -19,8 +19,10 @@ type Command = {
   label: string | null;
   tag: string | null;
 };
-type Outcome = { status: 'pending' | 'conflict' } | { status: 'confirmed'; record: PlanRecord; transitioned: boolean };
-const inFlight = new Map<string, Promise<Outcome>>();
+export type PlanCompletionOutcome = { status: 'pending' }
+  | { status: 'conflict'; planId: string; activityId: string }
+  | { status: 'confirmed'; record: PlanRecord; transitioned: boolean };
+const inFlight = new Map<string, Promise<PlanCompletionOutcome>>();
 const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
 const nullableCommandFields = ['derivedKey', 'expectedUpdatedAt', 'label', 'tag'] as const;
 
@@ -44,7 +46,7 @@ function scopeFor(ownerId: string) {
   return { assertCurrent, storage, login, workspace, prefix: prefix + login + '.' };
 }
 
-function notify(outcome?: Outcome) {
+function notify(outcome?: PlanCompletionOutcome) {
   window.dispatchEvent(new CustomEvent(PLAN_COMPLETION_CHANGED, { detail: outcome }));
 }
 
@@ -75,7 +77,7 @@ export function getPlanCompletionJournalStatus(ownerId: string) {
   return { pending: commands.length, unreadable };
 }
 
-async function send(ownerId: string, scope: ReturnType<typeof scopeFor>, command: Command): Promise<Outcome> {
+async function send(ownerId: string, scope: ReturnType<typeof scopeFor>, command: Command): Promise<PlanCompletionOutcome> {
   const key = scope.prefix + command.requestId;
   if (navigator.onLine === false) return { status: 'pending' };
 
@@ -117,14 +119,14 @@ async function send(ownerId: string, scope: ReturnType<typeof scopeFor>, command
 
   if (!receipt.record) {
     scope.storage.removeItem(key);
-    const outcome = { status: 'conflict' } as const;
+    const outcome = { status: 'conflict', planId: command.planId, activityId: command.activityId } as const;
     notify(outcome);
     return outcome;
   }
   const local = loadPlanItems().find(plan => plan.id === command.planId);
   if (local && local.updatedAt > receipt.record.updatedAt) {
     scope.storage.removeItem(key);
-    const outcome = { status: 'conflict' } as const;
+    const outcome = { status: 'conflict', planId: command.planId, activityId: command.activityId } as const;
     notify(outcome);
     return outcome;
   }
@@ -155,7 +157,7 @@ export async function confirmExistingPlanActivity(
   const scope = scopeFor(ownerId);
   const queued = readPendingJournal(scope).commands.find(command => command.planId === completion.id);
   if (queued) return queued.activityId === activityId && queued.derivedKey === (item.derivedKey ?? null)
-    ? dispatch(ownerId, scope, queued) : { status: 'conflict' } as const;
+    ? dispatch(ownerId, scope, queued) : { status: 'conflict', planId: completion.id, activityId } as const;
 
   const command: Command = {
     requestId: crypto.randomUUID(), activityId, planId: completion.id,
