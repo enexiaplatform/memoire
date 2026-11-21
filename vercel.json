@@ -1,5 +1,5 @@
 {
-  "git": { "deploymentEnabled": {"codex/workspace-selector-contract":false,"codex/plan-journal-recovery":false} },
+  "git": { "deploymentEnabled": {"codex/workspace-selector-contract":false,"codex/plan-journal-recovery":false,"codex/enexia-staging-foundation":false,"codex/pr01-staging-reliability":false,"codex/pr01-staging-protection-preflight":false} },
   "trailingSlash": false,
   "headers": [
     {
