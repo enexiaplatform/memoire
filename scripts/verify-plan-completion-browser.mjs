@@ -1,16 +1,18 @@
 import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { chromium } from 'playwright';
-import { createServer } from 'vite';
+import { build, preview } from 'vite';
 import react from '@vitejs/plugin-react';
 
 process.env.VITE_SUPABASE_URL = 'https://memoire-plan.example.test';
 process.env.VITE_SUPABASE_ANON_KEY = 'local-fixture-key';
 process.env.VITE_ENABLE_NATIVE_WORKSPACES = 'true';
-const server = await createServer({ configFile: false, envDir: false, plugins: [react()], server: { host: '127.0.0.1', port: 0 } });
-await server.listen();
-const base = server.resolvedUrls.local[0].replace(/\/$/, '');
-const browser = await chromium.launch(process.argv.includes('--system-chrome') ? { channel: 'chrome' } : {});
+const repeat = Number(process.argv.find(arg => arg.startsWith('--repeat='))?.split('=')[1] ?? 1);
+assert.ok(Number.isSafeInteger(repeat) && repeat > 0, 'Repeat count must be a positive integer.');
+let browser, base;
 const login = '11111111-1111-4111-8111-111111111111';
 const workspace = 'bbbbbbbb-1111-4111-8111-111111111111';
 const owner = '33333333-3333-4333-8333-333333333333';
@@ -36,11 +38,13 @@ async function scenario(named, surface) {
     const firstResponse = new Promise(resolve => { releaseResponse = resolve; });
     const corruptKey = (named ? 'memoire.workspace.v1.' + login + '.' + workspace + '.' : '')
       + 'memoire.plan-completion.v1.' + login + '.' + randomUUID();
-    await context.addInitScript(({ auth, book, corruptKey }) => {
+    await context.addInitScript(({ origin, auth, book, corruptKey }) => {
+      if (location.origin !== origin || sessionStorage.getItem('fixture-seeded')) return;
       localStorage.setItem('memoire.supabase.auth', JSON.stringify(auth));
       if (book) sessionStorage.setItem('memoire.active-data-workspace.v1:' + auth.user.id, book);
       if (corruptKey) localStorage.setItem(corruptKey, '{unreadable');
-    }, { auth: session, book: named ? workspace : null, corruptKey: fromPlan ? corruptKey : null });
+      sessionStorage.setItem('fixture-seeded', 'true');
+    }, { origin: base, auth: session, book: named ? workspace : null, corruptKey: fromPlan ? corruptKey : null });
     await context.route('https://memoire-plan.example.test/**', async route => {
       const req = route.request();
       const path = new URL(req.url()).pathname;
@@ -61,8 +65,7 @@ async function scenario(named, surface) {
       }
       return respond([]);
     });
-    // Keep unrelated APIs out of Vite's source module fallback. A clean CI
-    // checkout has no built Vercel handlers and this fixture only owns PR-01.
+    // This browser fixture owns only the synthetic PR-01 API.
     await context.route('**/api/**', route => route.fulfill({ status: 503, json: { error: 'fixture_unavailable' } }));
     await context.route('**/api/commercial?resource=plan-completion', async route => {
       const req = route.request();
@@ -86,13 +89,16 @@ async function scenario(named, surface) {
     page.on('pageerror', error => errors.push(error.message));
     if (fromPlan) {
       await page.goto(base + '/app/timeline?view=upcoming');
-      await page.getByText('Some saved Plan completions could not be read.', { exact: false }).waitFor();
       const box = page.getByRole('checkbox', { name: 'Mark "Call the fixture account" done', exact: true });
+      await box.waitFor();
+      assert.equal(await page.evaluate(key => localStorage.getItem(key), corruptKey), '{unreadable');
+      await page.getByText('Some saved Plan completions could not be read.', { exact: false }).waitFor();
       await box.click().catch(async error => { console.error((await page.locator('body').innerText()).slice(-3000)); throw error; });
       await page.getByLabel('Activity entry').selectOption(activityId);
       await page.evaluate(() => Object.defineProperty(navigator, 'onLine', { configurable: true, value: false }));
       await page.getByRole('button', { name: 'Link and mark done', exact: true }).click();
       await page.getByText('1 Plan completion waiting for workspace confirmation.').waitFor();
+      await page.getByText('Completion saved on this device, waiting for workspace confirmation.', { exact: true }).waitFor();
       assert.equal(requests.length, 0);
       assert.equal(await box.count(), 1);
       const attempt = page.waitForRequest('**/api/commercial?resource=plan-completion');
@@ -138,12 +144,24 @@ async function scenario(named, surface) {
   }
 }
 
+const outDir = await mkdtemp(join(tmpdir(), 'memoire-plan-browser-'));
+let server;
 try {
-  for (const named of [false, true]) {
-    await scenario(named, "Plan");
-    await scenario(named, "Capture");
+  // Serve immutable assets so Vite's dev dependency optimizer cannot replace
+  // modules or reload the page while Chrome is bootstrapping a workspace.
+  const config = { configFile: false, envDir: false, build: { outDir } };
+  await build({ ...config, plugins: [react()], logLevel: 'warn' });
+  server = await preview({ ...config, preview: { host: '127.0.0.1', port: 0 } });
+  base = server.resolvedUrls.local[0].replace(/\/$/, '');
+  browser = await chromium.launch(process.argv.includes('--system-chrome') ? { channel: 'chrome' } : {});
+  for (let iteration = 0; iteration < repeat; iteration++) {
+    for (const named of [false, true]) {
+      await scenario(named, "Plan");
+      await scenario(named, "Capture");
+    }
   }
 } finally {
-  await browser.close();
-  await server.close();
+  await browser?.close();
+  await server?.close();
+  await rm(outDir, { recursive: true, force: true });
 }
