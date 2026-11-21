@@ -232,7 +232,7 @@ jobs:
             mode: plan
             commit: 8398d9ecaaa071287ff07ad1f360cf30b40bf537
           - group: staging
-            mode: plan
+            mode: plan-chromium
             commit: 3f6ed1d1678971a0000afd9874ed9c5f21f0a07a
           - group: staging
             mode: ephemeral
@@ -264,7 +264,7 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - if: matrix.mode == 'ephemeral'
+      - if: matrix.mode == 'ephemeral' || matrix.mode == 'plan-chromium'
         run: npx playwright install chromium
       - name: Run only disposable integrations
         env:
@@ -280,10 +280,14 @@ jobs:
               env -i PATH="$PATH" HOME="$HOME" CI=true npm run build:server
               env -i PATH="$PATH" HOME="$HOME" CI=true COMMERCIAL_TEST_PG_CONTAINER="$PG_CONTAINER" node scripts/verify-commercial-receipt-postgrest.mjs
               ;;
-            plan)
+            plan|plan-chromium)
               env -i PATH="$PATH" HOME="$HOME" CI=true PLAN_TEST_PG_CONTAINER="$PG_CONTAINER" node scripts/verify-plan-completion-postgrest.mjs
-              google-chrome --version
-              env -i PATH="$PATH" HOME="$HOME" CI=true node scripts/verify-plan-completion-browser.mjs --system-chrome
+              if [ "$MODE" = plan ]; then
+                google-chrome --version
+                env -i PATH="$PATH" HOME="$HOME" CI=true node scripts/verify-plan-completion-browser.mjs --system-chrome
+              else
+                env -i PATH="$PATH" HOME="$HOME" CI=true node scripts/verify-plan-completion-browser.mjs
+              fi
               ;;
             ephemeral)
               env -i PATH="$PATH" HOME="$HOME" CI=true GITHUB_SHA="$EXPECTED_COMMIT" \
