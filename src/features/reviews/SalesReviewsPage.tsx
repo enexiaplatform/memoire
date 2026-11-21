@@ -112,7 +112,8 @@ export function SalesReviewsPage() {
   const { user: reviewUser } = useAuthContext();
   const reviewSample = hasLocalSampleData();
   const reviewScope = useMemo(() => ({userId:reviewSample?null:reviewUser?.id||null,sampleDataActive:reviewSample}),[reviewSample,reviewUser?.id]);
-  const { rankedRecommendations: reviewRecommendations, attentionError, attentionScope, attentionSources, workspaceName, commitments: teamCommitments, workspace: teamWorkspace } = useCommercialThreads();
+  const { rankedRecommendations: reviewRecommendations, attentionError, attentionLoading, attentionUnavailable, attentionScope,
+    attentionSources, workspaceName, commitments: teamCommitments, workspace: teamWorkspace } = useCommercialThreads();
 
   // One period for the whole tab. The scoreboard declares it and the recap
   // below reads it: two period pickers on one page meant the headline and the
@@ -215,12 +216,14 @@ export function SalesReviewsPage() {
               <span className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="text-base font-bold text-ink">What this leaves for next week</span>
                 <span className="text-xs font-semibold text-gray-500">
-                  {reviewRecommendations.length} thread{reviewRecommendations.length === 1 ? '' : 's'} at risk
+                  {attentionUnavailable ? 'Evidence unavailable' : attentionLoading ? 'Loading evidence…'
+                    : `${reviewRecommendations.length} thread${reviewRecommendations.length === 1 ? '' : 's'} at risk`}
                 </span>
               </span>
             </summary>
             <div className="flex flex-col gap-4 border-t border-line-soft p-5">
               <CommercialRiskPanel key={attentionScope} recommendations={reviewRecommendations} attention loadError={attentionError}
+                loading={attentionLoading} unavailable={attentionUnavailable}
                 workspaceName={workspaceName} reviewSources={attentionSources} title="Commercial attention" />
               <TeamCoordinationPanel key={'team-'+attentionScope} scope={reviewScope} commitments={teamCommitments} opportunities={teamWorkspace?.opportunities||[]}/>
               <SharedWorkspacesPanel key={'shared-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>

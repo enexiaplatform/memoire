@@ -53,6 +53,7 @@ async function scenario(named, surface) {
       if (path === '/auth/v1/user') return respond(user);
       if (path.endsWith('/rpc/memoire_get_native_workspace_scope')) return respond({ data_owner_id: owner, name: 'Fixture workspace' });
       if (path.endsWith('/rpc/memoire_active_data_owner')) return respond(owner);
+      if (path.endsWith('/memoire_personal_workspaces')) return respond([{ id: workspace, name: 'Fixture workspace', created_at: stamp }]);
       if (path.endsWith('/user_profiles')) return respond({ id: login, email: user.email, created_at: user.created_at, display_name: 'Fixture operator' });
       if (path.endsWith('/plan_items')) return respond([{ id: plan.id, payload: completed || plan, updated_at: (completed || plan).updatedAt }]);
       if (path.endsWith('/sales_activities')) {
@@ -60,6 +61,9 @@ async function scenario(named, surface) {
           const payload = req.postDataJSON();
           existing = { ...existing, ...payload, created_at: stamp, updated_at: stamp };
           return respond(existing);
+        }
+        if (!named && req.headers()['x-memoire-data-workspace'] === workspace) {
+          return respond([{ ...existing, id: 'aaaaaaaa-1111-4111-8111-111111111111', user_id: owner, account_name: 'Second workspace account' }]);
         }
         return respond([existing]);
       }
@@ -116,16 +120,39 @@ async function scenario(named, surface) {
       assert.deepEqual(requests[0], requests[1]);
       assert.equal(await page.evaluate(key => localStorage.getItem(key), corruptKey), '{unreadable');
       const completions = requests.length;
+      await page.setViewportSize({ width: 390, height: 844 });
       await page.goto(base + '/app/reviews');
       await page.getByText('What this leaves for next week', { exact: true }).click();
       const attention = page.getByRole('region', { name: 'Commercial attention' });
       const why = attention.getByRole('button', { name: 'Why am I seeing this?' }).first();
-      await why.click().catch(async error => { console.error((await page.locator('body').innerText()).slice(-3500)); throw error; });
+      await why.focus();
+      await page.keyboard.press('Enter');
       await attention.getByText('Review proposal', { exact: true }).waitFor();
-      await attention.getByText((named ? 'Fixture workspace' : 'Personal workspace') + ' · Suggested for human review', { exact: true }).waitFor();
+      await attention.getByText(named ? 'Fixture workspace' : 'Personal workspace', { exact: true }).waitFor();
+      await attention.getByText('Suggested for human review', { exact: true }).waitFor();
       await attention.getByText('Commercial thread · Fixture account', { exact: false }).waitFor();
-      await why.click();
+      assert.equal(await why.getAttribute('aria-expanded'), 'true');
+      assert.ok(await attention.evaluate(el => el.scrollWidth <= el.clientWidth));
+      await page.keyboard.press('Space');
       assert.equal(await attention.getByText('Review proposal', { exact: true }).count(), 0);
+      assert.equal(await why.getAttribute('aria-expanded'), 'false');
+      if (!named) {
+        await why.press('Enter');
+        await attention.getByText('Review proposal', { exact: true }).waitFor();
+        await page.setViewportSize({ width: 1440, height: 1000 });
+        const switched = page.waitForURL('**/app/today');
+        await page.getByLabel('Switch workspace').selectOption(workspace);
+        await switched;
+        await page.getByLabel('Switch workspace').waitFor();
+        await page.goto(base + '/app/reviews');
+        await page.getByText('What this leaves for next week', { exact: true }).click();
+        await attention.getByText('Fixture workspace', { exact: true }).waitFor();
+        assert.equal(await attention.getByText('Review proposal', { exact: true }).count(), 0);
+        const namedProposal = attention.getByRole('button', { name: 'Why am I seeing this?' }).first();
+        await namedProposal.press('Enter');
+        await attention.getByText('Commercial thread · Second workspace account', { exact: false }).waitFor();
+        assert.equal(await attention.getByText('Commercial thread · Fixture account', { exact: false }).count(), 0);
+      }
       assert.equal(requests.length, completions);
     } else {
       await page.goto(base + '/app/capture?mode=quick&account=Fixture%20account');

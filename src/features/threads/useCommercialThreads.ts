@@ -55,11 +55,13 @@ export function useCommercialThreads() {
   const workspaceName = sampleDataActive ? 'Sample workspace' : nativeWorkspace?.name ?? 'Personal workspace';
   const snapshotScope = JSON.stringify([dataUserId, nativeWorkspace?.workspaceId, sampleDataActive]);
 
-  const [snapshot, setSnapshot] = useState(() => ({
-    scope: snapshotScope, data: getCachedSalesWorkspaceData(dataUserId),
-  }));
+  const [snapshot, setSnapshot] = useState(() => {
+    const data = getCachedSalesWorkspaceData(dataUserId);
+    return { scope: snapshotScope, data, unavailable: false };
+  });
   const workspace = snapshot.scope === snapshotScope ? snapshot.data : null;
-  const [loading, setLoading] = useState(() => !getCachedSalesWorkspaceData(dataUserId));
+  const workspaceUnavailable = snapshot.scope === snapshotScope && snapshot.unavailable;
+  const loading = !workspace && !workspaceUnavailable;
   const [refreshToken, setRefreshToken] = useState(0);
   const [targetState, setTargetState] = useState(() => ({scope: snapshotScope, rows: loadTargets()}));
   const targets = useMemo(() => targetState.scope === snapshotScope ? targetState.rows : [], [targetState, snapshotScope]);
@@ -67,8 +69,10 @@ export function useCommercialThreads() {
   const incidentScope = snapshotScope;
   const incidents = useMemo(() => incidentState?.scope === incidentScope ? incidentState.rows : [], [incidentState, incidentScope]);
   const attentionError = incidentState?.scope === incidentScope ? incidentState.error : '';
-  const [planState, setPlanState] = useState<{scope: string; rows: PlanRecord[]} | null>(null);
+  const [planState, setPlanState] = useState<{scope: string; rows: PlanRecord[]; error?: string} | null>(null);
   const planItems = useMemo(() => planState?.scope === snapshotScope ? planState.rows : [], [planState, snapshotScope]);
+  const attentionLoading = loading || (!workspaceUnavailable && (planState?.scope !== snapshotScope || incidentState?.scope !== snapshotScope));
+  const attentionUnavailable = workspaceUnavailable || Boolean(planState?.scope === snapshotScope && planState.error);
 
   useEffect(() => {
     let active = true;
@@ -87,9 +91,8 @@ export function useCommercialThreads() {
   useEffect(() => {
     let active = true;
     void loadSalesWorkspaceData(dataUserId)
-      .then((data) => { if (active) setSnapshot({ scope: snapshotScope, data }); })
-      .catch(() => undefined)
-      .finally(() => { if (active) setLoading(false); });
+      .then((data) => { if (active) setSnapshot({ scope: snapshotScope, data, unavailable: false }); })
+      .catch(() => { if (active) setSnapshot({ scope: snapshotScope, data: null, unavailable: true }); });
     return () => { active = false; };
     // `sampleDataActive` belongs in the dependency list even though it is not
     // read in the effect: loading or clearing the demo replaces the whole
@@ -123,7 +126,7 @@ export function useCommercialThreads() {
     let active = true;
     void loadPlanItemsForWorkspace(dataUserId, sampleDataActive)
       .then((rows) => { if (active) setPlanState({scope: snapshotScope, rows}); })
-      .catch(() => undefined);
+      .catch(() => { if (active) setPlanState({scope: snapshotScope, rows: [], error: 'Plan is unavailable.'}); });
     return () => { active = false; };
   }, [dataUserId, sampleDataActive, snapshotScope, refreshToken]);
 
@@ -296,6 +299,8 @@ export function useCommercialThreads() {
   return {
     threads,
     attentionError,
+    attentionLoading,
+    attentionUnavailable,
     attentionScope: incidentScope,
     attentionSources,
     workspaceName,
