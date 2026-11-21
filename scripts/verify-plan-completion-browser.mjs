@@ -175,6 +175,7 @@ async function scenario(named, surface) {
       hideActivities = true;
       await save.click();
       await draft.getByRole('alert').filter({ hasText: 'proposal or its source evidence changed' }).waitFor();
+      assert.equal(await draft.getByLabel('Your unsaved wording').inputValue(), 'Unsubmitted wording');
       assert.equal(reviewWrites.length, 0);
       hideActivities = false;
 

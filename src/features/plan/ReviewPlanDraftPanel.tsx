@@ -118,7 +118,12 @@ export function ReviewPlanDraftPanel({
         : loading ? <p role="status">Checking the proposal and Plan items…</p>
         : unavailable ? <><p role="alert">The proposal evidence is unavailable. Your draft is still open.</p>
           <button type="button" className="min-h-11 font-semibold text-brand-blue underline" onClick={retry}>Retry evidence</button></>
-        : stale || changedEvidence ? <p role="alert">The proposal or its source evidence changed. Open Review to choose a current proposal.</p>
+        : stale || changedEvidence ? <>
+          <p role="alert">The proposal or its source evidence changed. Open Review to choose a current proposal.</p>
+          {editedLabel?.trim() && <label className="block text-sm font-semibold">Your unsaved wording
+            <textarea readOnly value={editedLabel} className="mt-1 block w-full rounded-lg border border-line px-3 py-2" />
+          </label>}
+        </>
         : (
           <form onSubmit={event => { event.preventDefault(); void save(); }} className="space-y-3">
             <p className="text-sm text-muted">{workspaceName} · Proposed</p>
