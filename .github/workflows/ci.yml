@@ -53,6 +53,7 @@ jobs:
           PG_CONTAINER: ${{ job.services.pg.id }}
 
   fast:
+    if: github.head_ref != 'codex/memoire-integration-verification' && github.ref_name != 'codex/memoire-integration-verification'
     name: Build, typecheck, lint, test
     runs-on: ubuntu-latest
     timeout-minutes: 15
@@ -87,6 +88,7 @@ jobs:
       - run: npm run check
 
   plan-completion-postgrest:
+    if: github.head_ref != 'codex/memoire-integration-verification' && github.ref_name != 'codex/memoire-integration-verification'
     name: Plan completion on PostgreSQL and PostgREST
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -166,3 +168,133 @@ jobs:
           path: ephemeral-evidence/pr01.json
           if-no-files-found: warn
           retention-days: 1
+
+  consolidation-build:
+    name: Consolidated check (${{ matrix.group }})
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'enexiaplatform/memoire' && github.event.repository.visibility == 'public' && github.ref == 'refs/heads/codex/memoire-integration-verification'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: agent
+            commit: 851aa45addbe06f88b7e06638fc0a4f17832b562
+            tree: 7eb02d425788b0a86450e064eebf928c8333b5c3
+          - group: agent-commercial-sdk
+            commit: 07db0264c6f6d1803e00640eb92f48e7a44efd65
+            tree: 118926b9197a352271e3d867882ad2cf90567b70
+          - group: plan
+            commit: 8398d9ecaaa071287ff07ad1f360cf30b40bf537
+            tree: 7f8e132c9c433e12aee3d59b8c5cac0b013d841f
+          - group: staging
+            commit: 3f6ed1d1678971a0000afd9874ed9c5f21f0a07a
+            tree: d6f76b28fcb7b2785195debf1978be532df0be8e
+          - group: full
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.commit || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Verify integration checkout and run the full gate
+        env:
+          EXPECTED_COMMIT: ${{ matrix.commit || github.sha }}
+          EXPECTED_TREE: ${{ matrix.tree }}
+        run: |
+          set -eu
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          tree="$(git rev-parse 'HEAD^{tree}')"
+          test -z "$EXPECTED_TREE" || test "$tree" = "$EXPECTED_TREE"
+          printf 'Integration commit %s tree %s\n' "$EXPECTED_COMMIT" "$tree"
+          npm ci
+          env -i PATH="$PATH" HOME="$HOME" CI=true npm run check
+
+  consolidation-runtime:
+    name: Consolidated ${{ matrix.mode }} (${{ matrix.group }})
+    if: github.event_name == 'workflow_dispatch' && github.repository == 'enexiaplatform/memoire' && github.event.repository.visibility == 'public' && github.ref == 'refs/heads/codex/memoire-integration-verification'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: agent-commercial-sdk
+            mode: commercial
+            commit: 07db0264c6f6d1803e00640eb92f48e7a44efd65
+          - group: plan
+            mode: plan
+            commit: 8398d9ecaaa071287ff07ad1f360cf30b40bf537
+          - group: staging
+            mode: plan
+            commit: 3f6ed1d1678971a0000afd9874ed9c5f21f0a07a
+          - group: staging
+            mode: ephemeral
+            commit: 3f6ed1d1678971a0000afd9874ed9c5f21f0a07a
+          - group: full
+            mode: commercial
+          - group: full
+            mode: plan
+          - group: full
+            mode: ephemeral
+    services:
+      pg:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: fixture
+        ports:
+          - 127.0.0.1:55432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ matrix.commit || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - if: matrix.mode == 'ephemeral'
+        run: npx playwright install chromium
+      - name: Run only disposable integrations
+        env:
+          EXPECTED_COMMIT: ${{ matrix.commit || github.sha }}
+          PG_CONTAINER: ${{ job.services.pg.id }}
+          MODE: ${{ matrix.mode }}
+        run: |
+          set -eu
+          test "$(git rev-parse HEAD)" = "$EXPECTED_COMMIT"
+          printf 'Integration commit %s tree %s\n' "$EXPECTED_COMMIT" "$(git rev-parse 'HEAD^{tree}')"
+          case "$MODE" in
+            commercial)
+              env -i PATH="$PATH" HOME="$HOME" CI=true npm run build:server
+              env -i PATH="$PATH" HOME="$HOME" CI=true COMMERCIAL_TEST_PG_CONTAINER="$PG_CONTAINER" node scripts/verify-commercial-receipt-postgrest.mjs
+              ;;
+            plan)
+              env -i PATH="$PATH" HOME="$HOME" CI=true PLAN_TEST_PG_CONTAINER="$PG_CONTAINER" node scripts/verify-plan-completion-postgrest.mjs
+              google-chrome --version
+              env -i PATH="$PATH" HOME="$HOME" CI=true node scripts/verify-plan-completion-browser.mjs --system-chrome
+              ;;
+            ephemeral)
+              env -i PATH="$PATH" HOME="$HOME" CI=true GITHUB_SHA="$EXPECTED_COMMIT" \
+                PLAN_TEST_PG_CONTAINER="$PG_CONTAINER" node scripts/staging/ephemeral-pr01.mjs
+              ;;
+            *) exit 1 ;;
+          esac
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.mode == 'ephemeral'
+        with:
+          name: ephemeral-${{ matrix.group }}
+          path: ephemeral-evidence/pr01.json
+          if-no-files-found: warn
+          retention-days: 7
