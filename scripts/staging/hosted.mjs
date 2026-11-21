@@ -22,15 +22,27 @@ export function appHeaders(c, headers = {}) {
   return c.bypass ? { ...headers, 'x-vercel-protection-bypass': c.bypass } : headers;
 }
 
-export async function attest(c) {
-  const response = await fetch(c.origin + '/api/commercial?resource=staging-attestation', {
+export async function attest(c, fetchImpl = fetch) {
+  const origin = stagingOrigin(c.origin);
+  const anonymous = await fetchImpl(origin + '/', {
+    credentials: 'omit', redirect: 'manual', signal: AbortSignal.timeout(12_000), cache: 'no-store',
+  });
+  const location = anonymous.headers.get('location');
+  const login = location ? URL.parse(location) : null;
+  const loginRedirect = [301, 302, 303, 307, 308].includes(anonymous.status)
+    && login?.origin === 'https://vercel.com' && ['/login', '/sso-api'].includes(login.pathname);
+  await anonymous.body?.cancel();
+  assert.ok([401, 403].includes(anonymous.status) || loginRedirect,
+    'Staging Preview did not deny anonymous access. Refusing to send staging credentials.');
+
+  const response = await fetchImpl(origin + '/api/commercial?resource=staging-attestation', {
     headers: appHeaders(c, { Authorization: 'Bearer ' + c.probe, 'Cache-Control': 'no-store' }),
-    redirect: 'error', signal: AbortSignal.timeout(12_000), cache: 'no-store',
+    credentials: 'omit', redirect: 'error', signal: AbortSignal.timeout(12_000), cache: 'no-store',
   });
   assert.equal(response.status, 200, 'Staging attestation unavailable.');
   const data = await response.json();
   assert.equal(data.backend, c.backend);
-  assert.equal(data.origin, c.origin);
+  assert.equal(data.origin, origin);
   assert.equal(data.commit, c.gitSha);
   assert.equal(typeof data.planCompletionEnabled, 'boolean');
   return data;
