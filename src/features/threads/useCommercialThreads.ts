@@ -21,6 +21,7 @@ import {
   loadTargets,
   loadTargetsForWorkspace,
   TARGETS_UPDATED_EVENT,
+  type CommercialTarget,
 } from '../../services/commercialKernel/targetStore';
 import { COMMITMENTS_UPDATED_EVENT } from '../../services/commercialKernel/commitmentStore';
 import { CONDITION_UPDATED_EVENT } from '../../services/commercialKernel/conditionStore';
