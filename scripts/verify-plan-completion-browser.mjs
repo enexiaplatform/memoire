@@ -28,6 +28,9 @@ async function scenario(named, surface) {
   const scopeGate = new Promise(resolve => { releaseScope = resolve; });
   let releaseWorkspaceData;
   const workspaceDataGate = new Promise(resolve => { releaseWorkspaceData = resolve; });
+  let incidentResponse;
+  let incidentRequests = 0;
+  let releaseIncidents;
   try {
     const plan = { id: 'synthetic-plan', date: day, label: 'Call the fixture account', tag: 'Fixture account', createdAt: stamp, updatedAt: stamp, done: false, source: 'user' };
     const activityId = randomUUID();
@@ -53,7 +56,7 @@ async function scenario(named, surface) {
       const req = route.request();
       const path = new URL(req.url()).pathname;
       if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': '*', 'access-control-allow-headers': '*' } });
-      const respond = json => route.fulfill({ json, headers: { 'access-control-allow-origin': '*', 'content-range': '0-0/*' } });
+      const respond = (json, status = 200) => route.fulfill({ json, status, headers: { 'access-control-allow-origin': '*', 'content-range': '0-0/*' } });
       if (path === '/auth/v1/user') return respond(user);
       if (path.endsWith('/rpc/memoire_get_native_workspace_scope')) {
         if (named && fromPlan) await scopeGate;
@@ -62,6 +65,11 @@ async function scenario(named, surface) {
       if (path.endsWith('/rpc/memoire_active_data_owner')) return respond(owner);
       if (path.endsWith('/memoire_personal_workspaces')) return respond([{ id: workspace, name: 'Fixture workspace', created_at: stamp }]);
       if (path.endsWith('/user_profiles')) return respond({ id: login, email: user.email, created_at: user.created_at, display_name: 'Fixture operator' });
+      if (path.endsWith('/commercial_incidents') && incidentResponse && req.headers()['x-memoire-data-workspace'] !== workspace) {
+        incidentRequests++;
+        const status = await incidentResponse;
+        return status === 200 ? respond([]) : respond({ message: 'Fixture evidence unavailable' }, status);
+      }
       if (path.endsWith('/plan_items')) return respond([{ id: plan.id, payload: completed || plan, updated_at: (completed || plan).updatedAt }]);
       if (path.endsWith('/sales_activities')) {
         if (req.method() === 'POST') {
@@ -155,8 +163,51 @@ async function scenario(named, surface) {
       assert.equal(await attention.getByText('Review proposal', { exact: true }).count(), 0);
       assert.equal(await why.getAttribute('aria-expanded'), 'false');
       if (!named) {
+        const failure = attention.getByRole('alert').filter({ hasText: 'Incident responses could not be loaded' });
+        const retry = attention.getByRole('button', { name: 'Retry evidence', exact: true });
+        const retrying = attention.getByRole('button', { name: 'Retrying evidence…', exact: true });
+        const holdIncidents = () => {
+          incidentResponse = new Promise(resolve => { releaseIncidents = resolve; });
+          return page.waitForRequest(req => new URL(req.url()).pathname.endsWith('/commercial_incidents'));
+        };
+        const reopenFixtureReview = async () => {
+          await page.goto(base + '/app/reviews');
+          await page.getByText('What this leaves for next week', { exact: true }).click();
+          await failure.waitFor();
+        };
+        incidentResponse = Promise.resolve(403);
+        await reopenFixtureReview();
+        const retryUrl = page.url();
+        const previousRequests = incidentRequests;
+        const failedRetry = holdIncidents();
+        await retry.evaluate(button => { button.click(); button.click(); });
+        await failedRetry;
+        await retrying.waitFor();
+        assert.ok(await retrying.isDisabled());
+        releaseIncidents(403);
+        await failure.waitFor();
+        assert.equal(incidentRequests, previousRequests + 1);
+        assert.equal(page.url(), retryUrl);
+
+        const recovering = holdIncidents();
+        await retry.press('Enter');
+        await recovering;
+        await retrying.waitFor();
+        releaseIncidents(200);
+        await retrying.waitFor({ state: 'detached' });
+        assert.equal(await failure.count(), 0);
+        assert.equal(page.url(), retryUrl);
+        assert.equal(incidentRequests, previousRequests + 2);
         await why.press('Enter');
         await attention.getByText('Review proposal', { exact: true }).waitFor();
+        await attention.getByText('Commercial thread · Fixture account', { exact: false }).waitFor();
+
+        incidentResponse = Promise.resolve(403);
+        await reopenFixtureReview();
+        const staleRetry = holdIncidents();
+        await retry.click();
+        await staleRetry;
+        await retrying.waitFor();
         await page.setViewportSize({ width: 1440, height: 1000 });
         const switched = page.waitForURL('**/app/today');
         await page.getByLabel('Switch workspace').selectOption(workspace);
@@ -168,11 +219,14 @@ async function scenario(named, surface) {
         await attention.getByText('Loading workspace evidence…', { exact: true }).waitFor();
         assert.equal(await attention.getByText('Review proposal', { exact: true }).count(), 0);
         assert.equal(await attention.getByText('Commercial thread · Fixture account', { exact: false }).count(), 0);
+        releaseIncidents(403);
         releaseWorkspaceData();
         const namedProposal = attention.getByRole('button', { name: 'Why am I seeing this?' }).first();
         await namedProposal.press('Enter');
         await attention.getByText('Commercial thread · Second workspace account', { exact: false }).waitFor();
         assert.equal(await attention.getByText('Commercial thread · Fixture account', { exact: false }).count(), 0);
+        assert.equal(await failure.count(), 0);
+        assert.equal(await retry.count(), 0);
       }
       assert.equal(requests.length, completions);
     } else {
@@ -209,6 +263,7 @@ async function scenario(named, surface) {
     assert.deepEqual(errors, []);
     console.log((named ? 'Named ' : 'Default ') + surface + ' browser path confirmed with the original Activity ID.');
   } finally {
+    releaseIncidents?.(403);
     releaseScope();
     releaseWorkspaceData();
     await context.close();

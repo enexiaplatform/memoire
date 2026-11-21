@@ -65,6 +65,8 @@ export function CommercialRiskPanel({
   loadError = '',
   loading = false,
   unavailable = false,
+  retrying = false,
+  onRetryEvidence,
   workspaceName,
   reviewSources,
 }: {
@@ -80,6 +82,8 @@ export function CommercialRiskPanel({
   loadError?: string;
   loading?: boolean;
   unavailable?: boolean;
+  retrying?: boolean;
+  onRetryEvidence?: () => void;
   workspaceName?: string;
   reviewSources?: ReviewSources;
 }) {
@@ -101,7 +105,7 @@ export function CommercialRiskPanel({
   const visible = attention ? (showAll ? recommendations : recommendations.filter(item => included.has(item.id))) : recommendations.slice(0, limit);
 
   return (
-    <section className="rounded-panel bg-white shadow-panel p-4" aria-label={title} aria-busy={loading && !unavailable}>
+    <section className="rounded-panel bg-white shadow-panel p-4" aria-label={title} aria-busy={retrying || (loading && !unavailable)}>
       <div className="flex items-center gap-2">
         <AlertTriangle className="h-4 w-4 text-amber-600" />
         <h2 className="text-sm font-bold text-ink">{title}</h2>
@@ -110,7 +114,14 @@ export function CommercialRiskPanel({
         </span>}
       </div>
       {workspaceName && <p className="mt-1 break-words text-xs text-muted">{workspaceName}</p>}
-      {unavailable ? <p role="alert" className="mt-2 text-sm text-tint-amber-ink">Workspace evidence is unavailable. Reopen Review to try again.</p>
+      {(retrying || unavailable || loadError) && onRetryEvidence && (
+        <button type="button" onClick={onRetryEvidence} disabled={loading}
+          className="mt-2 min-h-11 rounded-lg border border-line px-3 text-sm font-semibold text-brand-blue focus-visible:ring-2 focus-visible:ring-brand-blue disabled:opacity-70">
+          {retrying ? 'Retrying evidence…' : 'Retry evidence'}
+        </button>
+      )}
+      {retrying ? <p role="status" className="mt-2 text-sm text-muted">Refreshing workspace evidence…</p>
+        : unavailable ? <p role="alert" className="mt-2 text-sm text-tint-amber-ink">Workspace evidence is unavailable.</p>
         : loading ? <p role="status" className="mt-2 text-sm text-muted">Loading workspace evidence…</p>
         : <>
       {loadError && <p role="alert" className="mt-2 text-sm text-tint-amber-ink">{loadError}</p>}

@@ -1,6 +1,6 @@
 import type { CommercialIncident } from '../../domain/commercialKernel/commercialIncident';
 import { loadCommercialIncidents, loadCommercialIncidentsForWorkspace, INCIDENT_UPDATED_EVENT } from '../../services/commercialKernel/incidentStore';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthContext } from '../../auth/authContext';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import { getCachedSalesWorkspaceData, loadSalesWorkspaceData } from '../../services/workspaceData';
@@ -36,6 +36,7 @@ import {attachMoneyConsequenceContext,deriveMoneyConsequences} from '../../domai
 import {todayDateKey} from '../../utils/safeDate';
 import {canonicalReviewOutcomes} from '../../utils/outcomeScoreboard';
 import { getActiveWorkspaceScope } from '../../services/activeWorkspaceScope';
+import { captureLocalWorkspaceScope } from '../../services/localWorkspaceOwner';
 import { indexCommercialReviewSources } from './commercialReviewSources';
 
 /**
@@ -47,13 +48,13 @@ import { indexCommercialReviewSources } from './commercialReviewSources';
  * stale, so they stop believing both.
  */
 export function useCommercialThreads() {
-  const { user } = useAuthContext();
+  const { user, session } = useAuthContext();
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
   const activeWorkspace = getActiveWorkspaceScope();
   const nativeWorkspace = activeWorkspace?.dataOwnerId === dataUserId ? activeWorkspace : null;
   const workspaceName = sampleDataActive ? 'Sample workspace' : nativeWorkspace?.name ?? 'Personal workspace';
-  const snapshotScope = JSON.stringify([dataUserId, nativeWorkspace?.workspaceId, sampleDataActive]);
+  const snapshotScope = JSON.stringify([session?.user.id, dataUserId, nativeWorkspace?.workspaceId, sampleDataActive]);
 
   const [snapshot, setSnapshot] = useState(() => {
     const data = getCachedSalesWorkspaceData(dataUserId);
@@ -62,7 +63,9 @@ export function useCommercialThreads() {
   const workspace = snapshot.scope === snapshotScope ? snapshot.data : null;
   const workspaceUnavailable = snapshot.scope === snapshotScope && snapshot.unavailable;
   const loading = !workspace && !workspaceUnavailable;
-  const [refreshToken, setRefreshToken] = useState(0);
+  const retry = useRef<{ scope: string; run: () => void } | null>(null);
+  const [retryScope, setRetryScope] = useState<string | null>(null);
+  const attentionRetrying = retryScope === snapshotScope;
   const [targetState, setTargetState] = useState(() => ({scope: snapshotScope, rows: loadTargets()}));
   const targets = useMemo(() => targetState.scope === snapshotScope ? targetState.rows : [], [targetState, snapshotScope]);
   const [incidentState, setIncidentState] = useState<{scope: string; rows: CommercialIncident[]; error: string} | null>(null);
@@ -71,8 +74,11 @@ export function useCommercialThreads() {
   const attentionError = incidentState?.scope === incidentScope ? incidentState.error : '';
   const [planState, setPlanState] = useState<{scope: string; rows: PlanRecord[]; error?: string} | null>(null);
   const planItems = useMemo(() => planState?.scope === snapshotScope ? planState.rows : [], [planState, snapshotScope]);
-  const attentionLoading = loading || (!workspaceUnavailable && (planState?.scope !== snapshotScope || incidentState?.scope !== snapshotScope));
+  const attentionLoading = attentionRetrying || loading || (!workspaceUnavailable && (planState?.scope !== snapshotScope || incidentState?.scope !== snapshotScope));
   const attentionUnavailable = workspaceUnavailable || Boolean(planState?.scope === snapshotScope && planState.error);
+  const retryAttention = useCallback(() => {
+    if (retry.current?.scope === snapshotScope) retry.current.run();
+  }, [snapshotScope]);
 
   useEffect(() => {
     let active = true;
@@ -90,54 +96,63 @@ export function useCommercialThreads() {
 
   useEffect(() => {
     let active = true;
-    void loadSalesWorkspaceData(dataUserId)
-      .then((data) => { if (active) setSnapshot({ scope: snapshotScope, data, unavailable: false }); })
-      .catch(() => { if (active) setSnapshot({ scope: snapshotScope, data: null, unavailable: true }); });
-    return () => { active = false; };
-    // `sampleDataActive` belongs in the dependency list even though it is not
-    // read in the effect: loading or clearing the demo replaces the whole
-    // workspace without changing the user id, and without this the thread list
-    // stayed empty over a demo pipeline full of deals.
-  }, [dataUserId, snapshotScope, refreshToken]);
+    let inFlight = false;
+    let refreshQueued = false;
+    const failed = { workspace: false, incidents: false, plan: false };
+    const isCurrentScope = captureLocalWorkspaceScope(dataUserId);
+    const isCurrent = () => active && isCurrentScope();
+    const incidentError = 'Incident responses could not be loaded. This review is incomplete.';
+    setRetryScope(null);
 
-  useEffect(() => {
-    let active = true;
-    void loadCommercialIncidentsForWorkspace(dataUserId, sampleDataActive)
-      .then(rows => { if (active) setIncidentState({scope: incidentScope, rows, error: ''}); })
-      .catch(() => { if (active) setIncidentState({scope: incidentScope, rows: [], error: 'Incident responses could not be loaded. This review is incomplete.'}); });
-    return () => { active = false; };
-  }, [dataUserId, sampleDataActive, incidentScope, refreshToken]);
+    const load = async (manual = false) => {
+      if (!isCurrent() || (manual && !Object.values(failed).some(Boolean))) return;
+      if (inFlight) {
+        if (!manual) refreshQueued = true;
+        return;
+      }
+      inFlight = true;
+      if (manual) setRetryScope(snapshotScope);
+      const read = async <T,>(source: keyof typeof failed, fetch: () => Promise<T>, receive: (result: T | null) => void) => {
+        if (manual && !failed[source]) return;
+        const result = await fetch().catch(() => null);
+        if (!isCurrent()) return;
+        failed[source] = result === null;
+        receive(result);
+      };
+      await Promise.allSettled([
+        read('workspace', () => loadSalesWorkspaceData(dataUserId), data =>
+          setSnapshot({ scope: snapshotScope, data, unavailable: data === null })),
+        read('incidents', () => loadCommercialIncidentsForWorkspace(dataUserId, sampleDataActive), rows =>
+          setIncidentState({ scope: snapshotScope, rows: rows ?? [], error: rows ? '' : incidentError })),
+        read('plan', () => loadPlanItemsForWorkspace(dataUserId, sampleDataActive), rows =>
+          setPlanState({ scope: snapshotScope, rows: rows ?? [], error: rows ? undefined : 'Plan is unavailable.' })),
+      ]);
+      inFlight = false;
+      if (!isCurrent()) return;
+      if (manual) setRetryScope(null);
+      if (refreshQueued) {
+        refreshQueued = false;
+        void load();
+      }
+    };
 
-  useEffect(() => {
+    retry.current = { scope: snapshotScope, run: () => { void load(true); } };
+    const bump = () => { void load(); };
     const onIncidents = () => {
+      if (!isCurrent() || inFlight) return;
       try {
         const rows = loadCommercialIncidents().filter(row => row.userId === (dataUserId || null) && Boolean(row.isSample) === sampleDataActive);
-        setIncidentState({scope: incidentScope, rows, error: ''});
-      } catch { setIncidentState({scope: incidentScope, rows: [], error: 'Incident responses could not be loaded. This review is incomplete.'}); }
+        setIncidentState({ scope: snapshotScope, rows, error: failed.incidents ? incidentError : '' });
+      } catch {
+        failed.incidents = true;
+        setIncidentState({ scope: snapshotScope, rows: [], error: incidentError });
+      }
     };
-    window.addEventListener(INCIDENT_UPDATED_EVENT, onIncidents);
-    return () => window.removeEventListener(INCIDENT_UPDATED_EVENT, onIncidents);
-  }, [dataUserId, sampleDataActive, incidentScope]);
-
-  // The Plan holds the promises a capture made, and the ledger holds the ones
-  // recorded by hand. A thread that asks "what is scheduled to move this?" has
-  // to see both, or it warns about silence over a promise due on Tuesday.
-  useEffect(() => {
-    let active = true;
-    void loadPlanItemsForWorkspace(dataUserId, sampleDataActive)
-      .then((rows) => { if (active) setPlanState({scope: snapshotScope, rows}); })
-      .catch(() => { if (active) setPlanState({scope: snapshotScope, rows: [], error: 'Plan is unavailable.'}); });
-    return () => { active = false; };
-  }, [dataUserId, sampleDataActive, snapshotScope, refreshToken]);
-
-  // A commitment ticked anywhere changes both the thread's waiting party and
-  // the recommendations about it, so the kernel's own events drive the refresh.
-  useEffect(() => {
-    const bump = () => setRefreshToken((token) => token + 1);
     const onPlanItems = (event: Event) => {
       const detail = (event as CustomEvent<PlanRecord[]>).detail;
-      if (Array.isArray(detail)) setPlanState({scope: snapshotScope, rows: detail});
+      if (isCurrent() && Array.isArray(detail)) setPlanState({scope: snapshotScope, rows: detail});
     };
+    window.addEventListener(INCIDENT_UPDATED_EVENT, onIncidents);
     window.addEventListener(COMMITMENTS_UPDATED_EVENT, bump);
     window.addEventListener(THREADS_UPDATED_EVENT, bump);
     window.addEventListener(CONDITION_UPDATED_EVENT, bump);
@@ -145,7 +160,11 @@ export function useCommercialThreads() {
     window.addEventListener(DEPENDENCY_UPDATED_EVENT, bump);
     window.addEventListener(TIMING_UPDATED_EVENT, bump);
     window.addEventListener(PLAN_ITEMS_UPDATED_EVENT, onPlanItems);
+    void load();
     return () => {
+      active = false;
+      retry.current = null;
+      window.removeEventListener(INCIDENT_UPDATED_EVENT, onIncidents);
       window.removeEventListener(COMMITMENTS_UPDATED_EVENT, bump);
       window.removeEventListener(THREADS_UPDATED_EVENT, bump);
       window.removeEventListener(CONDITION_UPDATED_EVENT, bump);
@@ -154,7 +173,7 @@ export function useCommercialThreads() {
       window.removeEventListener(TIMING_UPDATED_EVENT, bump);
       window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, onPlanItems);
     };
-  }, [snapshotScope]);
+  }, [dataUserId, sampleDataActive, snapshotScope]);
 
   const commitments = useMemo(
     () => mergePlanCommitments(workspace?.commitments || [], {
@@ -301,6 +320,8 @@ export function useCommercialThreads() {
     attentionError,
     attentionLoading,
     attentionUnavailable,
+    attentionRetrying,
+    retryAttention,
     attentionScope: incidentScope,
     attentionSources,
     workspaceName,
