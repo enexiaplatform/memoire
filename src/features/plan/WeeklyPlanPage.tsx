@@ -349,7 +349,9 @@ export function WeeklyPlanPage({
   // is not on screen. Paging to it is what makes that row's one action true.
   useEffect(() => {
     if (!focusRequest?.date) return;
-    setAnchorDate(planDateKeyToDate(focusRequest.date));
+    const focusDate = planDateKeyToDate(focusRequest.date);
+    setAnchorDate(focusDate);
+    if (focusDate.getDay() === 0 || focusDate.getDay() === 6) setShowWeekend(true);
   }, [focusRequest]);
 
   // Every account name the workspace already knows, so a typed plan item can

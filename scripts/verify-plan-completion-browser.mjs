@@ -32,10 +32,13 @@ async function scenario(named, surface) {
   let incidentRequests = 0;
   let releaseIncidents;
   try {
-    const plan = { id: 'synthetic-plan', date: day, label: 'Call the fixture account', tag: 'Fixture account', createdAt: stamp, updatedAt: stamp, done: false, source: 'user' };
+    const priorSaturday = new Date(Date.parse(stamp) - 14 * 86_400_000);
+    priorSaturday.setUTCDate(priorSaturday.getUTCDate() - ((priorSaturday.getUTCDay() + 1) % 7));
+    const planDate = fromPlan ? day : priorSaturday.toISOString().slice(0, 10);
+    const plan = { id: 'synthetic-plan', date: planDate, label: 'Call the fixture account', tag: 'Fixture account', createdAt: stamp, updatedAt: stamp, done: false, source: 'user' };
     const activityId = randomUUID();
     let existing = {
-      id: activityId, user_id: named ? owner : login, activity_date: day, raw_note: 'Existing fixture call',
+      id: activityId, user_id: named ? owner : login, activity_date: planDate, raw_note: 'Existing fixture call',
       summary: 'Existing fixture call', activity_type: 'Call', account_name: 'Fixture account', tags: [], created_at: stamp, updated_at: stamp,
     };
     const requests = [];
@@ -231,6 +234,7 @@ async function scenario(named, surface) {
       assert.equal(requests.length, completions);
     } else {
       await page.goto(base + '/app/capture?mode=quick&account=Fixture%20account');
+      await page.getByLabel('Activity date', { exact: true }).fill(planDate);
       await page.locator('label').filter({ hasText: 'What happened?' }).locator('textarea').fill('Completed the scheduled account call.')
         .catch(async error => { console.error((await page.locator('body').innerText()).slice(-2500)); throw error; });
       await page.getByRole('button', { name: 'Save Quick Capture', exact: true }).click();
@@ -253,7 +257,9 @@ async function scenario(named, surface) {
       assert.equal(requests.length, 1);
       const activityHref = '/app/timeline?view=history&activityId=' + existing.id;
       assert.equal(await page.getByRole('link', { name: 'View linked activity' }).getAttribute('href'), activityHref);
-      await page.getByRole('link', { name: 'Review in Plan' }).click();
+      const planLink = page.getByRole('link', { name: 'Review in Plan' });
+      assert.equal(await planLink.getAttribute('href'), '/app/timeline?view=upcoming&date=' + planDate);
+      await planLink.click();
       await page.getByRole('checkbox', { name: 'Mark "Call the fixture account" not done', exact: true }).waitFor();
       const linkedActivity = page.getByRole('link', { name: 'View activity', exact: true }).and(page.locator(`a[href="${activityHref}"]`));
       await linkedActivity.click();

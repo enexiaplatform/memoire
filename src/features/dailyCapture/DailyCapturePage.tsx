@@ -367,7 +367,7 @@ export function DailyCapturePage() {
   const [lastSavedActivity, setLastSavedActivity] = useState<SalesActivityRecord | null>(null);
   const [planRecords, setPlanRecords] = useState<PlanRecord[]>([]);
   const [planFeedback, setPlanFeedback] = useState<{
-    owner: string; activityId: string; planId: string; status: 'saving' | 'pending' | 'confirmed' | 'conflict' | 'failed';
+    owner: string; activityId: string; planId: string; date: string; status: 'saving' | 'pending' | 'confirmed' | 'conflict' | 'failed';
   } | null>(null);
   const [planCloseDismissed, setPlanCloseDismissed] = useState(false);
   const [markedDoneKeys, setMarkedDoneKeys] = useState<string[]>([]);
@@ -1160,7 +1160,7 @@ export function DailyCapturePage() {
         const record = outcome.record;
         setPlanRecords(current => [record, ...current.filter(row => row.id !== record.id)]);
         setPlanFeedback(current => current && current.owner === dataUserId && current.planId === record.id
-          && current.activityId === record.completionActivityId ? { ...current, status: 'confirmed' } : current);
+          && current.activityId === record.completionActivityId ? { ...current, date: record.date, status: 'confirmed' } : current);
       } else if (outcome?.status === 'conflict') {
         setPlanFeedback(current => current && current.owner === dataUserId && current.planId === outcome.planId
           && current.activityId === outcome.activityId && current.status !== 'confirmed' ? { ...current, status: 'conflict' } : current);
@@ -1180,7 +1180,7 @@ export function DailyCapturePage() {
     });
     if (!record) return;
     if (dataUserId && !sampleDataActive) {
-      const attempt = { owner: dataUserId, activityId: lastSavedActivity.id, planId: record.id, status: 'saving' } as const;
+      const attempt = { owner: dataUserId, activityId: lastSavedActivity.id, planId: record.id, date: record.date, status: 'saving' } as const;
       setPlanFeedback(attempt);
       try {
         const result = await confirmExistingPlanActivity(
@@ -1712,7 +1712,7 @@ export function DailyCapturePage() {
             failed: 'Could not save the completion to this device. Free storage and try again.',
           }[currentPlanFeedback.status]}</p>
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 font-semibold underline">
-            <Link to="/app/timeline?view=upcoming">Review in Plan</Link>
+            <Link to={`/app/timeline?view=upcoming&date=${encodeURIComponent(currentPlanFeedback.date)}`}>Review in Plan</Link>
             {currentPlanFeedback.status === 'confirmed' && (
               <Link to={`/app/timeline?view=history&activityId=${encodeURIComponent(currentPlanFeedback.activityId)}`}>View linked activity</Link>
             )}
