@@ -24,6 +24,8 @@ const session = { user, access_token: 'fixture-token', refresh_token: 'fixture-r
 async function scenario(named, surface) {
   const fromPlan = surface === "Plan";
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, timezoneId: 'UTC' });
+  let releaseScope;
+  const scopeGate = new Promise(resolve => { releaseScope = resolve; });
   let releaseWorkspaceData;
   const workspaceDataGate = new Promise(resolve => { releaseWorkspaceData = resolve; });
   try {
@@ -53,7 +55,10 @@ async function scenario(named, surface) {
       if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: { 'access-control-allow-origin': '*', 'access-control-allow-methods': '*', 'access-control-allow-headers': '*' } });
       const respond = json => route.fulfill({ json, headers: { 'access-control-allow-origin': '*', 'content-range': '0-0/*' } });
       if (path === '/auth/v1/user') return respond(user);
-      if (path.endsWith('/rpc/memoire_get_native_workspace_scope')) return respond({ data_owner_id: owner, name: 'Fixture workspace' });
+      if (path.endsWith('/rpc/memoire_get_native_workspace_scope')) {
+        if (named && fromPlan) await scopeGate;
+        return respond({ data_owner_id: owner, name: 'Fixture workspace' });
+      }
       if (path.endsWith('/rpc/memoire_active_data_owner')) return respond(owner);
       if (path.endsWith('/memoire_personal_workspaces')) return respond([{ id: workspace, name: 'Fixture workspace', created_at: stamp }]);
       if (path.endsWith('/user_profiles')) return respond({ id: login, email: user.email, created_at: user.created_at, display_name: 'Fixture operator' });
@@ -97,6 +102,12 @@ async function scenario(named, surface) {
     if (fromPlan) {
       await page.goto(base + '/app/timeline?view=upcoming');
       const box = page.getByRole('checkbox', { name: 'Mark "Call the fixture account" done', exact: true });
+      if (named) {
+        await page.getByText('Opening workspace…', { exact: true }).waitFor();
+        assert.equal(await box.count(), 0);
+        assert.equal(await page.getByText('Some saved Plan completions could not be read.', { exact: false }).count(), 0);
+        releaseScope();
+      }
       await box.waitFor();
       assert.equal(await page.evaluate(key => localStorage.getItem(key), corruptKey), '{unreadable');
       await page.getByText('Some saved Plan completions could not be read.', { exact: false }).waitFor();
@@ -106,6 +117,7 @@ async function scenario(named, surface) {
       await page.getByRole('button', { name: 'Link and mark done', exact: true }).click();
       await page.getByText('1 Plan completion waiting for workspace confirmation.').waitFor();
       await page.getByText('Completion saved on this device, waiting for workspace confirmation.', { exact: true }).waitFor();
+      await page.getByRole('dialog').getByRole('button', { name: 'Not now', exact: true }).click();
       assert.equal(requests.length, 0);
       assert.equal(await box.count(), 1);
       const attempt = page.waitForRequest('**/api/commercial?resource=plan-completion');
@@ -115,10 +127,13 @@ async function scenario(named, surface) {
       });
       await attempt;
       assert.equal(await box.count(), 1);
+      const checking = page.getByRole('button', { name: 'Checking…', exact: true });
+      await checking.waitFor();
+      assert.ok(await checking.isDisabled());
       const lost = page.waitForEvent('requestfailed', request => request.url().includes('resource=plan-completion'));
       releaseResponse();
       await lost;
-      await page.getByRole('button', { name: 'Link and mark done', exact: true }).click();
+      await page.getByRole('button', { name: 'Retry', exact: true }).click();
       await page.getByRole('checkbox', { name: 'Mark "Call the fixture account" not done', exact: true }).waitFor();
       assert.deepEqual(requests[0], requests[1]);
       assert.equal(await page.evaluate(key => localStorage.getItem(key), corruptKey), '{unreadable');
@@ -194,6 +209,7 @@ async function scenario(named, surface) {
     assert.deepEqual(errors, []);
     console.log((named ? 'Named ' : 'Default ') + surface + ' browser path confirmed with the original Activity ID.');
   } finally {
+    releaseScope();
     releaseWorkspaceData();
     await context.close();
   }
