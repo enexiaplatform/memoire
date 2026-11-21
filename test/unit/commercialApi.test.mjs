@@ -42,3 +42,46 @@ test('storage and quota failures are explicit and do not leak database details',
  const limited=createCommercialHandler({rateLimit:()=>({allowed:false,retryAfterSeconds:9})});const response=await callHandler(limited,{});assert.equal(response.code,429);assert.equal(response.headers['Retry-After'],'9');
  const broken=createCommercialHandler({verify,clientForToken:()=>{throw new Error('private db credentials');},rateLimit:()=>({allowed:true})});const failure=await callHandler(broken,{});assert.equal(failure.code,503);assert.equal(JSON.stringify(failure.body).includes('credentials'),false);
 });
+
+test('a named-book receipt uses the resolved book owner and rejects a foreign workspace selector', async () => {
+ const commandBody={...body,observation:{...observation,sourceEventId:'named-contract-fixture'}};
+ const book='bbbbbbbb-1111-4111-8111-111111111156';
+ await setAuthenticatedOwner(db,OWNER_A);
+ await db.query("SELECT public.memoire_create_native_workspace($1,'Agent contract fixture',NULL,'{}')",[book]);
+ const directory=(await db.query('SELECT * FROM public.memoire_get_native_workspace_scope($1)',[book])).rows[0];
+ const scoped=createCommercialHandler({verify,rateLimit:()=>({allowed:true}),clientForToken:(token,workspace)=>{
+  const login=tokens[token];
+  const client=databaseClient(db,workspace?directory.data_owner_id:login);
+  return {...client,rpc(name,args){
+   if(name==='memoire_get_native_workspace_scope')return {async maybeSingle(){
+    await setAuthenticatedOwner(db,login);
+    const rows=await db.query('SELECT * FROM public.memoire_get_native_workspace_scope($1)',[args.p_workspace]);
+    return {data:rows.rows[0]??null,error:null};
+   }};
+   if(name==='memoire_active_data_owner')return (async()=>{
+    await setAuthenticatedOwner(db,login);
+    await db.exec('BEGIN');
+    try {
+     await db.query("SELECT set_config('request.jwt.claims',$1,true),set_config('request.headers',$2,true)",[
+      JSON.stringify({sub:login,role:'authenticated'}),JSON.stringify({'x-memoire-data-workspace':workspace}),
+     ]);
+     await db.exec('SELECT memoire_private.apply_workspace_data_scope()');
+     const result=await db.query('SELECT public.memoire_active_data_owner() AS owner');
+     return {data:result.rows[0].owner,error:null};
+    } finally { await db.exec('ROLLBACK'); }
+   })();
+   throw new Error('unexpected scope RPC');
+  }};
+ }});
+ const named=await callHandler(scoped,{method:'POST',headers:{authorization:'Bearer owner-a','x-memoire-data-workspace':book},body:commandBody});
+ assert.equal(named.code,201);
+ const replay=await callHandler(scoped,{method:'POST',headers:{authorization:'Bearer owner-a','x-memoire-data-workspace':book},body:commandBody});
+ assert.deepEqual(replay.body,{...named.body,duplicate:true});
+ const personal=await callHandler(scoped,{method:'POST',headers:{authorization:'Bearer owner-a'},body:commandBody});
+ assert.equal(personal.code,201);
+ assert.notEqual(personal.body.receipt.id,named.body.receipt.id);
+ const foreign=await callHandler(scoped,{method:'POST',headers:{authorization:'Bearer owner-b','x-memoire-data-workspace':book},body:commandBody});
+ assert.equal(foreign.code,404);
+ await setAuthenticatedOwner(db,OWNER_A);
+ assert.equal((await db.query('SELECT id FROM commercial_events WHERE id=$1',[named.body.receipt.id])).rowCount,0);
+});

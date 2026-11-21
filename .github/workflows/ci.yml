@@ -17,12 +17,49 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  commercial-receipt-postgrest:
+    name: Commercial receipts on PostgreSQL and PostgREST
+    if: github.event_name == 'pull_request' && github.head_ref == 'codex/agent-action-contract' && github.event.repository.visibility == 'public'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    permissions:
+      contents: read
+    services:
+      pg:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: fixture
+        ports:
+          - 127.0.0.1:55432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Verify receipts without deployment credentials
+        run: |
+          env -i PATH="$PATH" HOME="$HOME" CI=true npm run build:server
+          env -i PATH="$PATH" HOME="$HOME" CI=true COMMERCIAL_TEST_PG_CONTAINER="$PG_CONTAINER" node scripts/verify-commercial-receipt-postgrest.mjs
+        env:
+          PG_CONTAINER: ${{ job.services.pg.id }}
+
   fast:
     name: Build, typecheck, lint, test
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref == 'codex/agent-action-contract' && github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -40,6 +77,8 @@ jobs:
     needs: fast
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref == 'codex/agent-action-contract' && github.event.pull_request.head.sha || github.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
