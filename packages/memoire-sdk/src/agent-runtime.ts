@@ -1,4 +1,5 @@
 import {createMemoireClient, MemoireError, type ClientOptions, type Commitment, type Recommendation, type Observation, type ReceiptResult} from './index.js';
+import {checkReceiptAuthority, type AgentReceiptAuthority} from './agent-authorization.js';
 
 export type AgentProposal =
   | {type: 'follow-up'; commitmentId: string; summary: string}
@@ -14,7 +15,7 @@ export interface AgentRuntimeOptions extends ClientOptions {
   /** Host-provided source material; proposals may reference but never replace it. */
   observations?: {key: string; observation: Observation}[];
   /** Absent means read/propose only. Host policy, never accepted from model output. */
-  receiptAuthority?: {expiresAt: string; namespaces: string[]; maxReceipts: number};
+  receiptAuthority?: AgentReceiptAuthority;
 }
 export interface GovernedProposal {
   id: string; agentId: string; proposedAt: string; proposal: AgentProposal;
@@ -80,7 +81,7 @@ export async function createAgentRuntime(options: AgentRuntimeOptions) {
       if (!entry || entry.proposal.type !== 'receive-observation') throw new MemoireError('command_not_permitted');
       const proposal = entry.proposal;
       const source = sources.find(item => item.key === proposal.observationKey)!;
-      if (!authority || Date.now() >= Date.parse(authority.expiresAt) || !authority.namespaces.includes(source.observation.sourceNamespace)) throw new MemoireError('command_not_permitted');
+      if (!authority || checkReceiptAuthority(authority, source.observation.sourceNamespace, Date.now()) !== 'active') throw new MemoireError('command_not_permitted');
       if (results.has(proposalId)) return clone(results.get(proposalId)!);
       if (!reserved.has(source.key) && reserved.size >= authority.maxReceipts) throw new MemoireError('receipt_budget_exhausted');
       reserved.add(source.key); // Uncertain acknowledgement keeps the reservation; exact source retry remains possible.

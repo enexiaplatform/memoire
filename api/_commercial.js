@@ -3,7 +3,7 @@ import {createClient} from '@supabase/supabase-js';
 import {getBearerToken,verifyUserToken} from './_auth.js';
 import {getSupabaseAnonKey,getSupabaseUrl} from './_env.js';
 import {enforceRateLimit} from './_rateLimit.js';
-import {prepareExternalObservationReceipt,normalizeExternalObservation} from '../src/domain/commercialKernel/externalObservation.ts';
+import {evaluateCommercialReceipt,prepareCommercialCommand} from '../src/domain/commercialKernel/commercialCommandContract.ts';
 import {eventCodec} from '../src/services/commercialKernel/eventStore.ts';
 import {commitmentCodec} from '../src/services/commercialKernel/commitmentStore.ts';
 import {evaluateCommercialPolicies} from '../src/domain/commercialKernel/policyEngine.ts';
@@ -11,10 +11,8 @@ export {createAutomationHandler,createAutomationWorker,executeAutomationRun} fro
 export {prepareAutomationWork} from '../src/domain/automation/automationEngine.ts';
 export {PREPARATION_SOURCES, prepareWorkspaceAutomation} from '../src/domain/automation/workspacePreparation.ts';
 
-const bodyKeys=['version','command','observation'];
 function commitmentView(record){return {id:record.id,accountId:record.accountId,opportunityId:record.opportunityId,party:record.commitmentParty,
  responsiblePerson:record.ownerLabel,promise:record.commitmentText,dueDate:record.currentDueDate||null,status:record.status,updatedAt:record.updatedAt};}
-function receiptView(event){return {id:event.id,receivedAt:event.recordedAt,observation:normalizeExternalObservation(event.structuredPayload),acceptedCommercialTruth:false};}
 
 /** Narrow v1 API. All queries use the caller's JWT and the existing RLS, never service authority. */
 export function createCommercialHandler({verify=verifyUserToken,clientForToken=(token,workspaceId)=>createClient(getSupabaseUrl(),getSupabaseAnonKey(),{global:{headers:{Authorization:`Bearer ${token}`,...workspaceDataHeaders(workspaceId)}}}),rateLimit=enforceRateLimit}={}){
@@ -42,19 +40,18 @@ export function createCommercialHandler({verify=verifyUserToken,clientForToken=(
     const items=resource==='commitments'?page.map(commitmentView):evaluateCommercialPolicies({commitments:page,threads:[],opportunities:[],quotes:[],includeSampleRecords:false});
     return reply(200,{resource,scope:'authenticated-owner',basis:'commitments-in-this-page',items,nextCursor});
    }
-   const body=req.body;
-   if(!body||typeof body!=='object'||Array.isArray(body)||Object.keys(body).length!==bodyKeys.length||Object.keys(body).some(key=>!bodyKeys.includes(key))||body.version!==1||body.command!=='receive-observation')return reply(400,{error:'invalid_command'});
-   if(new TextEncoder().encode(JSON.stringify(body)).byteLength>128000)return reply(413,{error:'payload_too_large'});
-   let event;try{event=await prepareExternalObservationReceipt({userId:ownerId,sampleDataActive:false},body.observation);}catch{return reply(400,{error:'invalid_observation'});}
+   const prepared=await prepareCommercialCommand(req.body,ownerId);
+   if (prepared.status!=='prepared') return reply(prepared.status==='payload_too_large'?413:400,{error:prepared.status});
+   const {event,effectId}=prepared;
    // Ignore an existing identity during insert; then compare stored content. This is safe under concurrent retries.
    const result=await client.from('commercial_events').upsert(eventCodec.toRow(event,ownerId),{onConflict:'user_id,id',ignoreDuplicates:true}).select('*');
    if(result.error)return reply(503,{error:'receipt_not_confirmed',retrySafe:true});
-   const stored=await client.from('commercial_events').select('*').eq('user_id',ownerId).eq('id',event.id).maybeSingle();
+   const stored=await client.from('commercial_events').select('*').eq('user_id',ownerId).eq('id',effectId).maybeSingle();
    if(stored.error||!stored.data)return reply(503,{error:'receipt_not_confirmed',retrySafe:true});
-   const receipt=eventCodec.fromRow(stored.data);
-   if(!receipt||receipt.userId!==ownerId||receipt.eventType!=='external_observation_received')return reply(503,{error:'invalid_stored_receipt'});
-   if(JSON.stringify(normalizeExternalObservation(receipt.structuredPayload))!==JSON.stringify(event.structuredPayload))return reply(409,{error:'source_version_conflict'});
-   const duplicate=!result.data?.length;return reply(duplicate?200:201,{command:'receive-observation',duplicate,receipt:receiptView(receipt)});
+   const outcome=evaluateCommercialReceipt(prepared,eventCodec.fromRow(stored.data));
+   if (outcome.status!=='acknowledged') return reply(outcome.status==='source_version_conflict'?409:503,{error:outcome.status});
+   const duplicate=!result.data?.length;
+   return reply(duplicate?200:201,{command:prepared.command,duplicate,receipt:outcome.receipt});
   }catch{return reply(503,{error:'service_unavailable'});}
  };
 }

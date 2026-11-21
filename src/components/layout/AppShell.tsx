@@ -8,6 +8,7 @@ import { DemoModeBanner } from '../demo/DemoModeBanner';
 import { StorageFailureBanner } from '../common/StorageFailureBanner';
 import { SharedBrowserNotice } from '../common/SharedBrowserNotice';
 import { NoIndex } from '../marketing/PageSeo';
+import { PendingPlanCompletions } from '../common/PendingPlanCompletions';
 import { OfflineCaptureBanner } from '../common/OfflineCaptureBanner';
 import { TrialStatusBanner } from '../common/TrialStatusBanner';
 import { prefetchPrimaryAppRoutes } from '../../utils/routePrefetch';
@@ -123,6 +124,7 @@ export function AppShell() {
             capture is real data in a state the operator should know about,
             but it is safe, and the one above it is not. */}
         <OfflineCaptureBanner />
+        <PendingPlanCompletions />
         <DemoModeBanner />
         {/* Last of the banners: the trial is the only one of these that is not
             about the state of the data in front of you. It also stays silent
