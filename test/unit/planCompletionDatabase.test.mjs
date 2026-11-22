@@ -14,13 +14,17 @@ const session = randomUUID();
 const book = randomUUID();
 const sibling = randomUUID();
 const foreignBook = randomUUID();
-const note = { id: 'personal', date: '2026-11-18', label: 'Original task', done: false, createdAt: stamp, updatedAt: stamp, legacyField: { value: 1 } };
+const note = { id: 'personal', date: '2026-11-18', label: 'Original task', done: false, createdAt: stamp, updatedAt: stamp,
+  legacyField: { value: 1 }, reviewProposal: { proposalId: 'fixture-proposal', sourceRecordIds: ['fixture-evidence'] } };
 const sql = 'SELECT public.memoire_confirm_plan_completion($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) AS result';
 
 test('Plan completion migration preserves populated rows and atomically scopes, fences, retries and reopens links', async t => {
   const db = await createSupabaseCompatibleDatabase();
   t.after(() => db.close());
-  await applyMigrations(db, productionMigrations().filter(name => name !== migration));
+  const migrations = productionMigrations();
+  const migrationIndex = migrations.indexOf(migration);
+  assert.ok(migrationIndex >= 0);
+  await applyMigrations(db, migrations.slice(0, migrationIndex));
   await seedAuthUsers(db);
   await db.exec('CREATE TABLE auth.sessions(id uuid PRIMARY KEY, user_id uuid NOT NULL, not_after timestamptz)');
   await db.query('INSERT INTO auth.sessions(id,user_id) VALUES($1,$2)', [session, OWNER_A]);
@@ -37,7 +41,7 @@ test('Plan completion migration preserves populated rows and atomically scopes, 
   await db.query('INSERT INTO plan_items(user_id,id,payload,updated_at) VALUES($1,$2,$3,$4),($5,$2,$3,$4)', [named, note.id, JSON.stringify(note), stamp, OWNER_A]);
   const snapshot = async () => (await db.query('SELECT to_jsonb(p) AS row FROM plan_items p ORDER BY user_id,id')).rows;
   const before = await snapshot();
-  await applyMigrations(db, [migration]);
+  await applyMigrations(db, migrations.slice(migrationIndex));
   assert.deepEqual(await snapshot(), before);
   const request = randomUUID();
   const args = [OWNER_A, session, book, request, activity, note.id, null, stamp, null, null];
@@ -83,6 +87,17 @@ test('Plan completion migration preserves populated rows and atomically scopes, 
     assert.equal((await confirm({ 3: randomUUID(), 4: second })).status, 'conflict');
     await db.exec('RESET ROLE');
     assert.equal((await db.query('SELECT count(*)::int AS n FROM sales_activities')).rows[0].n, 3);
+  });
+
+  await t.test('Review status preserves owner boundaries even when item and proposal identities match', async () => {
+    const lookup = 'SELECT item_id,completion_status,activity_id FROM public.memoire_review_plan_status()';
+    await setAuthenticatedOwner(db, named);
+    assert.deepEqual((await db.query(lookup)).rows, [{ item_id: note.id, completion_status: 'verified_done', activity_id: activity }]);
+    await setAuthenticatedOwner(db, OWNER_A);
+    assert.deepEqual((await db.query(lookup)).rows, [{ item_id: note.id, completion_status: 'planned', activity_id: null }]);
+    await setAuthenticatedOwner(db, OWNER_B);
+    assert.deepEqual((await db.query(lookup)).rows, []);
+    await db.exec('RESET ROLE');
   });
 
   await t.test('legacy collection write cannot regress a managed link; current reopen/move and new completion work', async () => {
