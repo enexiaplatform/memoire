@@ -32,6 +32,7 @@ async function scenario(named, surface) {
   let incidentResponse;
   let incidentRequests = 0;
   let releaseIncidents;
+  let releasePlanStatus;
   try {
     const priorSaturday = new Date(Date.parse(stamp) - 14 * 86_400_000);
     priorSaturday.setUTCDate(priorSaturday.getUTCDate() - ((priorSaturday.getUTCDay() + 1) % 7));
@@ -46,6 +47,7 @@ async function scenario(named, surface) {
     const reviewWrites = [];
     let reviewStatus = 'planned';
     let statusUnavailable = false;
+    let statusGate;
     let duplicate;
     let hideActivities = false;
     let completed = null;
@@ -76,6 +78,7 @@ async function scenario(named, surface) {
         assert.equal(req.method(), 'GET');
         if (statusUnavailable) return respond({ message: 'Status unavailable' }, 403);
         const scopedOwner = req.headers()['x-memoire-data-workspace'] === workspace ? owner : login;
+        if (scopedOwner === login && statusGate) await statusGate;
         return respond(reviewWrites.filter(row => row.user_id === scopedOwner).map(row => ({
           item_id: row.id, proposal_id: row.payload.reviewProposal.proposalId, label: row.payload.label,
           plan_date: row.payload.date, completion_status: reviewStatus,
@@ -243,6 +246,8 @@ async function scenario(named, surface) {
       const href = new URL(await linkedPlan.getAttribute('href'), base);
       assert.equal(href.searchParams.get('planItem'), reviewWrites[0].id);
       assert.equal(href.searchParams.get('date'), planDate);
+      const alreadyPlanned = page.getByRole('link', { name: 'Already in Plan for Fixture account', exact: true });
+      assert.equal(await alreadyPlanned.getAttribute('href'), await linkedPlan.getAttribute('href'));
       await linkedPlan.press('Enter');
       await page.waitForFunction(() => document.activeElement?.id === 'focused-plan-item');
       assert.match(await page.locator('#focused-plan-item').innerText(), /Follow up on the revised terms/);
@@ -251,9 +256,13 @@ async function scenario(named, surface) {
       await openStatus();
       await savedRow.getByText(/· Reported Done$/).waitFor();
       assert.equal(await savedRow.getByText(/Verified Done/).count(), 0);
+      assert.equal(await savedRow.getByRole('link', { name: /^View linked Activity/ }).count(), 0);
       reviewStatus = 'verified_done';
       await openStatus();
       await savedRow.getByText(/· Verified Done$/).waitFor();
+      const linkedEvidence = savedRow.getByRole('link', { name: /^View linked Activity/ });
+      await linkedEvidence.click();
+      await page.waitForURL(url => url.searchParams.get('activityId') === existing.id && url.searchParams.get('view') === 'history');
       statusUnavailable = true;
       await openStatus();
       await tracking.getByRole('alert').filter({ hasText: 'Plan status unavailable' }).waitFor();
@@ -262,12 +271,18 @@ async function scenario(named, surface) {
       await tracking.getByRole('button', { name: 'Retry Plan status' }).click();
       await savedRow.getByText(/· Verified Done$/).waitFor();
 
+      statusGate = new Promise(resolve => { releasePlanStatus = resolve; });
+      const oldStatus = page.waitForRequest(req => new URL(req.url()).pathname.endsWith('/memoire_review_plan_status'));
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await oldStatus;
+      await tracking.getByText('Checking Plan items…').waitFor();
       const statusSwitch = page.waitForURL('**/app/today');
       await page.getByLabel('Switch workspace').selectOption(workspace);
       await statusSwitch;
       await page.getByLabel('Switch workspace').waitFor();
       await openStatus();
       await page.getByRole('link', { name: /^Plan follow-up/ }).first().waitFor();
+      releasePlanStatus();
       assert.equal(await savedRow.count(), 0);
       assert.equal(reviewWrites.length, 1);
       assert.deepEqual(errors, []);
@@ -421,8 +436,9 @@ async function scenario(named, surface) {
       const activityHref = '/app/timeline?view=history&activityId=' + existing.id;
       assert.equal(await page.getByRole('link', { name: 'View linked activity' }).getAttribute('href'), activityHref);
       const planLink = page.getByRole('link', { name: 'Review in Plan' });
-      assert.equal(await planLink.getAttribute('href'), '/app/timeline?view=upcoming&date=' + planDate);
+      assert.equal(await planLink.getAttribute('href'), '/app/timeline?view=upcoming&date=' + planDate + '&planItem=' + plan.id);
       await planLink.click();
+      await page.waitForFunction(() => document.activeElement?.id === 'focused-plan-item');
       await page.getByRole('checkbox', { name: 'Mark "Call the fixture account" not done', exact: true }).waitFor();
       const linkedActivity = page.getByRole('link', { name: 'View activity', exact: true }).and(page.locator(`a[href="${activityHref}"]`));
       await linkedActivity.click();
@@ -432,6 +448,7 @@ async function scenario(named, surface) {
     assert.deepEqual(errors, []);
     console.log((named ? 'Named ' : 'Default ') + surface + ' browser path confirmed with the original Activity ID.');
   } finally {
+    releasePlanStatus?.();
     releaseIncidents?.(403);
     releaseScope();
     releaseWorkspaceData();

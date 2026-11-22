@@ -9,7 +9,7 @@ import { SavedByMemoirePrompt } from '../value/SavedByMemoirePrompt';
 import { resolveCommercialReviewSources, type ReviewSources } from './commercialReviewSources';
 import { readReviewPlanOrigin } from '../../utils/reviewPlanDraft';
 import { todayDateKey } from '../../utils/safeDate';
-import { reviewPlanItemHref, type ReviewPlanStatusRow } from '../../utils/reviewPlanStatus';
+import { planItemHref, type ReviewPlanStatusRow } from '../../utils/reviewPlanStatus';
 
 const severityTone: Record<Severity, string> = {
   critical: 'border-red-200 bg-red-50/60',
@@ -175,7 +175,7 @@ export function CommercialRiskPanel({
             {item.question && <p className="mt-2 text-sm font-semibold text-ink">{item.question}</p>}
 
             <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1.5">
-              {planned && <Link to={reviewPlanItemHref(planned.item_id, planned.plan_date)}
+              {planned && <Link to={planItemHref(planned.item_id, planned.plan_date)}
                 state={{ planItemScope: planDraftScope }}
                 className="inline-flex min-h-11 items-center rounded-lg border border-line px-3 text-sm font-semibold text-brand-blue focus-visible:ring-2 focus-visible:ring-brand-blue">
                 Already in Plan<span className="sr-only"> for {item.accountName}</span>

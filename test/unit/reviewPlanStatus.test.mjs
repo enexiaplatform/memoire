@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isReviewPlanStatusRow, reviewPlanItemHref } from '../../src/utils/reviewPlanStatus.ts';
+import { isReviewPlanStatusRow, planItemHref } from '../../src/utils/reviewPlanStatus.ts';
 
 const planned = {
   item_id: 'plan/one & two', proposal_id: 'proposal', label: 'Review terms', plan_date: '2026-11-21',
@@ -20,7 +20,7 @@ test('Review status accepts only bounded rows with a recognized status and consi
 });
 
 test('an exact Plan href preserves the item ID and planning date', () => {
-  const url = new URL(reviewPlanItemHref(planned.item_id, planned.plan_date), 'https://example.test');
+  const url = new URL(planItemHref(planned.item_id, planned.plan_date), 'https://example.test');
   assert.equal(url.pathname, '/app/timeline');
   assert.deepEqual(Object.fromEntries(url.searchParams), {
     view: 'upcoming', date: planned.plan_date, planItem: planned.item_id,

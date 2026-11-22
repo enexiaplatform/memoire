@@ -73,6 +73,7 @@ import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewH
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 import { markDemoJourneyStepComplete } from '../../utils/demoJourney';
 import { formatSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
+import { planItemHref } from '../../utils/reviewPlanStatus';
 import {
   buildEmailThreadIngestion,
   buildIngestionSourceTags,
@@ -1712,7 +1713,9 @@ export function DailyCapturePage() {
             failed: 'Could not save the completion to this device. Free storage and try again.',
           }[currentPlanFeedback.status]}</p>
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 font-semibold underline">
-            <Link to={`/app/timeline?view=upcoming&date=${encodeURIComponent(currentPlanFeedback.date)}`}>Review in Plan</Link>
+            <Link to={currentPlanFeedback.status === 'confirmed'
+              ? planItemHref(currentPlanFeedback.planId, currentPlanFeedback.date)
+              : `/app/timeline?view=upcoming&date=${encodeURIComponent(currentPlanFeedback.date)}`}>Review in Plan</Link>
             {currentPlanFeedback.status === 'confirmed' && (
               <Link to={`/app/timeline?view=history&activityId=${encodeURIComponent(currentPlanFeedback.activityId)}`}>View linked activity</Link>
             )}

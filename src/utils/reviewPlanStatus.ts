@@ -28,6 +28,6 @@ export function isReviewPlanStatusRow(value: unknown): value is ReviewPlanStatus
       : row.activity_id === null);
 }
 
-export function reviewPlanItemHref(id: string, date: string) {
+export function planItemHref(id: string, date: string) {
   return '/app/timeline?' + new URLSearchParams({ view: 'upcoming', date, planItem: id }).toString();
 }

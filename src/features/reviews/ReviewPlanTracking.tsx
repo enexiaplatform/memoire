@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { formatSafeBusinessDate } from '../../utils/safeDate';
-import { reviewPlanItemHref, reviewPlanStatusLabels } from '../../utils/reviewPlanStatus';
+import { planItemHref, reviewPlanStatusLabels } from '../../utils/reviewPlanStatus';
 import type { PlanStatus } from './useReviewPlanStatus';
 
 export function ReviewPlanTracking({ status, scope, onRetry }: { status: PlanStatus; scope: string; onRetry: () => void }) {
@@ -20,10 +20,16 @@ export function ReviewPlanTracking({ status, scope, onRetry }: { status: PlanSta
               <p className="break-words text-sm font-semibold text-ink">{row.label}</p>
               <p className="text-xs text-muted">{formatSafeBusinessDate(row.plan_date)} · {reviewPlanStatusLabels[row.completion_status]}</p>
             </div>
-            <Link to={reviewPlanItemHref(row.item_id, row.plan_date)} state={{ planItemScope: scope }}
-              className="inline-flex min-h-11 items-center text-sm font-semibold text-brand-blue underline">
-              Open in Plan<span className="sr-only"> · {row.label}</span>
-            </Link>
+            <div className="flex flex-wrap gap-x-4 text-sm font-semibold text-brand-blue">
+              <Link to={planItemHref(row.item_id, row.plan_date)} state={{ planItemScope: scope }}
+                className="inline-flex min-h-11 items-center underline">
+                Open in Plan<span className="sr-only"> · {row.label}</span>
+              </Link>
+              {row.completion_status === 'verified_done' && row.activity_id && (
+                <Link to={`/app/timeline?view=history&activityId=${encodeURIComponent(row.activity_id)}`}
+                  className="inline-flex min-h-11 items-center underline">View linked Activity<span className="sr-only"> · {row.label}</span></Link>
+              )}
+            </div>
           </li>
         ))}
       </ul>}
