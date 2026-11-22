@@ -151,8 +151,9 @@ try {
   });
   await healthy(authOrigin + '/health');
   const migrations = readdirSync('supabase/migrations').filter(file => file.endsWith('.sql')).sort((a, b) => a.localeCompare(b));
-  assert.ok(migrations.includes(targetMigration));
-  for (const file of migrations.filter(file => file !== targetMigration)) sql(readFileSync('supabase/migrations/' + file, 'utf8'));
+  const targetIndex = migrations.indexOf(targetMigration);
+  assert.ok(targetIndex >= 0);
+  for (const file of migrations.slice(0, targetIndex)) sql(readFileSync('supabase/migrations/' + file, 'utf8'));
   service('memoire-ephemeral-rest', 'postgrest/postgrest:v13.0.7', {
     PGRST_DB_URI: 'postgres://authenticator:' + databasePassword + '@127.0.0.1:55432/postgres',
     PGRST_DB_ANON_ROLE: 'anon', PGRST_DB_SCHEMAS: 'public', PGRST_SERVER_PORT: '3301',
@@ -179,13 +180,15 @@ try {
       const { plan, activity } = await seedCase(book, 'Synthetic pre-migration fixture');
       assert.match(plan.id, /^stage-[a-f0-9-]{36}$/);
       assert.match(activity, /^[a-f0-9-]{36}$/);
+      sql(`UPDATE public.plan_items SET payload=payload || '{"reviewProposal":{"proposalId":"ephemeral-fixture"}}'
+        WHERE id='${plan.id}';`);
       const snapshot = () => sql(`select jsonb_build_array(
         (select row_to_json(p) from public.plan_items p where id='${plan.id}'),
         (select row_to_json(a) from public.sales_activities a where id='${activity}'));
       `);
       const before = snapshot();
       assert.ok(JSON.parse(before).every(Boolean));
-      sql(readFileSync('supabase/migrations/' + targetMigration, 'utf8'));
+      for (const file of migrations.slice(targetIndex)) sql(readFileSync('supabase/migrations/' + file, 'utf8'));
       assert.equal(snapshot(), before);
       // Force PostgREST to observe the new RPC before issuing app requests.
       sql("NOTIFY pgrst, 'reload schema';");
@@ -204,6 +207,13 @@ try {
       }
       results.migration = 'PASS: pre-existing synthetic Plan and Activity rows unchanged';
       results.checks.additive_migration = 'PASS';
+      const tracked = await book.scoped.rpc('memoire_review_plan_status', {}, { get: true });
+      assert.equal(tracked.error, null);
+      assert.deepEqual(tracked.data.map(row => [row.item_id, row.completion_status, row.activity_id]), [[plan.id, 'planned', null]]);
+      const sibling = await fixture.books[1].scoped.rpc('memoire_review_plan_status', {}, { get: true });
+      assert.equal(sibling.error, null);
+      assert.deepEqual(sibling.data, []);
+      results.checks.review_status_scope = 'PASS';
       console.log(label, results.migration);
     },
   });

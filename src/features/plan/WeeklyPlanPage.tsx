@@ -177,7 +177,7 @@ export function WeeklyPlanPage({
    * into view. The sequence number is what lets the same day be asked for
    * twice - see the comment where it is raised.
    */
-  focusRequest?: { date: string; seq: number } | null;
+  focusRequest?: { date: string; seq: number; itemId?: string; scope?: string } | null;
   reviewPlanDraft?: ReviewPlanHandoff;
 } = {}) {
   const { user, loading: authLoading, isAuthenticated } = useAuthContext();
@@ -186,6 +186,9 @@ export function WeeklyPlanPage({
   // and something else on another.
   const commercialThreads = useCommercialThreads(Boolean(reviewPlanDraft));
   const { recommendations } = commercialThreads;
+  const wrongFocusScope = Boolean(focusRequest?.scope && focusRequest.scope !== commercialThreads.attentionScope);
+  const focusedItemId = wrongFocusScope ? undefined : focusRequest?.itemId;
+  const lastFocusedRequest = useRef<number | null>(null);
   const promiseLedger = useCommitmentLedger();
   const [showBacklog, setShowBacklog] = useState(false);
   const [dayLimits, setDayLimits] = useState<Record<string, number>>({});
@@ -197,6 +200,9 @@ export function WeeklyPlanPage({
   const [quotes, setQuotes] = useState<QuoteRecord[]>([]);
   const [expenses, setExpenses] = useState<ExpenseRecord[]>([]);
   const [records, setRecords] = useState<PlanRecord[]>([]);
+  const focusedRecord = focusedItemId ? records.find(record =>
+    record.id === focusedItemId && !record.__deleted && !record.dismissed) : undefined;
+  const focusedDate = focusedRecord?.date ?? focusRequest?.date;
   const [supplierCommitments, setSupplierCommitments] = useState<SupplierCommitmentRecord[]>([]);
   const [commitment, setCommitment] = useState<WeeklyCommitmentSnapshot | null>(null);
   const [loading, setLoading] = useState(true);
@@ -317,6 +323,15 @@ export function WeeklyPlanPage({
     brands: knownBrands,
   }), [activities, anchorDate, knownBrands, obligations, opportunities, periodType, records]);
 
+  useEffect(() => {
+    if (loading || !focusedItemId || !focusRequest || lastFocusedRequest.current === focusRequest.seq) return;
+    const row = document.getElementById('focused-plan-item');
+    if (!row) return;
+    lastFocusedRequest.current = focusRequest.seq;
+    row.focus();
+    row.scrollIntoView({ block: 'nearest' });
+  }, [board, focusedItemId, focusRequest, loading]);
+
   /**
    * Tells the surface above which days are on screen.
    *
@@ -354,11 +369,11 @@ export function WeeklyPlanPage({
   // Asked for from outside - a promise listed above the board because its day
   // is not on screen. Paging to it is what makes that row's one action true.
   useEffect(() => {
-    if (!focusRequest?.date) return;
-    const focusDate = planDateKeyToDate(focusRequest.date);
+    if (!focusedDate || wrongFocusScope) return;
+    const focusDate = planDateKeyToDate(focusedDate);
     setAnchorDate(focusDate);
     if (focusDate.getDay() === 0 || focusDate.getDay() === 6) setShowWeekend(true);
-  }, [focusRequest]);
+  }, [focusedDate, focusRequest, wrongFocusScope]);
 
   // Every account name the workspace already knows, so a typed plan item can
   // link to the entity it belongs to instead of living as loose text.
@@ -1016,6 +1031,7 @@ export function WeeklyPlanPage({
        on - so the one route from a promise to the place it can be ticked was a
        link that did nothing. */
     <div id={PLAN_BOARD_ANCHOR_ID} className={embedded ? 'flex flex-col gap-4' : 'mx-auto flex max-w-[1600px] flex-col gap-4 px-4 py-6 sm:px-6'}>
+      {wrongFocusScope && <p role="alert" className="text-sm text-muted">This Plan link belongs to another workspace.</p>}
       {reviewPlanDraft && (
         <ReviewPlanDraftPanel key={JSON.stringify([reviewPlanDraft.scope, reviewPlanDraft.proposalId])}
           origin={reviewPlanDraft} date={focusRequest?.date || today} scope={commercialThreads.attentionScope}
@@ -1199,7 +1215,11 @@ export function WeeklyPlanPage({
           ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5'
           : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7'
       }`}>
-        {visibleDays.map((day, dayIndex) => (
+        {visibleDays.map((day, dayIndex) => {
+          const dayItems = day.items.filter(item => showBacklog || !item.carriedFrom);
+          const focusIndex = dayItems.findIndex(item => item.id === focusedItemId && !item.carriedFrom);
+          const itemLimit = Math.max(dayLimits[day.date] || 12, focusIndex + 1);
+          return (
           <section
             key={day.date}
             aria-label={`${day.weekdayLabel} ${day.dayLabel}${day.isToday ? ', today' : ''}`}
@@ -1233,7 +1253,8 @@ export function WeeklyPlanPage({
             </header>
 
             <div className="flex flex-1 flex-col gap-2 p-[11px]">
-              {day.items.filter(item => showBacklog || !item.carriedFrom).slice(0, dayLimits[day.date] || 12).map((item) => {
+              {dayItems.slice(0, itemLimit).map((item) => {
+                const focused = item.id === focusedItemId && !item.carriedFrom;
                 const editable = item.kind !== 'obligation';
                 const isEditing = editingId === item.id;
                 const state = item.done ? 'done' : item.overdue ? 'late' : 'open';
@@ -1263,6 +1284,8 @@ export function WeeklyPlanPage({
                 return (
                 <Fragment key={item.id}>
                 <div
+                  id={focused ? 'focused-plan-item' : undefined}
+                  tabIndex={focused ? -1 : undefined}
                   // Obligations can be picked up even though they will not
                   // move. Refusing the drag outright taught the operator
                   // nothing - the item simply did not respond - whereas
@@ -1275,7 +1298,7 @@ export function WeeklyPlanPage({
                     setDragItem(item);
                   }}
                   onDragEnd={() => { setDragItem(null); setDragOverDate(''); }}
-                  className={`group flex items-start gap-2 rounded-[11px] px-[11px] py-[10px] transition-transform ${chip.ground} ${
+                  className={`group flex items-start gap-2 rounded-[11px] px-[11px] py-[10px] transition-transform ${chip.ground} ${focused ? 'ring-2 ring-brand-blue' : ''} ${
                     editable && !isEditing ? 'cursor-grab active:cursor-grabbing' : ''
                   } ${dragItem?.id === item.id ? 'opacity-40' : ''}`}
                 >
@@ -1415,7 +1438,7 @@ export function WeeklyPlanPage({
                 );
               })}
 
-              {day.items.filter(item => showBacklog || !item.carriedFrom).length > (dayLimits[day.date] || 12) && <button type="button" className="p-2 text-xs font-bold text-brand-blue" onClick={() => setDayLimits(current => ({ ...current, [day.date]: (current[day.date] || 12) + 12 }))}>Show 12 more ({day.items.filter(item => showBacklog || !item.carriedFrom).length - (dayLimits[day.date] || 12)} remaining)</button>}
+              {dayItems.length > itemLimit && <button type="button" className="p-2 text-xs font-bold text-brand-blue" onClick={() => setDayLimits(current => ({ ...current, [day.date]: itemLimit + 12 }))}>Show 12 more ({dayItems.length - itemLimit} remaining)</button>}
               {composerDate === day.date ? (
                 <div className="rounded-[11px] bg-white p-2 ring-1 ring-line">
                   <div className="flex items-center gap-1">
@@ -1539,7 +1562,8 @@ export function WeeklyPlanPage({
               )}
             </div>
           </section>
-        ))}
+          );
+        })}
       </div>
 
       <PlanTagAccountsPanel

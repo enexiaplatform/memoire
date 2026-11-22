@@ -144,3 +144,46 @@ console.log('Review handoff: concurrent authenticated saves created one open Pla
 sql("DELETE FROM auth.sessions WHERE id='" + session + "';");
 assert.equal((await rpc(request('revoked', activityA))).data.status, 'unauthorized');
 console.log('PostgREST: explicit workspace scope, direct role denial, revocation, separate concurrent requests, stable receipts, and unchanged Activity count verified.');
+
+async function readReviewStatus(token = identity, workspace = firstBook) {
+  const response = await fetch(endpoint + '/rpc/memoire_review_plan_status', {
+    signal: AbortSignal.timeout(10_000),
+    headers: { ...(token ? { Authorization: 'Bearer ' + token } : {}), 'x-memoire-data-workspace': workspace },
+  });
+  return { code: response.status, data: await response.json() };
+}
+const expected = {
+  item_id: followUpId, proposal_id: 'proposal', label: planned.payload.label, plan_date: '2026-11-21',
+  completion_status: 'planned', activity_id: null,
+};
+assert.deepEqual(await readReviewStatus(), { code: 200, data: [expected] });
+assert.deepEqual(await readReviewStatus(identity, secondBook), { code: 200, data: [] });
+assert.equal((await readReviewStatus(jwt('authenticated', stranger))).code, 403);
+assert.ok([401, 403].includes((await readReviewStatus(null)).code));
+sql(`INSERT INTO auth.sessions(id,user_id) VALUES('${session}','${actor}');`);
+const followUpReceipt = (await rpc(request(followUpId, activityA))).data;
+assert.equal(followUpReceipt.status, 'confirmed');
+assert.deepEqual((await readReviewStatus()).data,
+  [{ ...expected, completion_status: 'verified_done', activity_id: activityA }]);
+
+const forged = 'review-copy-with-foreign-receipt';
+sql(`INSERT INTO public.plan_items (user_id,id,payload,updated_at)
+  SELECT user_id,'${forged}',payload || '{"id":"${forged}","reviewProposal":{"proposalId":"forged"}}','${stamp}'
+  FROM public.plan_items WHERE user_id='${owner}' AND id='${followUpId}';`);
+const withForgery = (await readReviewStatus()).data;
+assert.equal(withForgery.find(row => row.item_id === forged)?.completion_status, 'reported_done');
+assert.equal(withForgery.find(row => row.item_id === forged)?.activity_id, null);
+sql(`UPDATE public.plan_items SET payload=payload || jsonb_build_object('completionActivityId','${activityB}')
+  WHERE user_id='${owner}' AND id='${followUpId}';`);
+assert.equal((await readReviewStatus()).data.find(row => row.item_id === followUpId)?.completion_status, 'reported_done');
+sql(`UPDATE public.plan_items SET payload=payload || jsonb_build_object('completionActivityId','${activityA}')
+  WHERE user_id='${owner}' AND id='${followUpId}';
+  DELETE FROM public.sales_activities WHERE user_id='${owner}' AND id='${activityA}';`);
+assert.equal((await readReviewStatus()).data.find(row => row.item_id === followUpId)?.completion_status, 'reported_done');
+sql(`UPDATE public.plan_items SET payload=payload || jsonb_build_object('completionActivityId','${activityA}','done',false)
+  WHERE user_id='${owner}' AND id='${followUpId}';`);
+assert.equal((await readReviewStatus()).data.find(row => row.item_id === followUpId)?.completion_status, 'planned');
+sql(`UPDATE public.plan_items SET payload=payload || '{"__deleted":true}'
+  WHERE user_id='${owner}' AND id='${followUpId}';`);
+assert.ok(!(await readReviewStatus()).data.some(row => row.item_id === followUpId));
+console.log('Review status verified: scoped lookup, no false verification for copied receipts, mismatched Activity links, reopen, and deletion.');

@@ -44,6 +44,8 @@ async function scenario(named, surface) {
     };
     const requests = [];
     const reviewWrites = [];
+    let reviewStatus = 'planned';
+    let statusUnavailable = false;
     let duplicate;
     let hideActivities = false;
     let completed = null;
@@ -70,6 +72,16 @@ async function scenario(named, surface) {
         return respond({ data_owner_id: owner, name: 'Fixture workspace' });
       }
       if (path.endsWith('/rpc/memoire_active_data_owner')) return respond(owner);
+      if (path.endsWith('/rpc/memoire_review_plan_status')) {
+        assert.equal(req.method(), 'GET');
+        if (statusUnavailable) return respond({ message: 'Status unavailable' }, 403);
+        const scopedOwner = req.headers()['x-memoire-data-workspace'] === workspace ? owner : login;
+        return respond(reviewWrites.filter(row => row.user_id === scopedOwner).map(row => ({
+          item_id: row.id, proposal_id: row.payload.reviewProposal.proposalId, label: row.payload.label,
+          plan_date: row.payload.date, completion_status: reviewStatus,
+          activity_id: reviewStatus === 'verified_done' ? existing.id : null,
+        })));
+      }
       if (path.endsWith('/memoire_personal_workspaces')) return respond([{ id: workspace, name: 'Fixture workspace', created_at: stamp }]);
       if (path.endsWith('/user_profiles')) return respond({ id: login, email: user.email, created_at: user.created_at, display_name: 'Fixture operator' });
       if (path.endsWith('/commercial_incidents') && incidentResponse && req.headers()['x-memoire-data-workspace'] !== workspace) {
@@ -218,6 +230,45 @@ async function scenario(named, surface) {
       await page.goForward();
       await page.getByRole('checkbox', { name: 'Mark "Follow up on the revised terms" done', exact: true }).waitFor();
       assert.equal(await draft.count(), 0);
+      assert.equal(reviewWrites.length, 1);
+      const tracking = page.getByRole('region', { name: 'Review follow-ups in Plan' });
+      const savedRow = tracking.getByRole('listitem').filter({ hasText: 'Follow up on the revised terms' });
+      const openStatus = async () => {
+        await page.goto(base + '/app/reviews');
+        await page.getByText('What this leaves for next week', { exact: true }).click();
+      };
+      await openStatus();
+      await savedRow.getByText(/· Planned$/).waitFor();
+      const linkedPlan = savedRow.getByRole('link', { name: /^Open in Plan/ });
+      const href = new URL(await linkedPlan.getAttribute('href'), base);
+      assert.equal(href.searchParams.get('planItem'), reviewWrites[0].id);
+      assert.equal(href.searchParams.get('date'), planDate);
+      await linkedPlan.press('Enter');
+      await page.waitForFunction(() => document.activeElement?.id === 'focused-plan-item');
+      assert.match(await page.locator('#focused-plan-item').innerText(), /Follow up on the revised terms/);
+
+      reviewStatus = 'reported_done';
+      await openStatus();
+      await savedRow.getByText(/· Reported Done$/).waitFor();
+      assert.equal(await savedRow.getByText(/Verified Done/).count(), 0);
+      reviewStatus = 'verified_done';
+      await openStatus();
+      await savedRow.getByText(/· Verified Done$/).waitFor();
+      statusUnavailable = true;
+      await openStatus();
+      await tracking.getByRole('alert').filter({ hasText: 'Plan status unavailable' }).waitFor();
+      assert.equal(await page.getByRole('link', { name: /^Plan follow-up/ }).count(), 0);
+      statusUnavailable = false;
+      await tracking.getByRole('button', { name: 'Retry Plan status' }).click();
+      await savedRow.getByText(/· Verified Done$/).waitFor();
+
+      const statusSwitch = page.waitForURL('**/app/today');
+      await page.getByLabel('Switch workspace').selectOption(workspace);
+      await statusSwitch;
+      await page.getByLabel('Switch workspace').waitFor();
+      await openStatus();
+      await page.getByRole('link', { name: /^Plan follow-up/ }).first().waitFor();
+      assert.equal(await savedRow.count(), 0);
       assert.equal(reviewWrites.length, 1);
       assert.deepEqual(errors, []);
       console.log('Review follow-up draft verified: explicit save, duplicate warning, scoped evidence, weekend, and history.');

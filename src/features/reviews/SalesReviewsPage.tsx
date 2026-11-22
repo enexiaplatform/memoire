@@ -12,6 +12,8 @@ import { ReviewAnalyticsSection } from './ReviewAnalyticsSection';
 import { ReviewScoreboardPanel } from './ReviewScoreboardPanel';
 import { ChangesSinceReviewPanel, LeadFunnelPanel } from './ChangesSinceReviewPanel';
 import { CommercialRiskPanel } from '../threads/CommercialRiskPanel';
+import { useReviewPlanStatus } from './useReviewPlanStatus';
+import { ReviewPlanTracking } from './ReviewPlanTracking';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { useCommercialThreads } from '../threads/useCommercialThreads';
 import { CommitmentLedgerPanel } from '../commitments/CommitmentLedgerPanel';
@@ -114,6 +116,8 @@ export function SalesReviewsPage() {
   const reviewScope = useMemo(() => ({userId:reviewSample?null:reviewUser?.id||null,sampleDataActive:reviewSample}),[reviewSample,reviewUser?.id]);
   const { rankedRecommendations: reviewRecommendations, attentionError, attentionLoading, attentionUnavailable, attentionRetrying, retryAttention, attentionScope,
     attentionSources, workspaceName, commitments: teamCommitments, workspace: teamWorkspace } = useCommercialThreads();
+  const reviewPlanOwner = tab === 'review' && !reviewSample ? reviewUser?.id : undefined;
+  const reviewPlan = useReviewPlanStatus(reviewPlanOwner, attentionScope);
 
   // One period for the whole tab. The scoreboard declares it and the recap
   // below reads it: two period pickers on one page meant the headline and the
@@ -224,8 +228,10 @@ export function SalesReviewsPage() {
             <div className="flex flex-col gap-4 border-t border-line-soft p-5">
               <CommercialRiskPanel key={attentionScope} recommendations={reviewRecommendations} attention loadError={attentionError}
                 loading={attentionLoading} unavailable={attentionUnavailable} retrying={attentionRetrying} onRetryEvidence={retryAttention}
-                planDraftScope={reviewUser && !reviewSample && !attentionError ? attentionScope : undefined}
+                planDraftScope={reviewPlanOwner ? attentionScope : undefined}
+                trackedPlanItems={reviewPlan.status.state === 'ready' && !attentionError ? reviewPlan.status.rows : undefined}
                 workspaceName={workspaceName} reviewSources={attentionSources} title="Commercial attention" />
+              {reviewPlanOwner && <ReviewPlanTracking status={reviewPlan.status} scope={attentionScope} onRetry={reviewPlan.retry} />}
               <TeamCoordinationPanel key={'team-'+attentionScope} scope={reviewScope} commitments={teamCommitments} opportunities={teamWorkspace?.opportunities||[]}/>
               <SharedWorkspacesPanel key={'shared-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>
               <ExternalPromisesPanel key={'external-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>
