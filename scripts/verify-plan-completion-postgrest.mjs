@@ -54,13 +54,13 @@ execFileSync('docker', [
   'postgrest/postgrest:v13.0.7',
 ], { stdio: 'inherit', env: process.env });
 
-function jwt(role, sub) {
+function jwt(role, sub, sessionId) {
   const encode = value => Buffer.from(JSON.stringify(value)).toString('base64url');
-  const data = encode({ alg: 'HS256', typ: 'JWT' }) + '.' + encode({ role, sub, exp: Math.floor(Date.now() / 1000) + 600 });
+  const data = encode({ alg: 'HS256', typ: 'JWT' }) + '.' + encode({ role, sub, session_id: sessionId, exp: Math.floor(Date.now() / 1000) + 600 });
   return data + '.' + createHmac('sha256', secret).update(data).digest('base64url');
 }
 const service = jwt('service_role', actor);
-const identity = jwt('authenticated', actor);
+const identity = jwt('authenticated', actor, session);
 const request = (id, activity) => ({
   p_actor: actor, p_session: session, p_workspace: firstBook, p_request: randomUUID(), p_activity: activity,
   p_plan_id: id, p_derived_key: null, p_expected: stamp, p_label: null, p_tag: null,
@@ -148,23 +148,51 @@ console.log('PostgREST: explicit workspace scope, direct role denial, revocation
 async function readReviewStatus(token = identity, workspace = firstBook) {
   const response = await fetch(endpoint + '/rpc/memoire_review_plan_status', {
     signal: AbortSignal.timeout(10_000),
-    headers: { ...(token ? { Authorization: 'Bearer ' + token } : {}), 'x-memoire-data-workspace': workspace },
+    headers: { ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(workspace ? { 'x-memoire-data-workspace': workspace } : {}) },
   });
   return { code: response.status, data: await response.json() };
 }
 const expected = {
   item_id: followUpId, proposal_id: 'proposal', label: planned.payload.label, plan_date: '2026-11-21',
-  completion_status: 'planned', activity_id: null,
+  completion_status: 'planned', activity_id: null, activity_evidence: null,
 };
+assert.equal((await readReviewStatus()).code, 403);
+sql(`INSERT INTO auth.sessions(id,user_id,not_after) VALUES('${session}','${actor}', now() - interval '1 second');`);
+assert.equal((await readReviewStatus()).code, 403);
+sql(`UPDATE auth.sessions SET not_after=NULL WHERE id='${session}';`);
 assert.deepEqual(await readReviewStatus(), { code: 200, data: [expected] });
+assert.deepEqual(await readReviewStatus(identity, null), { code: 200, data: [] });
 assert.deepEqual(await readReviewStatus(identity, secondBook), { code: 200, data: [] });
+assert.equal((await readReviewStatus(jwt('authenticated', actor))).code, 403);
 assert.equal((await readReviewStatus(jwt('authenticated', stranger))).code, 403);
 assert.ok([401, 403].includes((await readReviewStatus(null)).code));
-sql(`INSERT INTO auth.sessions(id,user_id) VALUES('${session}','${actor}');`);
+const relatedOpportunity = randomUUID();
+sql(`INSERT INTO public.opportunities(id,user_id,opportunity_name,status) VALUES('${relatedOpportunity}','${owner}','Fixture renewal','Won');
+  UPDATE public.sales_activities SET activity_date='2026-11-16',summary='Discussed renewal terms',
+    linked_opportunity_id='${relatedOpportunity}' WHERE id='${activityA}';`);
 const followUpReceipt = (await rpc(request(followUpId, activityA))).data;
 assert.equal(followUpReceipt.status, 'confirmed');
+const activityEvidence = {
+  date: '2026-11-16', type: 'Call', summary: 'Discussed renewal terms',
+  opportunity_id: relatedOpportunity, opportunity_name: 'Fixture renewal', outcome: null,
+};
 assert.deepEqual((await readReviewStatus()).data,
-  [{ ...expected, completion_status: 'verified_done', activity_id: activityA }]);
+  [{ ...expected, completion_status: 'verified_done', activity_id: activityA, activity_evidence: activityEvidence }]);
+const explicitOutcome = { result: 'Won', date: '2026-11-18', reason: 'Signed renewal' };
+function insertOutcome(id, userId, result) {
+  sql(`INSERT INTO public.opportunity_outcomes(user_id,id,payload) VALUES('${userId}','${id}',
+    jsonb_build_object('opportunityId','${relatedOpportunity}','outcome','${result}','outcomeDate','2026-11-18','reasonText','Signed renewal'));`);
+}
+insertOutcome('other-tenant', stranger, 'Won');
+assert.equal((await readReviewStatus()).data[0].activity_evidence.outcome, null);
+insertOutcome('recorded-outcome', owner, 'Won');
+assert.deepEqual((await readReviewStatus()).data[0].activity_evidence.outcome, explicitOutcome);
+insertOutcome('conflicting-outcome', owner, 'Lost');
+assert.equal((await readReviewStatus()).data[0].activity_evidence.outcome, null);
+sql(`DELETE FROM public.opportunity_outcomes WHERE user_id='${owner}' AND id='conflicting-outcome';`);
+sql(`UPDATE public.opportunities SET status='Lost' WHERE id='${relatedOpportunity}';`);
+assert.equal((await readReviewStatus()).data[0].activity_evidence.outcome, null);
+sql(`UPDATE public.opportunities SET status='Won' WHERE id='${relatedOpportunity}';`);
 
 const forged = 'review-copy-with-foreign-receipt';
 sql(`INSERT INTO public.plan_items (user_id,id,payload,updated_at)
@@ -186,4 +214,5 @@ assert.equal((await readReviewStatus()).data.find(row => row.item_id === followU
 sql(`UPDATE public.plan_items SET payload=payload || '{"__deleted":true}'
   WHERE user_id='${owner}' AND id='${followUpId}';`);
 assert.ok(!(await readReviewStatus()).data.some(row => row.item_id === followUpId));
-console.log('Review status verified: scoped lookup, no false verification for copied receipts, mismatched Activity links, reopen, and deletion.');
+assert.equal((await readReviewStatus()).data.find(row => row.item_id === forged)?.activity_evidence, null);
+console.log('Review evidence verified: active session, scoped Activity and outcome reads, conflicting outcomes, reopen, and deletion.');

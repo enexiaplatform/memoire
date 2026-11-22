@@ -175,6 +175,13 @@ try {
     onPass: key => { results.checks[key] = 'PASS'; },
     attestTarget: async () => ({ commit: sha, planCompletionEnabled: process.env.PLAN_COMPLETION_ENABLED === 'true' }),
     setFlag: enabled => { process.env.PLAN_COMPLETION_ENABLED = String(enabled); },
+    afterRevocation: async (fixture) => {
+      const denied = await fetch(restOrigin + '/rpc/memoire_review_plan_status', {
+        headers: { Authorization: 'Bearer ' + fixture.outsider.session.access_token },
+      });
+      assert.equal(denied.status, 403);
+      results.checks.review_status_revocation = 'PASS';
+    },
     prepare: async (fixture, seedCase) => {
       const [book] = fixture.books;
       const { plan, activity } = await seedCase(book, 'Synthetic pre-migration fixture');
@@ -213,6 +220,9 @@ try {
       const sibling = await fixture.books[1].scoped.rpc('memoire_review_plan_status', {}, { get: true });
       assert.equal(sibling.error, null);
       assert.deepEqual(sibling.data, []);
+      const personal = await fixture.outsider.account.rpc('memoire_review_plan_status', {}, { get: true });
+      assert.equal(personal.error, null);
+      assert.deepEqual(personal.data, []);
       results.checks.review_status_scope = 'PASS';
       console.log(label, results.migration);
     },

@@ -91,13 +91,27 @@ test('Plan completion migration preserves populated rows and atomically scopes, 
 
   await t.test('Review status preserves owner boundaries even when item and proposal identities match', async () => {
     const lookup = 'SELECT item_id,completion_status,activity_id FROM public.memoire_review_plan_status()';
+    const setRequest = async (scope) => db.query(
+      "SELECT set_config('request.jwt.claims',$1,false),set_config('request.headers',$2,false)",
+      [JSON.stringify({ role: 'authenticated', session_id: session }), JSON.stringify(scope ? { 'x-memoire-data-workspace': scope } : {})],
+    );
     await setAuthenticatedOwner(db, named);
+    await setRequest(book);
     assert.deepEqual((await db.query(lookup)).rows, [{ item_id: note.id, completion_status: 'verified_done', activity_id: activity }]);
     await setAuthenticatedOwner(db, OWNER_A);
+    await assert.rejects(db.query(lookup), { code: '42501' });
+    await setRequest(null);
     assert.deepEqual((await db.query(lookup)).rows, [{ item_id: note.id, completion_status: 'planned', activity_id: null }]);
     await setAuthenticatedOwner(db, OWNER_B);
-    assert.deepEqual((await db.query(lookup)).rows, []);
+    await assert.rejects(db.query(lookup), { code: '42501' });
     await db.exec('RESET ROLE');
+    const security = await db.query(`SELECT p.prosecdef, p.provolatile, p.proconfig,
+      has_function_privilege('anon',p.oid,'execute') AS anon,
+      has_function_privilege('service_role',p.oid,'execute') AS service,
+      has_function_privilege('authenticated',p.oid,'execute') AS authenticated
+      FROM pg_proc p WHERE p.oid='public.memoire_review_plan_status()'::regprocedure`);
+    assert.deepEqual(security.rows, [{ prosecdef: true, provolatile: 's', proconfig: ['search_path=""'], anon: false, service: false, authenticated: true }]);
+    await db.query("SELECT set_config('request.jwt.claims','',false),set_config('request.headers','',false)");
   });
 
   await t.test('legacy collection write cannot regress a managed link; current reopen/move and new completion work', async () => {

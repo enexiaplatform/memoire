@@ -111,13 +111,13 @@ export function SalesReviewsPage() {
   const rawTab = searchParams.get('view');
   // ?view=defense was the retired Pipeline Defense tab; it opens the review.
   const tab: ReviewTab = rawTab === 'analytics' ? rawTab : 'review';
-  const { user: reviewUser } = useAuthContext();
+  const { user: reviewUser, session: reviewSession } = useAuthContext();
   const reviewSample = hasLocalSampleData();
   const reviewScope = useMemo(() => ({userId:reviewSample?null:reviewUser?.id||null,sampleDataActive:reviewSample}),[reviewSample,reviewUser?.id]);
   const { rankedRecommendations: reviewRecommendations, attentionError, attentionLoading, attentionUnavailable, attentionRetrying, retryAttention, attentionScope,
     attentionSources, workspaceName, commitments: teamCommitments, workspace: teamWorkspace } = useCommercialThreads();
-  const reviewPlanOwner = tab === 'review' && !reviewSample ? reviewUser?.id : undefined;
-  const reviewPlan = useReviewPlanStatus(reviewPlanOwner, attentionScope);
+  const reviewPlanOwner = tab === 'review' && !reviewSample && reviewSession ? reviewUser?.id : undefined;
+  const reviewPlan = useReviewPlanStatus(reviewPlanOwner, attentionScope, reviewSession?.access_token);
 
   // One period for the whole tab. The scoreboard declares it and the recap
   // below reads it: two period pickers on one page meant the headline and the

@@ -46,6 +46,8 @@ async function scenario(named, surface) {
     const requests = [];
     const reviewWrites = [];
     let reviewStatus = 'planned';
+    let reviewOutcome = null;
+    const linkedOpportunity = randomUUID();
     let statusUnavailable = false;
     let statusGate;
     let duplicate;
@@ -83,6 +85,10 @@ async function scenario(named, surface) {
           item_id: row.id, proposal_id: row.payload.reviewProposal.proposalId, label: row.payload.label,
           plan_date: row.payload.date, completion_status: reviewStatus,
           activity_id: reviewStatus === 'verified_done' ? existing.id : null,
+          activity_evidence: reviewStatus === 'verified_done' ? {
+            date: existing.activity_date, type: existing.activity_type, summary: existing.summary,
+            opportunity_id: linkedOpportunity, opportunity_name: 'Fixture renewal', outcome: reviewOutcome,
+          } : null,
         })));
       }
       if (path.endsWith('/memoire_personal_workspaces')) return respond([{ id: workspace, name: 'Fixture workspace', created_at: stamp }]);
@@ -242,6 +248,7 @@ async function scenario(named, surface) {
       };
       await openStatus();
       await savedRow.getByText(/· Planned$/).waitFor();
+      await savedRow.getByText('Outcome not yet confirmed', { exact: true }).waitFor();
       const linkedPlan = savedRow.getByRole('link', { name: /^Open in Plan/ });
       const href = new URL(await linkedPlan.getAttribute('href'), base);
       assert.equal(href.searchParams.get('planItem'), reviewWrites[0].id);
@@ -257,12 +264,35 @@ async function scenario(named, surface) {
       await savedRow.getByText(/· Reported Done$/).waitFor();
       assert.equal(await savedRow.getByText(/Verified Done/).count(), 0);
       assert.equal(await savedRow.getByRole('link', { name: /^View linked Activity/ }).count(), 0);
+      assert.equal(await savedRow.getByText('Verified Activity', { exact: true }).count(), 0);
       reviewStatus = 'verified_done';
       await openStatus();
       await savedRow.getByText(/· Verified Done$/).waitFor();
+      await savedRow.getByText('Verified Activity', { exact: true }).waitFor();
+      await savedRow.getByText('Existing fixture call', { exact: true }).waitFor();
+      await savedRow.getByText(/· Call$/).waitFor();
+      await savedRow.getByText('Outcome not yet confirmed', { exact: true }).waitFor();
+      const related = savedRow.getByRole('link', { name: /^Open related opportunity/ });
+      await related.press('Enter');
+      await page.waitForURL(url => url.pathname === '/app/opportunities' && url.searchParams.get('opportunityId') === linkedOpportunity);
+
+      reviewOutcome = { result: 'Won', date: day, reason: 'Customer signed the renewal.' };
+      await page.setViewportSize({ width: 390, height: 844 });
+      await openStatus();
+      await savedRow.getByText(/Confirmed opportunity outcome · Won/).waitFor();
+      await savedRow.getByText('Customer signed the renewal.', { exact: true }).waitFor();
+      assert.ok(await tracking.evaluate(panel => panel.scrollWidth <= panel.clientWidth));
       const linkedEvidence = savedRow.getByRole('link', { name: /^View linked Activity/ });
-      await linkedEvidence.click();
+      await linkedEvidence.press('Enter');
       await page.waitForURL(url => url.searchParams.get('activityId') === existing.id && url.searchParams.get('view') === 'history');
+      reviewStatus = 'reported_done';
+      await openStatus();
+      await savedRow.getByText(/· Reported Done$/).waitFor();
+      await savedRow.getByText('Outcome not yet confirmed', { exact: true }).waitFor();
+      assert.equal(await savedRow.getByText('Existing fixture call', { exact: true }).count(), 0);
+      assert.equal(await savedRow.getByRole('link', { name: /^Open related opportunity/ }).count(), 0);
+      reviewStatus = 'verified_done';
+      await page.setViewportSize({ width: 1440, height: 1000 });
       statusUnavailable = true;
       await openStatus();
       await tracking.getByRole('alert').filter({ hasText: 'Plan status unavailable' }).waitFor();

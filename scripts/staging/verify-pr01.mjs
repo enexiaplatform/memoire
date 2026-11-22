@@ -8,7 +8,7 @@ const pause = ms => new Promise(resolve => setTimeout(resolve, ms));
 const pendingText = /Plan completion.*waiting for workspace confirmation/;
 const routePath = '/api/commercial?resource=plan-completion';
 export async function verifyPr01(c, {
-  attestTarget = attest, setFlag, prepare = async () => {}, browserOptions = {},
+  attestTarget = attest, setFlag, prepare = async () => {}, afterRevocation = async () => {}, browserOptions = {},
   label = 'HOSTED STAGING', preflight = false, rehearseFlag = false, onPass = () => {},
 } = {}) {
   const initial = await attestTarget(c);
@@ -90,6 +90,7 @@ export async function verifyPr01(c, {
     await expectCommand(fixture.outsider.session.access_token, bookA, outsideBody, 404);
     await checked('Revoke synthetic Auth sessions', fixture.outsider.account.auth.signOut({ scope: 'global' }));
     await expectCommand(fixture.outsider.session.access_token, bookA, outsideBody, 401);
+    await afterRevocation(fixture);
     assert.equal((await row(bookA, outside.plan.id)).payload.done, false);
     await setPlan(bookA, { ...outside.plan, __deleted: true, updatedAt: new Date().toISOString() });
     pass('auth_revocation', 'Auth and revoked JWT');
