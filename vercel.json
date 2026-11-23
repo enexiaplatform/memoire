@@ -1,4 +1,5 @@
 {
+  "git": {"deploymentEnabled":{"feat/atlas-receiver":false}},
   "trailingSlash": false,
   "headers": [
     {
