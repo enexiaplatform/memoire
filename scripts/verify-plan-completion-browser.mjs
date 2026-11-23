@@ -285,6 +285,16 @@ async function scenario(named, surface) {
       const linkedEvidence = savedRow.getByRole('link', { name: /^View linked Activity/ });
       await linkedEvidence.press('Enter');
       await page.waitForURL(url => url.searchParams.get('activityId') === existing.id && url.searchParams.get('view') === 'history');
+      await page.getByRole('dialog').waitFor();
+      await openStatus();
+      await savedRow.getByText(/Confirmed opportunity outcome · Won/).waitFor();
+      hideActivities = true;
+      await savedRow.getByRole('link', { name: /^View linked Activity/ }).press('Enter');
+      await page.getByRole('alert').filter({ hasText: 'Linked Activity is unavailable in this workspace.' }).waitFor();
+      assert.equal(await page.getByRole('dialog').count(), 0);
+      await page.getByRole('link', { name: 'Back to Review', exact: true }).click();
+      await page.waitForURL('**/app/reviews');
+      hideActivities = false;
       reviewStatus = 'reported_done';
       await openStatus();
       await savedRow.getByText(/· Reported Done$/).waitFor();

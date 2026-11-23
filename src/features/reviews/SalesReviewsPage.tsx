@@ -231,7 +231,7 @@ export function SalesReviewsPage() {
                 planDraftScope={reviewPlanOwner ? attentionScope : undefined}
                 trackedPlanItems={reviewPlan.status.state === 'ready' && !attentionError ? reviewPlan.status.rows : undefined}
                 workspaceName={workspaceName} reviewSources={attentionSources} title="Commercial attention" />
-              {reviewPlanOwner && <ReviewPlanTracking status={reviewPlan.status} scope={attentionScope} onRetry={reviewPlan.retry} />}
+              {reviewPlanOwner && <ReviewPlanTracking status={reviewPlan.status} scope={attentionScope} ownerId={reviewPlanOwner} onRetry={reviewPlan.retry} />}
               <TeamCoordinationPanel key={'team-'+attentionScope} scope={reviewScope} commitments={teamCommitments} opportunities={teamWorkspace?.opportunities||[]}/>
               <SharedWorkspacesPanel key={'shared-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>
               <ExternalPromisesPanel key={'external-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>

@@ -3,7 +3,7 @@ import { formatSafeBusinessDate } from '../../utils/safeDate';
 import { confirmedReviewOutcome, planItemHref, reviewPlanStatusLabels } from '../../utils/reviewPlanStatus';
 import type { PlanStatus } from './useReviewPlanStatus';
 
-export function ReviewPlanTracking({ status, scope, onRetry }: { status: PlanStatus; scope: string; onRetry: () => void }) {
+export function ReviewPlanTracking({ status, scope, ownerId, onRetry }: { status: PlanStatus; scope: string; ownerId: string; onRetry: () => void }) {
   if (status.state === 'ready' && status.rows.length === 0) return null;
   return (
     <section aria-label="Review follow-ups in Plan" className="rounded-panel border border-line p-4">
@@ -39,6 +39,7 @@ export function ReviewPlanTracking({ status, scope, onRetry }: { status: PlanSta
               </Link>
               {row.completion_status === 'verified_done' && row.activity_id && (
                 <Link to={`/app/timeline?view=history&activityId=${encodeURIComponent(row.activity_id)}`}
+                  state={{ reviewActivityOwner: ownerId }}
                   className="inline-flex min-h-11 items-center underline">View linked Activity<span className="sr-only"> · {row.label}</span></Link>
               )}
               {activity?.opportunity_id && <Link to={'/app/opportunities?' + new URLSearchParams({ opportunityId: activity.opportunity_id })}

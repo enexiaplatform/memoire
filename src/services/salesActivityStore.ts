@@ -599,6 +599,16 @@ function deleteLocalActivity(activityId: string) {
   writeLocalRecords(SALES_ACTIVITY_STORAGE_KEY, next);
 }
 
+export async function loadAuthorizedSalesActivity(userId: string, id: string, signal: AbortSignal) {
+  const assertCurrent = guardLocalWorkspaceScope(userId);
+  if (!supabaseClient) throw new Error('Activity service unavailable.');
+  const { data, error } = await supabaseClient.from(TABLE_NAME).select('*')
+    .eq('user_id', userId).eq('id', id).abortSignal(signal).maybeSingle();
+  assertCurrent();
+  if (error) throw error;
+  return data?.user_id === userId && data.id === id ? rowToRecord(data as SalesActivityRow) : null;
+}
+
 async function loadCloudActivities(userId: string): Promise<SalesActivityRecord[]> {
   // Paged: see `fetchAllRows`. Activity is the fastest-growing table here, so
   // this is the one that would have met the cap next.
