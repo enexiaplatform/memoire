@@ -49,6 +49,8 @@ export function useReviewPlanStatus(ownerId: string | undefined, scope: string, 
     window.addEventListener(PLAN_ITEMS_UPDATED_EVENT, refresh);
     window.addEventListener(WORKSPACE_REFRESHED_EVENT, refresh);
     window.addEventListener('focus', refresh);
+    window.addEventListener('online', refresh);
+    window.addEventListener('offline', refresh);
     refresh();
     return () => {
       active = false;
@@ -56,6 +58,8 @@ export function useReviewPlanStatus(ownerId: string | undefined, scope: string, 
       window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, refresh);
       window.removeEventListener(WORKSPACE_REFRESHED_EVENT, refresh);
       window.removeEventListener('focus', refresh);
+      window.removeEventListener('online', refresh);
+      window.removeEventListener('offline', refresh);
     };
   }, [ownerId, scope, accessToken, retry]);
 

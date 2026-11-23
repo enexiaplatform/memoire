@@ -177,24 +177,45 @@ assert.equal(followUpReceipt.status, 'confirmed');
 const activityEvidence = {
   date: '2026-11-16', type: 'Call', summary: 'Discussed renewal terms',
   opportunity_id: relatedOpportunity, opportunity_name: 'Fixture renewal', outcome: null,
+  outcome_state: 'unrecorded', has_outcome_evidence: false, pending_follow_up: null,
 };
 assert.deepEqual((await readReviewStatus()).data,
   [{ ...expected, completion_status: 'verified_done', activity_id: activityA, activity_evidence: activityEvidence }]);
+const readActivityEvidence = async () => (await readReviewStatus()).data[0].activity_evidence;
+asPlanOwner(`UPDATE public.opportunities SET status='Active' WHERE id='${relatedOpportunity}';`);
+assert.equal((await readActivityEvidence()).outcome_state, 'open');
+sql(`INSERT INTO public.plan_items(user_id,id,payload) VALUES
+  ('${stranger}','foreign-next',jsonb_build_object('linkedOpportunityId','${relatedOpportunity}','date','2026-11-22')),
+  ('${owner}','deleted-next',jsonb_build_object('linkedOpportunityId','${relatedOpportunity}','date','2026-11-22','__deleted',true)),
+  ('${owner}','existing-next',jsonb_build_object('linkedOpportunityId','${relatedOpportunity}','date','2026-11-23','done',false));`);
+assert.deepEqual((await readActivityEvidence()).pending_follow_up, { item_id: 'existing-next', date: '2026-11-23' });
+sql(`DELETE FROM public.plan_items WHERE user_id='${owner}' AND id='existing-next';`);
+assert.equal((await readActivityEvidence()).pending_follow_up, null);
+asPlanOwner(`UPDATE public.opportunities SET status='Won' WHERE id='${relatedOpportunity}';`);
 const explicitOutcome = { result: 'Won', date: '2026-11-18', reason: 'Signed renewal' };
-function insertOutcome(id, userId, result) {
+function insertOutcome(id, userId, result, date = '2026-11-18', reason = 'Signed renewal') {
   sql(`INSERT INTO public.opportunity_outcomes(user_id,id,payload) VALUES('${userId}','${id}',
-    jsonb_build_object('opportunityId','${relatedOpportunity}','outcome','${result}','outcomeDate','2026-11-18','reasonText','Signed renewal'));`);
+    jsonb_build_object('opportunityId','${relatedOpportunity}','outcome','${result}','outcomeDate','${date}','reasonText','${reason}'));`);
 }
 insertOutcome('other-tenant', stranger, 'Won');
-assert.equal((await readReviewStatus()).data[0].activity_evidence.outcome, null);
+assert.deepEqual(await readActivityEvidence(), activityEvidence);
+insertOutcome('incomplete-outcome', owner, 'Won', '2026-11-18', '');
+assert.equal((await readActivityEvidence()).outcome_state, 'incomplete');
+assert.equal((await readActivityEvidence()).has_outcome_evidence, true);
+sql(`DELETE FROM public.opportunity_outcomes WHERE user_id='${owner}' AND id='incomplete-outcome';`);
 insertOutcome('recorded-outcome', owner, 'Won');
-assert.deepEqual((await readReviewStatus()).data[0].activity_evidence.outcome, explicitOutcome);
+assert.equal((await readActivityEvidence()).outcome_state, 'recorded');
+assert.deepEqual((await readActivityEvidence()).outcome, explicitOutcome);
 insertOutcome('conflicting-outcome', owner, 'Lost');
-assert.equal((await readReviewStatus()).data[0].activity_evidence.outcome, null);
+assert.equal((await readActivityEvidence()).outcome_state, 'conflicting');
+assert.equal((await readActivityEvidence()).outcome, null);
 sql(`DELETE FROM public.opportunity_outcomes WHERE user_id='${owner}' AND id='conflicting-outcome';`);
 asPlanOwner(`UPDATE public.opportunities SET status='Lost' WHERE id='${relatedOpportunity}';`);
-assert.equal((await readReviewStatus()).data[0].activity_evidence.outcome, null);
+assert.equal((await readActivityEvidence()).outcome_state, 'conflicting');
 asPlanOwner(`UPDATE public.opportunities SET status='Won' WHERE id='${relatedOpportunity}';`);
+sql(`UPDATE public.opportunity_outcomes SET payload=payload || '{"outcomeDate":"2026-11-12"}'
+  WHERE user_id='${owner}' AND id='recorded-outcome';`);
+assert.equal((await readActivityEvidence()).outcome.date, '2026-11-12');
 
 const forged = 'review-copy-with-foreign-receipt';
 sql(`INSERT INTO public.plan_items (user_id,id,payload,updated_at)

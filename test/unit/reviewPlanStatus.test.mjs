@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { confirmedReviewOutcome, isReviewPlanStatusRow, planItemHref } from '../../src/utils/reviewPlanStatus.ts';
+import { confirmedReviewOutcome, isReviewPlanStatusRow, planItemHref, reviewOutcomeGap, reviewPendingFollowUp } from '../../src/utils/reviewPlanStatus.ts';
 
 const planned = {
   item_id: 'plan/one & two', proposal_id: 'proposal', label: 'Review terms', plan_date: '2026-11-21',
@@ -39,4 +39,27 @@ test('an exact Plan href preserves the item ID and planning date', () => {
   assert.deepEqual(Object.fromEntries(url.searchParams), {
     view: 'upcoming', date: planned.plan_date, planItem: planned.item_id,
   });
+});
+
+test('outcome gaps explain scoped evidence without promoting conflicts or outdated records', () => {
+  const valid = { result: 'Lost', date: '2026-11-18', reason: 'Funding ended' };
+  for (const [state, explanation] of Object.entries({
+    unlinked: /not linked/, unavailable: /unavailable/, unrecorded: /No outcome has been recorded/,
+    open: /still open/, conflicting: /disagree/, incomplete: /missing a valid/,
+  })) {
+    const evidence = { ...linked, outcome_state: state, outcome: valid };
+    assert.match(reviewOutcomeGap(evidence), explanation);
+    assert.equal(confirmedReviewOutcome(evidence), null);
+  }
+  const outdated = { ...linked, outcome_state: 'recorded', outcome: { ...valid, date: '2026-11-16' } };
+  assert.match(reviewOutcomeGap(outdated), /predates/);
+  assert.equal(confirmedReviewOutcome(outdated), null);
+  assert.deepEqual(confirmedReviewOutcome({ ...outdated, outcome: valid }), valid);
+});
+
+test('the pending follow-up link requires a bounded item identity and valid business date', () => {
+  assert.equal(reviewPendingFollowUp(linked), null);
+  assert.equal(reviewPendingFollowUp({ ...linked, pending_follow_up: { item_id: 'next', date: '2026-02-30' } }), null);
+  assert.deepEqual(reviewPendingFollowUp({ ...linked, pending_follow_up: { item_id: 'next', date: '2026-11-23' } }),
+    { id: 'next', date: '2026-11-23' });
 });

@@ -47,6 +47,11 @@ async function scenario(named, surface) {
     const reviewWrites = [];
     let reviewStatus = 'planned';
     let reviewOutcome = null;
+    let reviewOutcomeState = 'unrecorded';
+    let hasOutcomeEvidence = false;
+    let pendingFollowUp = null;
+    let existingFollowUpRecord;
+    let hideOpportunity = false;
     const linkedOpportunity = randomUUID();
     let statusUnavailable = false;
     let statusGate;
@@ -88,11 +93,27 @@ async function scenario(named, surface) {
           activity_evidence: reviewStatus === 'verified_done' ? {
             date: existing.activity_date, type: existing.activity_type, summary: existing.summary,
             opportunity_id: linkedOpportunity, opportunity_name: 'Fixture renewal', outcome: reviewOutcome,
+            outcome_state: reviewOutcomeState, has_outcome_evidence: hasOutcomeEvidence, pending_follow_up: pendingFollowUp,
           } : null,
         })));
       }
       if (path.endsWith('/memoire_personal_workspaces')) return respond([{ id: workspace, name: 'Fixture workspace', created_at: stamp }]);
       if (path.endsWith('/user_profiles')) return respond({ id: login, email: user.email, created_at: user.created_at, display_name: 'Fixture operator' });
+      if (fromReview && path.endsWith('/opportunities')) {
+        assert.equal(req.method(), 'GET');
+        const query = new URL(req.url()).searchParams;
+        const namedRequest = req.headers()['x-memoire-data-workspace'] === workspace;
+        if (hideOpportunity || namedRequest || (!query.has('id') && reviewStatus !== 'verified_done')) return respond([]);
+        return respond([{ id: linkedOpportunity, user_id: login, title: 'Fixture renewal', opportunity_name: 'Fixture renewal',
+          account_name: 'Fixture account', status: 'Active', stage: 'active', created_at: stamp, updated_at: stamp }]);
+      }
+      if (fromReview && path.endsWith('/opportunity_outcomes')) {
+        assert.equal(req.method(), 'GET');
+        if (!hasOutcomeEvidence) return respond([]);
+        return respond([{ id: 'fixture-retro', user_id: login, payload: { id: 'fixture-retro', opportunityId: linkedOpportunity,
+          opportunityName: 'Fixture renewal', accountName: 'Fixture account', outcome: 'Won', outcomeDate: day,
+          reasonText: 'Saved opportunity retro.', createdAt: stamp, updatedAt: stamp } }]);
+      }
       if (path.endsWith('/commercial_incidents') && incidentResponse && req.headers()['x-memoire-data-workspace'] !== workspace) {
         incidentRequests++;
         const status = await incidentResponse;
@@ -112,6 +133,7 @@ async function scenario(named, surface) {
           return respond({ id: row.id }, 201);
         }
         return respond([...(duplicate && !namedRequest ? [duplicate] : []),
+          ...(existingFollowUpRecord && !namedRequest ? [existingFollowUpRecord] : []),
           ...reviewWrites.filter(row => row.user_id === (namedRequest ? owner : login))]);
       }
       if (path.endsWith('/sales_activities')) {
@@ -272,10 +294,52 @@ async function scenario(named, surface) {
       await savedRow.getByText('Existing fixture call', { exact: true }).waitFor();
       await savedRow.getByText(/· Call$/).waitFor();
       await savedRow.getByText('Outcome not yet confirmed', { exact: true }).waitFor();
+      await savedRow.getByText(/No outcome has been recorded/).waitFor();
       const related = savedRow.getByRole('link', { name: /^Open related opportunity/ });
       await related.press('Enter');
       await page.waitForURL(url => url.pathname === '/app/opportunities' && url.searchParams.get('opportunityId') === linkedOpportunity);
 
+      reviewOutcomeState = 'open';
+      pendingFollowUp = { item_id: 'existing-outcome-follow-up', date: planDate };
+      existingFollowUpRecord = { id: pendingFollowUp.item_id, updated_at: stamp,
+        payload: { ...plan, id: pendingFollowUp.item_id, label: 'Existing outcome follow-up' } };
+      await openStatus();
+      await savedRow.getByText('The linked opportunity is still open.', { exact: true }).waitFor();
+      assert.equal(await savedRow.getByRole('link', { name: /^Capture a follow-up Activity/ }).count(), 0);
+      await savedRow.getByRole('link', { name: /^Open existing follow-up Plan item/ }).press('Enter');
+      await page.waitForFunction(() => document.activeElement?.id === 'focused-plan-item');
+      assert.match(await page.locator('#focused-plan-item').innerText(), /Existing outcome follow-up/);
+      pendingFollowUp = null;
+      existingFollowUpRecord.updated_at = new Date(Date.parse(stamp) + 1000).toISOString();
+      existingFollowUpRecord.payload = { ...existingFollowUpRecord.payload, done: true, updatedAt: existingFollowUpRecord.updated_at };
+      await openStatus();
+      await savedRow.getByRole('link', { name: /^Capture a follow-up Activity/ }).press('Enter');
+      await page.waitForURL(url => url.pathname === '/app/capture' && url.searchParams.get('opportunityId') === linkedOpportunity);
+      await page.getByLabel('What happened?', { exact: true }).waitFor();
+
+      reviewOutcomeState = 'conflicting';
+      hasOutcomeEvidence = true;
+      await openStatus();
+      await savedRow.getByText(/outcome records disagree/).waitFor();
+      assert.equal(await savedRow.getByText(/Confirmed opportunity outcome/).count(), 0);
+      await savedRow.getByRole('link', { name: /^Review existing outcome evidence/ }).press('Enter');
+      await page.getByRole('heading', { name: 'Outcome evidence', exact: true }).waitFor();
+      await page.getByText('Saved opportunity retro.', { exact: true }).waitFor();
+      await page.waitForFunction(() => document.activeElement?.textContent === 'Outcome evidence');
+
+      await openStatus();
+      hideOpportunity = true;
+      await savedRow.getByRole('link', { name: /^Open related opportunity/ }).press('Enter');
+      await page.getByRole('alert').filter({ hasText: 'The linked opportunity is unavailable' }).waitFor();
+      await page.getByRole('link', { name: 'Back to Review', exact: true }).click();
+      await page.waitForURL('**/app/reviews');
+      hideOpportunity = false;
+
+      reviewOutcomeState = 'recorded';
+      reviewOutcome = { result: 'Won', date: '2026-01-01', reason: 'Superseded evidence' };
+      await openStatus();
+      await savedRow.getByText(/predates the verified Activity/).waitFor();
+      assert.equal(await savedRow.getByText(/Confirmed opportunity outcome/).count(), 0);
       reviewOutcome = { result: 'Won', date: day, reason: 'Customer signed the renewal.' };
       await page.setViewportSize({ width: 390, height: 844 });
       await openStatus();

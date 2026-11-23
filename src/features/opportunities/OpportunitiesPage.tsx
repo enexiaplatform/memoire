@@ -2,6 +2,7 @@ import { CommercialStatePanel } from './CommercialStatePanel';
 import { HistoricalOpportunityDrawer } from './HistoricalOpportunityDrawer';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { useReviewOpportunityLink } from '../../hooks/useReviewOpportunityLink';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { DeltaPanel } from '../threads/DeltaPanel';
 import {
@@ -237,7 +238,7 @@ const defaultPageSize = 25;
 const founderCoreSourceSystem = 'founder_core_fy26';
 
 export function OpportunitiesPage() {
-  const { user } = useAuthContext();
+  const { user, session } = useAuthContext();
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const [opportunities, setOpportunities] = useState<CrmLiteOpportunity[]>([]);
@@ -313,6 +314,8 @@ export function OpportunitiesPage() {
   const [lastWorkspaceRefreshAt, setLastWorkspaceRefreshAt] = useState('');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+  const reviewOpportunityLink = useReviewOpportunityLink(dataUserId, session?.access_token);
+  const reviewOutcome = reviewOpportunityLink === 'available' && searchParams.get('reviewOutcome') === '1';
   const getAnalyticsDataMode = (syncIssue = false): AnalyticsDataMode => {
     if (sampleDataActive) return 'demo-local';
     if (syncIssue) return 'sync-failed';
@@ -622,6 +625,7 @@ export function OpportunitiesPage() {
 
     const opportunityId = searchParams.get('opportunityId');
     if (opportunityId && !loading) {
+      if (reviewOpportunityLink === 'checking' || reviewOpportunityLink === 'unavailable') return;
       const opportunity = opportunities.find((item) => item.id === opportunityId);
       if (opportunity || searchParams.has('asOf')) {
         setEditingOpportunity(opportunity || null);
@@ -655,7 +659,7 @@ export function OpportunitiesPage() {
     }
     // Query params are only used as one-shot entry points.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.toString(), loading, opportunities]);
+  }, [searchParams.toString(), loading, opportunities, reviewOpportunityLink]);
 
   const parseCsvImport = () => {
     // Rebuilt unconditionally and read from the return value. The old guard
@@ -1126,6 +1130,15 @@ export function OpportunitiesPage() {
     }
   };
 
+  if (reviewOpportunityLink === 'checking' || reviewOpportunityLink === 'unavailable') {
+    return <PageContainer>
+      {reviewOpportunityLink === 'checking' ? <p role="status">Checking the linked opportunity…</p> : <>
+        <p role="alert">The linked opportunity is unavailable. Return to Review to refresh the evidence.</p>
+        <Link to="/app/reviews" className="inline-flex min-h-11 items-center font-semibold text-brand-blue underline">Back to Review</Link>
+      </>}
+    </PageContainer>;
+  }
+
   return (
     <PageContainer density="compact">
       {/* The list is the page.
@@ -1481,6 +1494,7 @@ export function OpportunitiesPage() {
         accountAliases={accountAliases}
         accountWarningForced={accountNameConfirmed === form.accountName.trim() && Boolean(accountNameConfirmed)}
         closeOutNudge={closeOutNudge}
+        reviewOutcome={reviewOutcome}
         quotes={editingOpportunity ? getQuotesForOpportunity(quotes, editingOpportunity) : []}
         dataUserId={dataUserId}
         sampleDataActive={sampleDataActive}
@@ -3059,6 +3073,7 @@ function OpportunityPanel({
   accountAliases,
   accountWarningForced,
   closeOutNudge,
+  reviewOutcome,
   quotes,
   dataUserId,
   sampleDataActive,
@@ -3104,6 +3119,7 @@ function OpportunityPanel({
   accountWarningForced: boolean;
   /** Increments when a save was refused for want of a close-out reason. */
   closeOutNudge: number;
+  reviewOutcome: boolean;
   quotes: QuoteRecord[];
   /** Whose workspace the purchase cost below is written into. */
   dataUserId?: string;
@@ -3594,7 +3610,7 @@ function OpportunityPanel({
           {/* Only when it is not already open above. A closed deal shows its
               close-out beside the status; an active one keeps it down here with
               the rest of the analysis. */}
-          {currentOpportunity && !closingThisDeal && (
+          {currentOpportunity && !closingThisDeal && !reviewOutcome && (
             <OpportunityOutcomeRetroPanel
               opportunity={currentOpportunity}
               outcomes={getOpportunityOutcomesForOpportunity(opportunityOutcomes, currentOpportunity)}
@@ -3635,11 +3651,14 @@ function OpportunityPanel({
           reported the form as missing, twice. Scrolling them to it was not
           enough: the fix is that the demand and the answer share a viewport.
           The nudge below still runs, but now it has almost nothing to move. */}
-      {closingThisDeal && currentOpportunity && (
+      {(closingThisDeal || reviewOutcome) && currentOpportunity && (
         <OpportunityOutcomeRetroPanel
           opportunity={currentOpportunity}
-          outcomes={getOpportunityOutcomesForOpportunity(opportunityOutcomes, currentOpportunity)}
-          closing
+          outcomes={getOpportunityOutcomesForOpportunity(reviewOutcome
+            ? opportunityOutcomes.filter(outcome => outcome.opportunityId === currentOpportunity.id)
+            : opportunityOutcomes, currentOpportunity)}
+          closing={closingThisDeal}
+          reviewEvidence={reviewOutcome}
           nudge={closeOutNudge}
           stakeholders={stakeholders}
           objections={objections}
@@ -4526,6 +4545,7 @@ function OpportunityOutcomeRetroPanel({
   outcomes,
   closing = false,
   nudge = 0,
+  reviewEvidence = false,
   stakeholders = [],
   objections = [],
   onSaveOutcome,
@@ -4543,11 +4563,13 @@ function OpportunityOutcomeRetroPanel({
    * message asking for it is rendered a screen away at the foot of the drawer.
    */
   nudge?: number;
+  reviewEvidence?: boolean;
   onSaveOutcome: (draft: OpportunityOutcomeDraft) => void;
 }) {
   const [draft, setDraft] = useState<OpportunityOutcomeDraft>(() => buildOpportunityOutcomeDraft(opportunity));
-  const [open, setOpen] = useState(closing || outcomes.length === 0);
+  const [open, setOpen] = useState(!reviewEvidence && (closing || outcomes.length === 0));
   const sectionRef = useRef<HTMLElement | null>(null);
+  const headingRef = useRef<HTMLHeadingElement | null>(null);
   const reasonRef = useRef<HTMLTextAreaElement | null>(null);
 
   // What was tapped, kept apart from what was typed, so the stored answer can
@@ -4593,6 +4615,10 @@ function OpportunityOutcomeRetroPanel({
     ...objections.map((objection) => (objection.objectionText || objection.objectionType || '').trim()),
     'No objection decided it',
   ].filter(Boolean)));
+
+  useEffect(() => {
+    if (reviewEvidence) headingRef.current?.focus();
+  }, [reviewEvidence]);
 
   useEffect(() => {
     if (nudge === 0) return;
@@ -4646,11 +4672,11 @@ function OpportunityOutcomeRetroPanel({
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700">
             {closing ? `Close this deal — ${opportunity.status}` : 'Closed-loop learning'}
           </p>
-          <h3 className="mt-1 text-base font-bold text-ink">
-            {closing ? 'Say why, and this closes' : 'Record win/loss/delay retro'}
+          <h3 ref={headingRef} tabIndex={-1} className="mt-1 text-base font-bold text-ink">
+            {reviewEvidence ? 'Outcome evidence' : closing ? 'Say why, and this closes' : 'Record win/loss/delay retro'}
           </h3>
           <p className="mt-1 text-sm leading-6 text-indigo-900/75">
-            {closing
+            {reviewEvidence ? 'Review the outcome records for this opportunity.' : closing
               ? 'This is the reason the save asked for. Fill it in and press Save outcome retro — that writes the outcome and sets the deal to closed for you.'
               : 'Mark the outcome and capture what Memoire should learn. This is not a heavy CRM close process.'}
           </p>
@@ -4771,6 +4797,7 @@ function OpportunityOutcomeRetroPanel({
         </div>
       )}
 
+      {reviewEvidence && outcomes.length === 0 && <p className="mt-3 text-sm text-muted">No outcome records available for this opportunity.</p>}
       {outcomes.length > 0 && (
         <div className="mt-4 space-y-2">
           <p className="text-xs font-bold uppercase tracking-wide text-indigo-700">Recent retros</p>

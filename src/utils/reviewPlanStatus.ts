@@ -23,6 +23,10 @@ type ReviewActivityEvidence = {
   opportunity_id: string | null;
   opportunity_name: string | null;
   outcome: unknown;
+  // Optional while the previous draft projection is still in use.
+  outcome_state?: unknown;
+  has_outcome_evidence?: unknown;
+  pending_follow_up?: unknown;
 };
 
 const isUuid = (value: unknown): value is string => typeof value === 'string'
@@ -38,10 +42,38 @@ function isReviewActivityEvidence(value: unknown): value is ReviewActivityEviden
 
 export function confirmedReviewOutcome(activity: ReviewActivityEvidence | null) {
   if (!activity?.opportunity_id || !activity.outcome || typeof activity.outcome !== 'object') return null;
+  if (activity.outcome_state !== undefined && activity.outcome_state !== 'recorded') return null;
   const { result, date, reason } = activity.outcome as { result: string; date: string; reason: string };
   if ((result !== 'Won' && result !== 'Lost') || !isValidBusinessDate(date) || !isValidBusinessDate(activity.date)
       || date < activity.date || typeof reason !== 'string' || !reason.trim()) return null;
   return { result, date, reason: reason.trim() };
+}
+
+const outcomeGapCopy = {
+  unlinked: 'This Activity is not linked to an opportunity. Open the Activity to check its link.',
+  unavailable: 'The linked opportunity is unavailable. Refresh Plan status before acting.',
+  unrecorded: 'No outcome has been recorded for this opportunity. Check the opportunity before recording a result.',
+  open: 'The linked opportunity is still open.',
+  conflicting: 'The Plan, Activity or outcome records disagree. Review the existing records before recording a result.',
+  incomplete: 'The recorded outcome is missing a valid result, date or reason. Review the existing evidence.',
+  outdated: 'The recorded outcome predates the verified Activity. Check whether there is a more recent result.',
+};
+
+export function reviewOutcomeGap(activity: ReviewActivityEvidence) {
+  const state = activity.outcome_state;
+  if (state === 'recorded') {
+    const date = (activity.outcome as { date?: unknown } | null)?.date;
+    return isValidBusinessDate(date) && isValidBusinessDate(activity.date) && date < activity.date
+      ? outcomeGapCopy.outdated : outcomeGapCopy.incomplete;
+  }
+  return typeof state === 'string' && Object.hasOwn(outcomeGapCopy, state)
+    ? outcomeGapCopy[state as keyof typeof outcomeGapCopy] : null;
+}
+
+export function reviewPendingFollowUp(activity: ReviewActivityEvidence) {
+  const item = activity.pending_follow_up as { item_id?: unknown; date?: unknown } | null;
+  return typeof item?.item_id === 'string' && item.item_id.length > 0 && item.item_id.length <= 200
+    && isValidBusinessDate(item.date) ? { id: item.item_id, date: item.date } : null;
 }
 
 export function isReviewPlanStatusRow(value: unknown): value is ReviewPlanStatusRow {

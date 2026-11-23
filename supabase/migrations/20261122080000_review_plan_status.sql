@@ -34,7 +34,20 @@ BEGIN
     confirmed.activity_id,
     CASE WHEN confirmed.activity_id IS NOT NULL THEN jsonb_build_object(
       'date', confirmed.activity_date, 'type', confirmed.activity_type, 'summary', confirmed.summary,
-      'opportunity_id', o.id, 'opportunity_name', o.opportunity_name, 'outcome', outcome.evidence
+      'opportunity_id', o.id, 'opportunity_name', o.opportunity_name, 'outcome', outcome.evidence,
+      'has_outcome_evidence', outcome.record_count > 0,
+      'outcome_state', CASE
+        WHEN confirmed.linked_opportunity_id IS NULL THEN 'unlinked'
+        WHEN o.id IS NULL THEN 'unavailable'
+        WHEN (nullif(p.payload->>'linkedOpportunityId', '') IS NOT NULL AND p.payload->>'linkedOpportunityId' <> o.id::text)
+          OR outcome.record_count > 1
+          OR (outcome.result IN ('Won', 'Lost') AND outcome.result IS DISTINCT FROM o.status) THEN 'conflicting'
+        WHEN o.status IN ('Active', 'On hold') THEN 'open'
+        WHEN outcome.record_count = 0 THEN 'unrecorded'
+        WHEN outcome.evidence IS NULL THEN 'incomplete'
+        ELSE 'recorded'
+      END,
+      'pending_follow_up', follow_up.item
     ) END
   FROM public.plan_items AS p
   LEFT JOIN LATERAL (
@@ -55,8 +68,12 @@ BEGIN
   ) AS confirmed ON true
   LEFT JOIN public.opportunities AS o ON o.user_id = p.user_id AND o.id = confirmed.linked_opportunity_id
   LEFT JOIN LATERAL (
-    SELECT CASE WHEN count(*) = 1 AND max(r.payload->>'outcome') = o.status
+    SELECT count(*) AS record_count, max(r.payload->>'outcome') AS result,
+      CASE WHEN count(*) = 1 AND max(r.payload->>'outcome') = o.status
         AND o.status IN ('Won', 'Lost') AND nullif(btrim(max(r.payload->>'reasonText')), '') IS NOT NULL
+        AND bool_and(jsonb_typeof(r.payload->'reasonText') = 'string'
+          AND jsonb_typeof(r.payload->'outcomeDate') = 'string')
+        AND (nullif(p.payload->>'linkedOpportunityId', '') IS NULL OR p.payload->>'linkedOpportunityId' = o.id::text)
       THEN jsonb_build_object('result', max(r.payload->>'outcome'), 'date', max(r.payload->>'outcomeDate'),
         'reason', max(r.payload->>'reasonText'))
       END AS evidence
@@ -66,8 +83,21 @@ BEGIN
       AND r.payload->>'__deleted' IS DISTINCT FROM 'true'
       AND r.payload->>'isSample' IS DISTINCT FROM 'true'
       AND r.payload->>'source' IS DISTINCT FROM 'demo'
-      AND (p.payload->>'linkedOpportunityId' IS NULL OR p.payload->>'linkedOpportunityId' = o.id::text)
   ) AS outcome ON true
+  LEFT JOIN LATERAL (
+    SELECT jsonb_build_object('item_id', next_item.id, 'date', next_item.payload->>'date') AS item
+    FROM public.plan_items AS next_item
+    WHERE next_item.user_id = p.user_id AND next_item.id <> p.id
+      AND next_item.payload->>'linkedOpportunityId' = o.id::text
+      AND next_item.payload->>'done' IS DISTINCT FROM 'true'
+      AND next_item.payload->>'__deleted' IS DISTINCT FROM 'true'
+      AND next_item.payload->>'dismissed' IS DISTINCT FROM 'true'
+      AND next_item.payload->>'isSample' IS DISTINCT FROM 'true'
+      AND next_item.payload->>'source' IS DISTINCT FROM 'demo'
+      AND next_item.payload->>'date' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$'
+    ORDER BY next_item.payload->>'date', next_item.id
+    LIMIT 1
+  ) AS follow_up ON true
   WHERE p.user_id = effective_owner
     AND p.payload->>'__deleted' IS DISTINCT FROM 'true'
     AND p.payload->>'dismissed' IS DISTINCT FROM 'true'

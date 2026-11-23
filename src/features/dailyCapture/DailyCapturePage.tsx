@@ -2,6 +2,7 @@ import { WorkspaceScopeChangedError } from '../../services/localWorkspaceOwner';
 import {ExternalObservationIntake} from './ExternalObservationIntake';
 import { useCallback, useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { useReviewOpportunityLink } from '../../hooks/useReviewOpportunityLink';
 import { AlertTriangle, ArrowLeft, Building2, CalendarDays, Check, ChevronDown, Clipboard, Clock, Copy, Link2 as LinkIcon, Loader2, Lock, Mail, Mic, MicOff, NotebookPen, Save, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
@@ -305,7 +306,7 @@ const quickTemplates: {
 
 export function DailyCapturePage() {
   const navigate = useNavigate();
-  const { user } = useAuthContext();
+  const { user, session } = useAuthContext();
   // Capture is the entry point of the whole loop, so it is where an ended
   // trial has to be felt. Reading, Plan, Orders and export all stay open.
   const entitlement = useEntitlement();
@@ -395,6 +396,7 @@ export function DailyCapturePage() {
   const [logToActivity, setLogToActivity] = useState(true);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+  const reviewOpportunityLink = useReviewOpportunityLink(dataUserId, session?.access_token);
 
   const resetNoteDerivedState = useCallback(() => {
     setStructuredDraft(null);
@@ -1252,6 +1254,15 @@ export function DailyCapturePage() {
     setLeadDraft({ enabled: false, source: '', detail: '' });
   };
   const hasDraft = captureMode === 'email' ? emailForm.body.trim().length > 0 : rawNote.trim().length > 0;
+
+  if (reviewOpportunityLink === 'checking' || reviewOpportunityLink === 'unavailable') {
+    return <PageContainer>
+      {reviewOpportunityLink === 'checking' ? <p role="status">Checking the linked opportunity…</p> : <>
+        <p role="alert">The linked opportunity is unavailable. Return to Review to refresh the evidence.</p>
+        <Link to="/app/reviews" className="inline-flex min-h-11 items-center font-semibold text-brand-blue underline">Back to Review</Link>
+      </>}
+    </PageContainer>;
+  }
 
   return (
     <PageContainer>
