@@ -168,7 +168,8 @@ assert.equal((await readReviewStatus(jwt('authenticated', stranger))).code, 403)
 assert.ok([401, 403].includes((await readReviewStatus(null)).code));
 const relatedOpportunity = randomUUID();
 const asPlanOwner = source => sql(`SELECT set_config('request.jwt.claim.sub','${owner}',false); ${source}`);
-asPlanOwner(`INSERT INTO public.opportunities(id,user_id,opportunity_name,status) VALUES('${relatedOpportunity}','${owner}','Fixture renewal','Won');
+asPlanOwner(`INSERT INTO public.opportunities(id,user_id,title,opportunity_name,status)
+    VALUES('${relatedOpportunity}','${owner}','Fixture renewal','Fixture renewal','Won');
   UPDATE public.sales_activities SET activity_date='2026-11-16',summary='Discussed renewal terms',
     linked_opportunity_id='${relatedOpportunity}' WHERE id='${activityA}';`);
 const followUpReceipt = (await rpc(request(followUpId, activityA))).data;
