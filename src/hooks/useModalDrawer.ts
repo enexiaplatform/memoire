@@ -33,8 +33,9 @@ export function useModalDrawer({ onClose, label, enabled = true }: { onClose: ()
     if (!openerRef.current) openerRef.current = document.activeElement as HTMLElement | null;
     const node = ref.current;
     if (node) {
+      const initial = node.querySelector<HTMLElement>('[data-drawer-initial-focus]');
       const first = node.querySelector<HTMLElement>(FOCUSABLE);
-      (first || node).focus({ preventScroll: true });
+      (initial || first || node).focus({ preventScroll: !initial });
     }
     return () => {
       activeRef.current = false;

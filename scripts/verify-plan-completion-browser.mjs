@@ -315,7 +315,10 @@ async function scenario(named, surface) {
       await openStatus();
       await savedRow.getByRole('link', { name: /^Capture a follow-up Activity/ }).press('Enter');
       await page.waitForURL(url => url.pathname === '/app/capture' && url.searchParams.get('opportunityId') === linkedOpportunity);
-      await page.getByLabel('What happened?', { exact: true }).waitFor();
+      await page.getByText('What happened?', { exact: true }).waitFor();
+      await page.waitForFunction(() =>
+        document.querySelector('input[placeholder="Deal or project name"]')?.value === 'Fixture renewal');
+      assert.equal(await page.getByPlaceholder("Your customer's company").inputValue(), 'Fixture account');
 
       reviewOutcomeState = 'conflicting';
       hasOutcomeEvidence = true;
@@ -327,6 +330,22 @@ async function scenario(named, surface) {
       await page.getByText('Saved opportunity retro.', { exact: true }).waitFor();
       await page.waitForFunction(() => document.activeElement?.textContent === 'Outcome evidence');
 
+      await openStatus();
+      hideOpportunity = true;
+      await savedRow.getByRole('link', { name: /^Open related opportunity/ }).press('Enter');
+      await page.getByRole('alert').filter({ hasText: 'The linked opportunity is unavailable' }).waitFor();
+      const retryLookup = page.getByRole('button', { name: 'Retry opportunity lookup' });
+      await retryLookup.click();
+      await page.getByRole('alert').filter({ hasText: 'The linked opportunity is unavailable' }).waitFor();
+      assert.equal(await page.getByRole('button', { name: 'Close opportunity details' }).count(), 0);
+      await page.goBack();
+      await page.waitForURL('**/app/reviews');
+      await openStatus();
+      await savedRow.getByRole('link', { name: /^Open related opportunity/ }).press('Enter');
+      await page.getByRole('alert').filter({ hasText: 'The linked opportunity is unavailable' }).waitFor();
+      hideOpportunity = false;
+      await retryLookup.click();
+      await page.getByRole('button', { name: 'Close opportunity details' }).waitFor();
       await openStatus();
       hideOpportunity = true;
       await savedRow.getByRole('link', { name: /^Open related opportunity/ }).press('Enter');

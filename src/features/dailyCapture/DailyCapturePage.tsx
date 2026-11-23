@@ -3,6 +3,7 @@ import {ExternalObservationIntake} from './ExternalObservationIntake';
 import { useCallback, useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { useReviewOpportunityLink } from '../../hooks/useReviewOpportunityLink';
+import { ReviewOpportunityLinkNotice } from '../../components/ReviewOpportunityLinkNotice';
 import { AlertTriangle, ArrowLeft, Building2, CalendarDays, Check, ChevronDown, Clipboard, Clock, Copy, Link2 as LinkIcon, Loader2, Lock, Mail, Mic, MicOff, NotebookPen, Save, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
@@ -396,7 +397,16 @@ export function DailyCapturePage() {
   const [logToActivity, setLogToActivity] = useState(true);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
-  const reviewOpportunityLink = useReviewOpportunityLink(dataUserId, session?.access_token);
+  const { status: reviewOpportunityLink, retry: retryOpportunity, opportunity: linkedReviewOpportunity } =
+    useReviewOpportunityLink(dataUserId, session?.access_token);
+  useEffect(() => {
+    if (!linkedReviewOpportunity) return;
+    setQuickForm(current => ({
+      ...current,
+      accountName: current.accountName || linkedReviewOpportunity.accountName,
+      opportunityName: current.opportunityName || linkedReviewOpportunity.opportunityName,
+    }));
+  }, [linkedReviewOpportunity]);
 
   const resetNoteDerivedState = useCallback(() => {
     setStructuredDraft(null);
@@ -585,14 +595,16 @@ export function DailyCapturePage() {
   }, [searchParamsKey]);
 
   const scopeOpportunities = useMemo(
-    () => opportunities.map((opportunity) => ({
+    () => (linkedReviewOpportunity
+      ? [linkedReviewOpportunity, ...opportunities.filter(opportunity => opportunity.id !== linkedReviewOpportunity.id)]
+      : opportunities).map((opportunity) => ({
       id: opportunity.id,
       accountName: opportunity.accountName,
       opportunityName: opportunity.opportunityName,
       status: opportunity.status,
       createdAt: opportunity.createdAt,
     })),
-    [opportunities],
+    [opportunities, linkedReviewOpportunity],
   );
 
   /**
@@ -1257,10 +1269,7 @@ export function DailyCapturePage() {
 
   if (reviewOpportunityLink === 'checking' || reviewOpportunityLink === 'unavailable') {
     return <PageContainer>
-      {reviewOpportunityLink === 'checking' ? <p role="status">Checking the linked opportunity…</p> : <>
-        <p role="alert">The linked opportunity is unavailable. Return to Review to refresh the evidence.</p>
-        <Link to="/app/reviews" className="inline-flex min-h-11 items-center font-semibold text-brand-blue underline">Back to Review</Link>
-      </>}
+      <ReviewOpportunityLinkNotice checking={reviewOpportunityLink === 'checking'} onRetry={retryOpportunity} />
     </PageContainer>;
   }
 

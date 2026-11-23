@@ -3,6 +3,7 @@ import { HistoricalOpportunityDrawer } from './HistoricalOpportunityDrawer';
 import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useReviewOpportunityLink } from '../../hooks/useReviewOpportunityLink';
+import { ReviewOpportunityLinkNotice } from '../../components/ReviewOpportunityLinkNotice';
 import { ThreadsSection } from '../threads/ThreadsSection';
 import { DeltaPanel } from '../threads/DeltaPanel';
 import {
@@ -314,7 +315,8 @@ export function OpportunitiesPage() {
   const [lastWorkspaceRefreshAt, setLastWorkspaceRefreshAt] = useState('');
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
-  const reviewOpportunityLink = useReviewOpportunityLink(dataUserId, session?.access_token);
+  const { status: reviewOpportunityLink, retry: retryOpportunity, opportunity: linkedReviewOpportunity } =
+    useReviewOpportunityLink(dataUserId, session?.access_token);
   const reviewOutcome = reviewOpportunityLink === 'available' && searchParams.get('reviewOutcome') === '1';
   const getAnalyticsDataMode = (syncIssue = false): AnalyticsDataMode => {
     if (sampleDataActive) return 'demo-local';
@@ -626,7 +628,7 @@ export function OpportunitiesPage() {
     const opportunityId = searchParams.get('opportunityId');
     if (opportunityId && !loading) {
       if (reviewOpportunityLink === 'checking' || reviewOpportunityLink === 'unavailable') return;
-      const opportunity = opportunities.find((item) => item.id === opportunityId);
+      const opportunity = linkedReviewOpportunity || opportunities.find((item) => item.id === opportunityId);
       if (opportunity || searchParams.has('asOf')) {
         setEditingOpportunity(opportunity || null);
         if(opportunity)setForm(opportunityToForm(opportunity));
@@ -659,7 +661,7 @@ export function OpportunitiesPage() {
     }
     // Query params are only used as one-shot entry points.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.toString(), loading, opportunities, reviewOpportunityLink]);
+  }, [searchParams.toString(), loading, opportunities, reviewOpportunityLink, linkedReviewOpportunity]);
 
   const parseCsvImport = () => {
     // Rebuilt unconditionally and read from the return value. The old guard
@@ -1132,10 +1134,7 @@ export function OpportunitiesPage() {
 
   if (reviewOpportunityLink === 'checking' || reviewOpportunityLink === 'unavailable') {
     return <PageContainer>
-      {reviewOpportunityLink === 'checking' ? <p role="status">Checking the linked opportunity…</p> : <>
-        <p role="alert">The linked opportunity is unavailable. Return to Review to refresh the evidence.</p>
-        <Link to="/app/reviews" className="inline-flex min-h-11 items-center font-semibold text-brand-blue underline">Back to Review</Link>
-      </>}
+      <ReviewOpportunityLinkNotice checking={reviewOpportunityLink === 'checking'} onRetry={retryOpportunity} />
     </PageContainer>;
   }
 
@@ -4569,7 +4568,6 @@ function OpportunityOutcomeRetroPanel({
   const [draft, setDraft] = useState<OpportunityOutcomeDraft>(() => buildOpportunityOutcomeDraft(opportunity));
   const [open, setOpen] = useState(!reviewEvidence && (closing || outcomes.length === 0));
   const sectionRef = useRef<HTMLElement | null>(null);
-  const headingRef = useRef<HTMLHeadingElement | null>(null);
   const reasonRef = useRef<HTMLTextAreaElement | null>(null);
 
   // What was tapped, kept apart from what was typed, so the stored answer can
@@ -4615,10 +4613,6 @@ function OpportunityOutcomeRetroPanel({
     ...objections.map((objection) => (objection.objectionText || objection.objectionType || '').trim()),
     'No objection decided it',
   ].filter(Boolean)));
-
-  useEffect(() => {
-    if (reviewEvidence) headingRef.current?.focus();
-  }, [reviewEvidence]);
 
   useEffect(() => {
     if (nudge === 0) return;
@@ -4672,7 +4666,8 @@ function OpportunityOutcomeRetroPanel({
           <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700">
             {closing ? `Close this deal — ${opportunity.status}` : 'Closed-loop learning'}
           </p>
-          <h3 ref={headingRef} tabIndex={-1} className="mt-1 text-base font-bold text-ink">
+          <h3 data-drawer-initial-focus={reviewEvidence || undefined} tabIndex={reviewEvidence ? -1 : undefined}
+            className="mt-1 text-base font-bold text-ink">
             {reviewEvidence ? 'Outcome evidence' : closing ? 'Say why, and this closes' : 'Record win/loss/delay retro'}
           </h3>
           <p className="mt-1 text-sm leading-6 text-indigo-900/75">

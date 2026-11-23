@@ -216,6 +216,17 @@ asPlanOwner(`UPDATE public.opportunities SET status='Won' WHERE id='${relatedOpp
 sql(`UPDATE public.opportunity_outcomes SET payload=payload || '{"outcomeDate":"2026-11-12"}'
   WHERE user_id='${owner}' AND id='recorded-outcome';`);
 assert.equal((await readActivityEvidence()).outcome.date, '2026-11-12');
+const foreignOpportunity = randomUUID();
+sql(`SELECT set_config('request.jwt.claim.sub','${stranger}',false);
+  INSERT INTO public.opportunities(id,user_id,title,opportunity_name,status)
+    VALUES('${foreignOpportunity}','${stranger}','Foreign deal','Foreign deal','Active');
+  UPDATE public.sales_activities SET linked_opportunity_id='${foreignOpportunity}' WHERE id='${activityA}';`);
+assert.deepEqual(await readActivityEvidence(), {
+  ...activityEvidence, opportunity_id: null, opportunity_name: null, outcome_state: 'unavailable',
+});
+sql(`UPDATE public.sales_activities SET linked_opportunity_id=NULL WHERE id='${activityA}';`);
+assert.equal((await readActivityEvidence()).outcome_state, 'unlinked');
+sql(`UPDATE public.sales_activities SET linked_opportunity_id='${relatedOpportunity}' WHERE id='${activityA}';`);
 
 const forged = 'review-copy-with-foreign-receipt';
 sql(`INSERT INTO public.plan_items (user_id,id,payload,updated_at)
