@@ -1,0 +1,8 @@
+# Atlas knowledge references
+The optional commercial API resource `atlas-reference` uses the existing server function, verified Memoire bearer identity and native workspace directory. An operator supplies MEMOIRE_ATLAS_MAPPING with exact UUIDs for user, owner (native data owner), workspace, organization (Atlas), atlasWorkspace, servicePrincipal and the pinned Atlas origin. MEMOIRE_ATLAS_CONSUMER_KEY is a dedicated read-only credential. Leave both unset to keep the receiver disabled.
+
+With a normal Memoire user token and x-memoire-data-workspace, POST a command of "pin" with an asset UUID, or "sync" to process one event page. GET the resource with an asset parameter to open a pin. A GET reauthorizes the exact asset at Atlas before returning current metadata. The Memoire database retains only IDs, version numbers and receipt IDs. Treat pins as user-managed references. Only the live Atlas read certifies current access. An inaccessible asset returns unavailable even when a historical reference exists.
+
+Run sync again on failure or while more is true. Acknowledgement follows the local receipt transaction. After missing feed entries, pin the exact authorized asset again. A dedicated credential/consumer checkpoint belongs to one mapping. The caller controls polling. This increment exposes a Memoire API entry point. In-app navigation, managed onboarding and a hosted scheduler remain future work.
+
+The migration is pending operator review. Do not apply it during local Atlas evaluation. The separate Atlas interoperability test installs it only into a disposable database. No service-role key or sibling database access is required.
