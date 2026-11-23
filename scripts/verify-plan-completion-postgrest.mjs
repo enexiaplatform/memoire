@@ -167,7 +167,8 @@ assert.equal((await readReviewStatus(jwt('authenticated', actor))).code, 403);
 assert.equal((await readReviewStatus(jwt('authenticated', stranger))).code, 403);
 assert.ok([401, 403].includes((await readReviewStatus(null)).code));
 const relatedOpportunity = randomUUID();
-sql(`INSERT INTO public.opportunities(id,user_id,opportunity_name,status) VALUES('${relatedOpportunity}','${owner}','Fixture renewal','Won');
+const asPlanOwner = source => sql(`SELECT set_config('request.jwt.claim.sub','${owner}',false); ${source}`);
+asPlanOwner(`INSERT INTO public.opportunities(id,user_id,opportunity_name,status) VALUES('${relatedOpportunity}','${owner}','Fixture renewal','Won');
   UPDATE public.sales_activities SET activity_date='2026-11-16',summary='Discussed renewal terms',
     linked_opportunity_id='${relatedOpportunity}' WHERE id='${activityA}';`);
 const followUpReceipt = (await rpc(request(followUpId, activityA))).data;
@@ -190,9 +191,9 @@ assert.deepEqual((await readReviewStatus()).data[0].activity_evidence.outcome, e
 insertOutcome('conflicting-outcome', owner, 'Lost');
 assert.equal((await readReviewStatus()).data[0].activity_evidence.outcome, null);
 sql(`DELETE FROM public.opportunity_outcomes WHERE user_id='${owner}' AND id='conflicting-outcome';`);
-sql(`UPDATE public.opportunities SET status='Lost' WHERE id='${relatedOpportunity}';`);
+asPlanOwner(`UPDATE public.opportunities SET status='Lost' WHERE id='${relatedOpportunity}';`);
 assert.equal((await readReviewStatus()).data[0].activity_evidence.outcome, null);
-sql(`UPDATE public.opportunities SET status='Won' WHERE id='${relatedOpportunity}';`);
+asPlanOwner(`UPDATE public.opportunities SET status='Won' WHERE id='${relatedOpportunity}';`);
 
 const forged = 'review-copy-with-foreign-receipt';
 sql(`INSERT INTO public.plan_items (user_id,id,payload,updated_at)
