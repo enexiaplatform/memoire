@@ -51,10 +51,13 @@ async function scenario(named, surface) {
     let hasOutcomeEvidence = false;
     let pendingFollowUp = null;
     let existingFollowUpRecord;
+    const legacyFollowUps = [];
+    let allowFollowUpCapture = false;
+    const capturedFollowUps = [];
     let hideOpportunity = false;
     const linkedOpportunity = randomUUID();
     let statusUnavailable = false;
-    let statusGate;
+    let legacyReadGate;
     let duplicate;
     let hideActivities = false;
     let completed = null;
@@ -85,7 +88,6 @@ async function scenario(named, surface) {
         assert.equal(req.method(), 'GET');
         if (statusUnavailable) return respond({ message: 'Status unavailable' }, 403);
         const scopedOwner = req.headers()['x-memoire-data-workspace'] === workspace ? owner : login;
-        if (scopedOwner === login && statusGate) await statusGate;
         return respond(reviewWrites.filter(row => row.user_id === scopedOwner).map(row => ({
           item_id: row.id, proposal_id: row.payload.reviewProposal.proposalId, label: row.payload.label,
           plan_date: row.payload.date, completion_status: reviewStatus,
@@ -132,12 +134,21 @@ async function scenario(named, surface) {
           reviewWrites.push(row);
           return respond({ id: row.id }, 201);
         }
+        if (!namedRequest && legacyReadGate) await legacyReadGate;
         return respond([...(duplicate && !namedRequest ? [duplicate] : []),
           ...(existingFollowUpRecord && !namedRequest ? [existingFollowUpRecord] : []),
+          ...(!namedRequest ? legacyFollowUps : []),
           ...reviewWrites.filter(row => row.user_id === (namedRequest ? owner : login))]);
       }
       if (path.endsWith('/sales_activities')) {
-        if (fromReview && req.method() !== 'GET') throw new Error('Review may never write Activity.');
+        if (fromReview && req.method() !== 'GET') {
+          assert.ok(allowFollowUpCapture && req.method() === 'POST', 'Only the explicit Capture save can add an Activity.');
+          const payload = req.postDataJSON();
+          assert.equal(payload.user_id, login);
+          const captured = { ...payload, created_at: stamp, updated_at: stamp };
+          capturedFollowUps.push(captured);
+          return respond(captured);
+        }
         if (req.method() === 'POST') {
           const payload = req.postDataJSON();
           existing = { ...existing, ...payload, created_at: stamp, updated_at: stamp };
@@ -263,10 +274,12 @@ async function scenario(named, surface) {
       assert.equal(await draft.count(), 0);
       assert.equal(reviewWrites.length, 1);
       const tracking = page.getByRole('region', { name: 'Review follow-ups in Plan' });
-      const savedRow = tracking.getByRole('listitem').filter({ hasText: 'Follow up on the revised terms' });
+      const savedRow = tracking.locator(':scope > ul > li').filter({ hasText: 'Follow up on the revised terms' });
       const openStatus = async () => {
         await page.goto(base + '/app/reviews');
-        await page.getByText('What this leaves for next week', { exact: true }).click();
+        const summary = page.getByText('What this leaves for next week', { exact: true });
+        await summary.waitFor();
+        if (!await summary.evaluate(node => node.closest('details').open)) await summary.click();
       };
       await openStatus();
       await savedRow.getByText(/· Planned$/).waitFor();
@@ -300,11 +313,21 @@ async function scenario(named, surface) {
       await page.waitForURL(url => url.pathname === '/app/opportunities' && url.searchParams.get('opportunityId') === linkedOpportunity);
 
       reviewOutcomeState = 'open';
+      for (const [id, label, options] of [
+        ['legacy-renewal', 'Call about Fixture renewal', {}],
+        ['legacy-pricing', 'Send pricing for Fixture renewal', {}],
+        ['legacy-deleted', 'Send samples for Fixture renewal', { __deleted: true }],
+        ['legacy-completed', 'Discuss Fixture renewal', { done: true }],
+      ]) {
+        legacyFollowUps.push({ id, updated_at: stamp,
+          payload: { ...plan, id, label, linkedAccountName: 'Fixture account.', ...options } });
+      }
       pendingFollowUp = { item_id: 'existing-outcome-follow-up', date: planDate };
       existingFollowUpRecord = { id: pendingFollowUp.item_id, updated_at: stamp,
         payload: { ...plan, id: pendingFollowUp.item_id, label: 'Existing outcome follow-up' } };
       await openStatus();
       await savedRow.getByText('The linked opportunity is still open.', { exact: true }).waitFor();
+      assert.equal(await savedRow.getByText('Possible existing follow-up').count(), 0);
       assert.equal(await savedRow.getByRole('link', { name: /^Capture a follow-up Activity/ }).count(), 0);
       await savedRow.getByRole('link', { name: /^Open existing follow-up Plan item/ }).press('Enter');
       await page.waitForFunction(() => document.activeElement?.id === 'focused-plan-item');
@@ -313,12 +336,34 @@ async function scenario(named, surface) {
       existingFollowUpRecord.updated_at = new Date(Date.parse(stamp) + 1000).toISOString();
       existingFollowUpRecord.payload = { ...existingFollowUpRecord.payload, done: true, updatedAt: existingFollowUpRecord.updated_at };
       await openStatus();
+      await savedRow.getByText('Possible existing follow-up', { exact: true }).waitFor();
+      await savedRow.getByText(/Multiple Plan items could match/).waitFor();
+      assert.equal(await savedRow.getByRole('link', { name: /Send samples for|Discuss Fixture/ }).count(), 0);
+      await savedRow.getByRole('link', { name: /^Call about Fixture renewal/ }).press('Enter');
+      await page.waitForFunction(() => document.activeElement?.id === 'focused-plan-item');
+      assert.match(await page.locator('#focused-plan-item').innerText(), /Call about Fixture renewal/);
+      await openStatus();
       await savedRow.getByRole('link', { name: /^Capture a follow-up Activity/ }).press('Enter');
       await page.waitForURL(url => url.pathname === '/app/capture' && url.searchParams.get('opportunityId') === linkedOpportunity);
       await page.getByText('What happened?', { exact: true }).waitFor();
       await page.waitForFunction(() =>
         document.querySelector('input[placeholder="Deal or project name"]')?.value === 'Fixture renewal');
       assert.equal(await page.getByPlaceholder("Your customer's company").inputValue(), 'Fixture account');
+      assert.equal(capturedFollowUps.length, 0);
+      allowFollowUpCapture = true;
+      await page.getByText('What happened?', { exact: true }).locator('xpath=ancestor::label').locator('textarea')
+        .fill('Discussed revised terms with the customer.');
+      await page.getByRole('button', { name: 'Save Quick Capture', exact: true }).click();
+      const returnToReview = page.getByRole('link', { name: 'Return to Review follow-up' });
+      const dismissCaptureReview = page.getByRole('button', { name: 'Not now', exact: true });
+      await returnToReview.or(dismissCaptureReview).first().waitFor();
+      if (await dismissCaptureReview.first().isVisible()) await dismissCaptureReview.click();
+      await returnToReview.click();
+      await page.waitForFunction(() => document.activeElement?.textContent === 'Follow up on the revised terms');
+      assert.equal(capturedFollowUps.length, 1);
+      assert.equal(capturedFollowUps[0].linked_opportunity_id, linkedOpportunity);
+      assert.equal(reviewWrites.length, 1);
+      allowFollowUpCapture = false;
 
       reviewOutcomeState = 'conflicting';
       hasOutcomeEvidence = true;
@@ -394,8 +439,10 @@ async function scenario(named, surface) {
       await tracking.getByRole('button', { name: 'Retry Plan status' }).click();
       await savedRow.getByText(/· Verified Done$/).waitFor();
 
-      statusGate = new Promise(resolve => { releasePlanStatus = resolve; });
-      const oldStatus = page.waitForRequest(req => new URL(req.url()).pathname.endsWith('/memoire_review_plan_status'));
+      reviewOutcomeState = 'open';
+      reviewOutcome = null;
+      legacyReadGate = new Promise(resolve => { releasePlanStatus = resolve; });
+      const oldStatus = page.waitForRequest(req => req.method() === 'GET' && new URL(req.url()).pathname.endsWith('/plan_items'));
       await page.evaluate(() => window.dispatchEvent(new Event('focus')));
       await oldStatus;
       await tracking.getByText('Checking Plan items…').waitFor();
@@ -407,9 +454,10 @@ async function scenario(named, surface) {
       await page.getByRole('link', { name: /^Plan follow-up/ }).first().waitFor();
       releasePlanStatus();
       assert.equal(await savedRow.count(), 0);
+      assert.equal(await page.getByText('Possible existing follow-up', { exact: true }).count(), 0);
       assert.equal(reviewWrites.length, 1);
       assert.deepEqual(errors, []);
-      console.log('Review follow-up draft verified: explicit save, duplicate warning, scoped evidence, weekend, and history.');
+      console.log('Review verified: possible legacy matches, duplicate warning, scoped delayed reads, and return after explicit Capture save.');
       return;
     } else if (fromPlan) {
       await page.goto(base + '/app/timeline?view=upcoming');

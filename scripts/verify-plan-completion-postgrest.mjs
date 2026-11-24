@@ -189,8 +189,20 @@ sql(`INSERT INTO public.plan_items(user_id,id,payload) VALUES
   ('${owner}','deleted-next',jsonb_build_object('linkedOpportunityId','${relatedOpportunity}','date','2026-11-22','__deleted',true)),
   ('${owner}','existing-next',jsonb_build_object('linkedOpportunityId','${relatedOpportunity}','date','2026-11-23','done',false));`);
 assert.deepEqual((await readActivityEvidence()).pending_follow_up, { item_id: 'existing-next', date: '2026-11-23' });
+sql(`INSERT INTO public.plan_items(user_id,id,payload) VALUES
+  ('${owner}','legacy-candidate', '{"linkedAccountName":"Fixture account","label":"Call about Fixture renewal","date":"2026-11-23","done":false}'),
+  ('${stranger}','legacy-candidate','{"linkedAccountName":"Fixture account","label":"Other owner wording","date":"2026-11-23","done":false}');`);
 sql(`DELETE FROM public.plan_items WHERE user_id='${owner}' AND id='existing-next';`);
 assert.equal((await readActivityEvidence()).pending_follow_up, null);
+const readLegacyPlan = workspace => fetch(endpoint + '/plan_items?id=eq.legacy-candidate&select=id,payload', {
+  signal: AbortSignal.timeout(10_000),
+  headers: { Authorization: 'Bearer ' + identity, ...(workspace ? { 'x-memoire-data-workspace': workspace } : {}) },
+});
+const ownLegacy = await readLegacyPlan(firstBook);
+assert.equal(ownLegacy.status, 200);
+assert.deepEqual((await ownLegacy.json()).map(row => row.payload.label), ['Call about Fixture renewal']);
+assert.deepEqual(await (await readLegacyPlan(secondBook)).json(), []);
+assert.deepEqual(await (await readLegacyPlan()).json(), []);
 asPlanOwner(`UPDATE public.opportunities SET status='Won' WHERE id='${relatedOpportunity}';`);
 const explicitOutcome = { result: 'Won', date: '2026-11-18', reason: 'Signed renewal' };
 function insertOutcome(id, userId, result, date = '2026-11-18', reason = 'Signed renewal') {

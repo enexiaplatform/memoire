@@ -1,7 +1,7 @@
 import { WorkspaceScopeChangedError } from '../../services/localWorkspaceOwner';
 import {ExternalObservationIntake} from './ExternalObservationIntake';
 import { useCallback, useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useSearchParams, useNavigate } from 'react-router-dom';
 import { useReviewOpportunityLink } from '../../hooks/useReviewOpportunityLink';
 import { ReviewOpportunityLinkNotice } from '../../components/ReviewOpportunityLinkNotice';
 import { AlertTriangle, ArrowLeft, Building2, CalendarDays, Check, ChevronDown, Clipboard, Clock, Copy, Link2 as LinkIcon, Loader2, Lock, Mail, Mic, MicOff, NotebookPen, Save, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
@@ -307,6 +307,7 @@ const quickTemplates: {
 
 export function DailyCapturePage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, session } = useAuthContext();
   // Capture is the entry point of the whole loop, so it is where an ended
   // trial has to be felt. Reading, Plan, Orders and export all stay open.
@@ -1323,6 +1324,13 @@ export function DailyCapturePage() {
           and then unmounted in the same moment. It is said here instead. */}
       {!reviewSet && reviewMessage && (
         <p role="status" className="rounded-[13px] bg-tint-green-bg px-4 py-2.5 text-sm font-semibold text-tint-green-ink">{reviewMessage}</p>
+      )}
+
+      {!reviewSet && lastSavedActivity && linkedReviewOpportunity && location.state?.reviewReturn && (
+        <Link to="/app/reviews" state={{ reviewReturn: location.state.reviewReturn }}
+          className="inline-flex min-h-11 items-center font-semibold text-brand-blue underline">
+          Return to Review follow-up
+        </Link>
       )}
 
       {reviewSet && (

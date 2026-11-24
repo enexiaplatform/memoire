@@ -4,9 +4,12 @@ import { captureLocalWorkspaceScope } from '../../services/localWorkspaceOwner';
 import { PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
 import { WORKSPACE_REFRESHED_EVENT } from '../../services/workspaceData';
 import { fetchAllRows } from '../../services/supabasePaging';
+import { loadCloudJsonCollection } from '../../services/cloudJsonCollectionStore';
+import type { PlanRecord } from '../../utils/weeklyPlan';
 import { isReviewPlanStatusRow, type ReviewPlanStatusRow } from '../../utils/reviewPlanStatus';
 
-export type PlanStatus = { state: 'loading' | 'unavailable' } | { state: 'ready'; rows: ReviewPlanStatusRow[] };
+export type PlanStatus = { state: 'loading' | 'unavailable' }
+  | { state: 'ready'; rows: ReviewPlanStatusRow[]; legacyPlans: PlanRecord[] };
 
 export function useReviewPlanStatus(ownerId: string | undefined, scope: string, accessToken: string | undefined) {
   const [snapshot, setSnapshot] = useState<{ scope: string; accessToken: string; status: PlanStatus }>();
@@ -34,7 +37,12 @@ export function useReviewPlanStatus(ownerId: string | undefined, scope: string, 
         if (!rows.every(isReviewPlanStatusRow) || new Set(rows.map(row => row.item_id)).size !== rows.length) {
           throw new Error('Invalid Plan status response.');
         }
-        if (active && isCurrentScope() && !refreshQueued) setSnapshot({ scope, accessToken, status: { state: 'ready', rows } });
+        if (!active || !isCurrentScope() || refreshQueued) return;
+        const needsLegacyCheck = rows.some(row => row.activity_evidence?.outcome_state === 'open' && !row.activity_evidence.pending_follow_up);
+        const legacyPlans = needsLegacyCheck
+          ? await loadCloudJsonCollection<PlanRecord>('plan_items', ownerId, controller.signal).catch(() => [])
+          : [];
+        if (active && isCurrentScope() && !refreshQueued) setSnapshot({ scope, accessToken, status: { state: 'ready', rows, legacyPlans } });
       } catch {
         if (active && isCurrentScope() && !refreshQueued) setSnapshot({ scope, accessToken, status: { state: 'unavailable' } });
       } finally {

@@ -5,7 +5,7 @@ import {FederatedThreadsPanel} from './FederatedThreadsPanel';
 import {CrossCompanyStatePanel} from './CrossCompanyStatePanel';
 import { selectQualifiedPipeline, disqualifiedLeadIds, isDisqualifiedLeadOutcome } from '../../utils/leadIdentity';
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { normalizeEntityName } from '../../utils/accountIdentity.ts';
 import { Copy, Loader2 } from 'lucide-react';
 import { ReviewAnalyticsSection } from './ReviewAnalyticsSection';
@@ -108,6 +108,7 @@ const reviewTabs: { value: ReviewTab; label: string }[] = [
  */
 export function SalesReviewsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
   const rawTab = searchParams.get('view');
   // ?view=defense was the retired Pipeline Defense tab; it opens the review.
   const tab: ReviewTab = rawTab === 'analytics' ? rawTab : 'review';
@@ -118,6 +119,9 @@ export function SalesReviewsPage() {
     attentionSources, workspaceName, commitments: teamCommitments, workspace: teamWorkspace } = useCommercialThreads();
   const reviewPlanOwner = tab === 'review' && !reviewSample && reviewSession ? reviewUser?.id : undefined;
   const reviewPlan = useReviewPlanStatus(reviewPlanOwner, attentionScope, reviewSession?.access_token);
+  const reviewReturn = location.state?.reviewReturn;
+  const returnItemId = reviewPlanOwner && reviewReturn?.scope === attentionScope
+    && typeof reviewReturn.itemId === 'string' ? reviewReturn.itemId : undefined;
 
   // One period for the whole tab. The scoreboard declares it and the recap
   // below reads it: two period pickers on one page meant the headline and the
@@ -215,7 +219,7 @@ export function SalesReviewsPage() {
               two panels Review used to open on; they are what to do about the
               period rather than what the period produced, and Today owns the
               daily version of the same list. */}
-          <details className="rounded-panel bg-white shadow-panel">
+          <details open={returnItemId ? true : undefined} className="rounded-panel bg-white shadow-panel">
             <summary className="cursor-pointer list-none px-5 py-3">
               <span className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="text-base font-bold text-ink">What this leaves for next week</span>
@@ -231,7 +235,8 @@ export function SalesReviewsPage() {
                 planDraftScope={reviewPlanOwner ? attentionScope : undefined}
                 trackedPlanItems={reviewPlan.status.state === 'ready' && !attentionError ? reviewPlan.status.rows : undefined}
                 workspaceName={workspaceName} reviewSources={attentionSources} title="Commercial attention" />
-              {reviewPlanOwner && <ReviewPlanTracking status={reviewPlan.status} scope={attentionScope} ownerId={reviewPlanOwner} onRetry={reviewPlan.retry} />}
+              {reviewPlanOwner && <ReviewPlanTracking status={reviewPlan.status} scope={attentionScope} ownerId={reviewPlanOwner}
+                workspace={teamWorkspace} returnItemId={returnItemId} onRetry={reviewPlan.retry} />}
               <TeamCoordinationPanel key={'team-'+attentionScope} scope={reviewScope} commitments={teamCommitments} opportunities={teamWorkspace?.opportunities||[]}/>
               <SharedWorkspacesPanel key={'shared-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>
               <ExternalPromisesPanel key={'external-'+attentionScope} scope={reviewScope} commitments={teamCommitments}/>

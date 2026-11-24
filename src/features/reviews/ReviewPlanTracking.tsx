@@ -1,10 +1,25 @@
 import { Link } from 'react-router-dom';
+import { useEffect, useRef } from 'react';
 import { formatSafeBusinessDate } from '../../utils/safeDate';
 import { confirmedReviewOutcome, planItemHref, reviewOutcomeGap, reviewPendingFollowUp, reviewPlanStatusLabels } from '../../utils/reviewPlanStatus';
 import type { PlanStatus } from './useReviewPlanStatus';
+import type { SalesWorkspaceData } from '../../services/workspaceData';
+import { findPossibleReviewFollowUps } from '../../utils/legacyReviewFollowUps';
 
-export function ReviewPlanTracking({ status, scope, ownerId, onRetry }: { status: PlanStatus; scope: string; ownerId: string; onRetry: () => void }) {
+export function ReviewPlanTracking({ status, scope, ownerId, workspace, returnItemId, onRetry }: {
+  status: PlanStatus; scope: string; ownerId: string; workspace: SalesWorkspaceData | null; returnItemId?: string; onRetry: () => void;
+}) {
+  const returnTitle = useRef<HTMLParagraphElement>(null);
+  const focusedItem = useRef<string | undefined>(undefined);
+  useEffect(() => {
+    if (returnItemId && returnTitle.current && focusedItem.current !== returnItemId) {
+      returnTitle.current.focus();
+      focusedItem.current = returnItemId;
+    }
+  }, [returnItemId, status.state]);
   if (status.state === 'ready' && status.rows.length === 0) return null;
+  const possibleFollowUps = status.state === 'ready' && workspace
+    ? findPossibleReviewFollowUps(status.rows, status.legacyPlans, workspace, ownerId) : null;
   return (
     <section aria-label="Review follow-ups in Plan" className="rounded-panel border border-line p-4">
       <h2 className="text-sm font-bold text-ink">Review follow-ups in Plan</h2>
@@ -22,16 +37,34 @@ export function ReviewPlanTracking({ status, scope, ownerId, onRetry }: { status
           const opportunity = activity?.opportunity_id;
           const opportunityQuery = opportunity ? new URLSearchParams({ opportunityId: opportunity }) : null;
           const canCapture = opportunity && !outcome && !followUp && activity.outcome_state === 'open';
+          const possible = possibleFollowUps?.get(row.item_id);
           return (
           <li key={row.item_id} className="space-y-2 py-3">
             <div className="min-w-0">
-              <p className="break-words text-sm font-semibold text-ink">{row.label}</p>
+              <p ref={row.item_id === returnItemId ? returnTitle : undefined}
+                tabIndex={row.item_id === returnItemId ? -1 : undefined}
+                className="break-words text-sm font-semibold text-ink">{row.label}</p>
               <p className="text-xs text-muted">{formatSafeBusinessDate(row.plan_date)} · {reviewPlanStatusLabels[row.completion_status]}</p>
             </div>
             {activity && <div className="text-sm">
               <p className="font-semibold text-ink">Verified Activity</p>
               <p className="text-muted">{formatSafeBusinessDate(activity.date)} · {activity.type?.trim() || 'Type unavailable'}</p>
               {activity.summary?.trim() && <p className="whitespace-pre-wrap break-words text-ink">{activity.summary}</p>}
+            </div>}
+            {possible && <div className="rounded-lg border border-line p-3 text-sm">
+              <p className="font-semibold text-ink">Possible existing follow-up</p>
+              <p className="text-muted">{possible.length > 1
+                ? 'Multiple Plan items could match. Open one to check which concerns this opportunity.'
+                : 'The account and wording match. Open the Plan item to check whether it concerns this opportunity.'}</p>
+              <ul>
+                {possible.map(item => <li key={item.id}>
+                  <Link to={planItemHref(item.id, item.date)} state={{ planItemScope: scope }}
+                    className="inline-flex min-h-11 flex-wrap items-center gap-x-2 font-semibold text-brand-blue underline">
+                    <span className="break-words">{item.label}</span>
+                    <span className="text-muted">{formatSafeBusinessDate(item.date)} · Planned</span>
+                  </Link>
+                </li>)}
+              </ul>
             </div>}
             {outcome ? <div className="text-sm">
               <p className="font-semibold text-ink">Confirmed opportunity outcome · {outcome.result} · {formatSafeBusinessDate(outcome.date)}</p>
@@ -67,7 +100,8 @@ export function ReviewPlanTracking({ status, scope, ownerId, onRetry }: { status
                 className="inline-flex min-h-11 items-center underline">
                 Open existing follow-up Plan item<span className="sr-only"> · {row.label}</span>
               </Link>}
-              {canCapture && <Link to={`/app/capture?mode=quick&${opportunityQuery}`} state={{ reviewOpportunityOwner: ownerId }}
+              {canCapture && <Link to={`/app/capture?mode=quick&${opportunityQuery}`}
+                state={{ reviewOpportunityOwner: ownerId, reviewReturn: { scope, itemId: row.item_id } }}
                 className="inline-flex min-h-11 items-center underline">
                 Capture a follow-up Activity<span className="sr-only"> · {row.label}</span>
               </Link>}

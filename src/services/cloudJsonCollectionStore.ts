@@ -43,18 +43,22 @@ type CloudJsonRow = {
 export async function loadCloudJsonCollection<T extends CloudJsonRecord>(
   table: CloudJsonCollectionTable,
   userId: string,
+  signal?: AbortSignal,
 ): Promise<T[]> {
   if (!supabaseClient) return [];
 
   // Paged: see `fetchAllRows`.
-  const data = await fetchAllRows<CloudJsonRow>((from, to) => supabaseClient!
+  const data = await fetchAllRows<CloudJsonRow>((from, to) => {
+    const query = supabaseClient!
     .from(table)
     .select('id, payload, updated_at')
     .eq('user_id', userId)
     .order('updated_at', { ascending: false })
     // Total order, so paging cannot repeat or skip a record. See `fetchAllRows`.
     .order('id', { ascending: true })
-    .range(from, to) as never);
+    .range(from, to);
+    return (signal ? query.abortSignal(signal) : query) as never;
+  });
 
   return data.flatMap((row) => {
     if (!row.payload || typeof row.payload !== 'object') return [];
