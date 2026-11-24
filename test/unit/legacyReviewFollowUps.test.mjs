@@ -23,7 +23,8 @@ test('normalization, explicit aliases and deal wording identify possible matches
 });
 
 test('exact matches take precedence and colliding account identities prevent a name-only suggestion', () => {
-  assert.equal(find([base], workspace, { ...row, activity_evidence: { ...row.activity_evidence, pending_follow_up: { item_id: 'exact' } } }), undefined);
+  assert.equal(find([base], workspace, { ...row, activity_evidence: { ...row.activity_evidence,
+    pending_follow_up: { item_id: 'exact', date: '2026-11-23' } } }), undefined);
   const sameName = { userId: 'owner', id: 'account-b', accountName: 'Duc Phat' };
   assert.equal(find([base], { ...workspace, accounts: [...workspace.accounts, sameName] }), undefined);
   assert.deepEqual(find([base], { ...workspace, accounts: [...workspace.accounts, { ...sameName, userId: 'foreign' }] }), [base]);

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { supabaseClient } from '../../lib/supabaseClient';
 import { captureLocalWorkspaceScope } from '../../services/localWorkspaceOwner';
 import { PLAN_ITEMS_UPDATED_EVENT } from '../../services/planItemStore';
@@ -6,29 +6,39 @@ import { WORKSPACE_REFRESHED_EVENT } from '../../services/workspaceData';
 import { fetchAllRows } from '../../services/supabasePaging';
 import { loadCloudJsonCollection } from '../../services/cloudJsonCollectionStore';
 import type { PlanRecord } from '../../utils/weeklyPlan';
-import { isReviewPlanStatusRow, type ReviewPlanStatusRow } from '../../utils/reviewPlanStatus';
+import { isReviewPlanStatusRow, requiresLegacyReviewLookup, type ReviewPlanStatusRow } from '../../utils/reviewPlanStatus';
+
+type LegacyLookup = { state: 'loading' | 'unavailable' | 'not-required' }
+  | { state: 'ready'; plans: PlanRecord[] };
 
 export type PlanStatus = { state: 'loading' | 'unavailable' }
-  | { state: 'ready'; rows: ReviewPlanStatusRow[]; legacyPlans: PlanRecord[] };
+  | { state: 'ready'; rows: ReviewPlanStatusRow[]; legacy: LegacyLookup };
 
 export function useReviewPlanStatus(ownerId: string | undefined, scope: string, accessToken: string | undefined) {
-  const [snapshot, setSnapshot] = useState<{ scope: string; accessToken: string; status: PlanStatus }>();
-  const [retry, setRetry] = useState(0);
+  const [snapshot, setSnapshot] = useState<{ ownerId: string; scope: string; accessToken: string; status: PlanStatus }>();
+  const retry = useRef<{ ownerId: string; scope: string; accessToken: string; run: () => void } | null>(null);
   useEffect(() => {
     if (!ownerId || !accessToken) return;
     const isCurrentScope = captureLocalWorkspaceScope(ownerId);
     const controller = new AbortController();
-    let active = true;
+    const isCurrent = () => !controller.signal.aborted && isCurrentScope();
     let inFlight = false;
     let refreshQueued = false;
-    const read = async () => {
-      if (!active || !isCurrentScope()) return;
+    let current: PlanStatus = { state: 'loading' };
+    const publish = (status: PlanStatus) => {
+      if (!isCurrent()) return;
+      current = status;
+      setSnapshot({ ownerId, scope, accessToken, status });
+    };
+    const read = async (invalidate = false) => {
+      if (!isCurrent()) return;
       if (inFlight) {
-        refreshQueued = true;
+        refreshQueued ||= invalidate;
         return;
       }
       inFlight = true;
-      setSnapshot({ scope, accessToken, status: { state: 'loading' } });
+      if (current.state !== 'ready') publish({ state: 'loading' });
+      else if (current.legacy.state !== 'not-required') publish({ ...current, legacy: { state: 'loading' } });
       try {
         const client = supabaseClient;
         if (!client) throw new Error('Missing Plan client.');
@@ -37,14 +47,19 @@ export function useReviewPlanStatus(ownerId: string | undefined, scope: string, 
         if (!rows.every(isReviewPlanStatusRow) || new Set(rows.map(row => row.item_id)).size !== rows.length) {
           throw new Error('Invalid Plan status response.');
         }
-        if (!active || !isCurrentScope() || refreshQueued) return;
-        const needsLegacyCheck = rows.some(row => row.activity_evidence?.outcome_state === 'open' && !row.activity_evidence.pending_follow_up);
-        const legacyPlans = needsLegacyCheck
-          ? await loadCloudJsonCollection<PlanRecord>('plan_items', ownerId, controller.signal).catch(() => [])
-          : [];
-        if (active && isCurrentScope() && !refreshQueued) setSnapshot({ scope, accessToken, status: { state: 'ready', rows, legacyPlans } });
+        if (!isCurrent()) return;
+        const needsLegacyCheck = rows.some(requiresLegacyReviewLookup);
+        publish({ state: 'ready', rows, legacy: { state: needsLegacyCheck ? 'loading' : 'not-required' } });
+        if (needsLegacyCheck && !refreshQueued) {
+          try {
+            const plans = await loadCloudJsonCollection<PlanRecord>('plan_items', ownerId, controller.signal);
+            if (!refreshQueued) publish({ state: 'ready', rows, legacy: { state: 'ready', plans } });
+          } catch {
+            if (!refreshQueued) publish({ state: 'ready', rows, legacy: { state: 'unavailable' } });
+          }
+        }
       } catch {
-        if (active && isCurrentScope() && !refreshQueued) setSnapshot({ scope, accessToken, status: { state: 'unavailable' } });
+        publish({ state: 'unavailable' });
       } finally {
         inFlight = false;
         if (refreshQueued) {
@@ -54,24 +69,29 @@ export function useReviewPlanStatus(ownerId: string | undefined, scope: string, 
       }
     };
     const refresh = () => { void read(); };
-    window.addEventListener(PLAN_ITEMS_UPDATED_EVENT, refresh);
-    window.addEventListener(WORKSPACE_REFRESHED_EVENT, refresh);
+    const invalidate = () => { void read(true); };
+    retry.current = { ownerId, scope, accessToken, run: refresh };
+    window.addEventListener(PLAN_ITEMS_UPDATED_EVENT, invalidate);
+    window.addEventListener(WORKSPACE_REFRESHED_EVENT, invalidate);
     window.addEventListener('focus', refresh);
-    window.addEventListener('online', refresh);
+    window.addEventListener('online', invalidate);
     window.addEventListener('offline', refresh);
     refresh();
     return () => {
-      active = false;
+      retry.current = null;
       controller.abort();
-      window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, refresh);
-      window.removeEventListener(WORKSPACE_REFRESHED_EVENT, refresh);
+      window.removeEventListener(PLAN_ITEMS_UPDATED_EVENT, invalidate);
+      window.removeEventListener(WORKSPACE_REFRESHED_EVENT, invalidate);
       window.removeEventListener('focus', refresh);
-      window.removeEventListener('online', refresh);
+      window.removeEventListener('online', invalidate);
       window.removeEventListener('offline', refresh);
     };
-  }, [ownerId, scope, accessToken, retry]);
+  }, [ownerId, scope, accessToken]);
 
-  const status: PlanStatus = ownerId && snapshot?.scope === scope && snapshot.accessToken === accessToken
+  const status: PlanStatus = ownerId && snapshot?.ownerId === ownerId && snapshot.scope === scope && snapshot.accessToken === accessToken
     ? snapshot.status : { state: 'loading' };
-  return { status, retry: () => setRetry(value => value + 1) };
+  return { status, retry: () => {
+    const request = retry.current;
+    if (request && request.ownerId === ownerId && request.scope === scope && request.accessToken === accessToken) request.run();
+  } };
 }

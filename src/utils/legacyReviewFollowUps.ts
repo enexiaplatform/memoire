@@ -2,7 +2,7 @@ import { buildAccountAliasIndex, resolvedAccountKey } from './accountAliases.ts'
 import { normalizeEntityName } from './accountIdentity.ts';
 import { isValidBusinessDate } from './safeDate.ts';
 import type { SalesWorkspaceData } from '../services/workspaceData.ts';
-import type { ReviewPlanStatusRow } from './reviewPlanStatus.ts';
+import { requiresLegacyReviewLookup, type ReviewPlanStatusRow } from './reviewPlanStatus.ts';
 import type { PlanRecord } from './weeklyPlan.ts';
 
 type ReviewAccounts = Pick<SalesWorkspaceData, 'accounts' | 'accountMerges' | 'opportunities'>;
@@ -27,7 +27,7 @@ export function findPossibleReviewFollowUps(
   const result = new Map<string, PlanRecord[]>();
   for (const row of rows) {
     const evidence = row.activity_evidence;
-    if (evidence?.outcome_state !== 'open' || evidence.pending_follow_up || !isValidBusinessDate(evidence.date)) continue;
+    if (!requiresLegacyReviewLookup(row) || !evidence || !isValidBusinessDate(evidence.date)) continue;
     const activityDate = evidence.date;
     const deal = opportunities.find(deal => deal.id === evidence.opportunity_id);
     const accountKey = deal && keyOf(deal.accountName);

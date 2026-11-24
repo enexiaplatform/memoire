@@ -76,6 +76,12 @@ export function reviewPendingFollowUp(activity: ReviewActivityEvidence) {
     && isValidBusinessDate(item.date) ? { id: item.item_id, date: item.date } : null;
 }
 
+export function requiresLegacyReviewLookup(row: ReviewPlanStatusRow) {
+  const activity = row.activity_evidence;
+  return Boolean(activity?.opportunity_id && activity.outcome_state === 'open'
+    && isValidBusinessDate(activity.date) && !reviewPendingFollowUp(activity));
+}
+
 export function isReviewPlanStatusRow(value: unknown): value is ReviewPlanStatusRow {
   if (!value || typeof value !== 'object') return false;
   const row = value as ReviewPlanStatusRow;

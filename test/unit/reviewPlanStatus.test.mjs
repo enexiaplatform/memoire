@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { confirmedReviewOutcome, isReviewPlanStatusRow, planItemHref, reviewOutcomeGap, reviewPendingFollowUp } from '../../src/utils/reviewPlanStatus.ts';
+import { confirmedReviewOutcome, isReviewPlanStatusRow, planItemHref, requiresLegacyReviewLookup, reviewOutcomeGap, reviewPendingFollowUp } from '../../src/utils/reviewPlanStatus.ts';
 
 const planned = {
   item_id: 'plan/one & two', proposal_id: 'proposal', label: 'Review terms', plan_date: '2026-11-21',
@@ -62,4 +62,16 @@ test('the pending follow-up link requires a bounded item identity and valid busi
   assert.equal(reviewPendingFollowUp({ ...linked, pending_follow_up: { item_id: 'next', date: '2026-02-30' } }), null);
   assert.deepEqual(reviewPendingFollowUp({ ...linked, pending_follow_up: { item_id: 'next', date: '2026-11-23' } }),
     { id: 'next', date: '2026-11-23' });
+});
+
+test('only open linked opportunities with usable Activity dates and no exact Plan match require legacy reads', () => {
+  const open = { ...planned, activity_evidence: { ...linked, outcome_state: 'open' } };
+  assert.equal(requiresLegacyReviewLookup(open), true);
+  for (const activity of [
+    { pending_follow_up: { item_id: 'exact-item', date: '2026-11-23' } },
+    { opportunity_id: null }, { date: null }, { outcome_state: 'recorded' },
+  ]) {
+    assert.equal(requiresLegacyReviewLookup({ ...open, activity_evidence: { ...open.activity_evidence, ...activity } }), false);
+  }
+  assert.equal(requiresLegacyReviewLookup(planned), false);
 });

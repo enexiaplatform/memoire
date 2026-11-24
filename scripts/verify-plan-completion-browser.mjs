@@ -58,6 +58,9 @@ async function scenario(named, surface) {
     const linkedOpportunity = randomUUID();
     let statusUnavailable = false;
     let legacyReadGate;
+    let legacyFailure;
+    let includeExactReviewRow = false;
+    let reviewStatusReads = 0;
     let duplicate;
     let hideActivities = false;
     let completed = null;
@@ -86,9 +89,10 @@ async function scenario(named, surface) {
       if (path.endsWith('/rpc/memoire_active_data_owner')) return respond(owner);
       if (path.endsWith('/rpc/memoire_review_plan_status')) {
         assert.equal(req.method(), 'GET');
+        reviewStatusReads++;
         if (statusUnavailable) return respond({ message: 'Status unavailable' }, 403);
         const scopedOwner = req.headers()['x-memoire-data-workspace'] === workspace ? owner : login;
-        return respond(reviewWrites.filter(row => row.user_id === scopedOwner).map(row => ({
+        const statusRows = reviewWrites.filter(row => row.user_id === scopedOwner).map(row => ({
           item_id: row.id, proposal_id: row.payload.reviewProposal.proposalId, label: row.payload.label,
           plan_date: row.payload.date, completion_status: reviewStatus,
           activity_id: reviewStatus === 'verified_done' ? existing.id : null,
@@ -97,7 +101,14 @@ async function scenario(named, surface) {
             opportunity_id: linkedOpportunity, opportunity_name: 'Fixture renewal', outcome: reviewOutcome,
             outcome_state: reviewOutcomeState, has_outcome_evidence: hasOutcomeEvidence, pending_follow_up: pendingFollowUp,
           } : null,
-        })));
+        }));
+        if (includeExactReviewRow && statusRows[0]?.activity_evidence) {
+          const original = statusRows[0];
+          statusRows.push({ ...original, item_id: 'exact-review-row', label: 'Follow-up already linked',
+            activity_evidence: { ...original.activity_evidence,
+              pending_follow_up: { item_id: 'exact-plan-item', date: planDate } } });
+        }
+        return respond(statusRows);
       }
       if (path.endsWith('/memoire_personal_workspaces')) return respond([{ id: workspace, name: 'Fixture workspace', created_at: stamp }]);
       if (path.endsWith('/user_profiles')) return respond({ id: login, email: user.email, created_at: user.created_at, display_name: 'Fixture operator' });
@@ -135,6 +146,8 @@ async function scenario(named, surface) {
           return respond({ id: row.id }, 201);
         }
         if (!namedRequest && legacyReadGate) await legacyReadGate;
+        if (!namedRequest && legacyFailure === 'network') return route.abort('internetdisconnected');
+        if (!namedRequest && legacyFailure) return respond({ message: 'Legacy Plan lookup unavailable' }, legacyFailure);
         return respond([...(duplicate && !namedRequest ? [duplicate] : []),
           ...(existingFollowUpRecord && !namedRequest ? [existingFollowUpRecord] : []),
           ...(!namedRequest ? legacyFollowUps : []),
@@ -313,6 +326,42 @@ async function scenario(named, surface) {
       await page.waitForURL(url => url.pathname === '/app/opportunities' && url.searchParams.get('opportunityId') === linkedOpportunity);
 
       reviewOutcomeState = 'open';
+      await openStatus();
+      await savedRow.getByText('Capture a follow-up when you have a new update.', { exact: true }).waitFor();
+      const legacyNotice = tracking.getByText('Possible follow-ups could not be checked.', { exact: true });
+      assert.equal(await legacyNotice.count(), 0);
+      assert.equal(await savedRow.getByText('Possible existing follow-up', { exact: true }).count(), 0);
+      includeExactReviewRow = true;
+      legacyFailure = 503;
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await legacyNotice.waitFor();
+      const exactRow = tracking.locator(':scope > ul > li').filter({ hasText: 'Follow-up already linked' });
+      await exactRow.getByRole('link', { name: /^Open existing follow-up Plan item/ }).waitFor();
+      await savedRow.getByRole('link', { name: /^Capture a follow-up Activity/ }).waitFor();
+      assert.equal(await savedRow.getByText('Capture a follow-up when you have a new update.').count(), 0);
+      const retryLegacy = tracking.getByRole('button', { name: 'Retry possible follow-ups', exact: true });
+      legacyFailure = 403;
+      await retryLegacy.press('Enter');
+      await legacyNotice.waitFor();
+      assert.equal(await exactRow.getByRole('link', { name: /^Open existing follow-up Plan item/ }).count(), 1);
+      legacyFailure = 'network';
+      const failedLegacy = page.waitForEvent('requestfailed', request => new URL(request.url()).pathname.endsWith('/plan_items'));
+      await page.evaluate(() => window.dispatchEvent(new Event('offline')));
+      await failedLegacy;
+      await legacyNotice.waitFor();
+      legacyFailure = undefined;
+      includeExactReviewRow = false;
+      await page.evaluate(() => window.dispatchEvent(new Event('online')));
+      await savedRow.getByText('Capture a follow-up when you have a new update.', { exact: true }).waitFor();
+      assert.equal(await legacyNotice.count(), 0);
+      legacyFailure = 503;
+      await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+      await legacyNotice.waitFor();
+      legacyFailure = undefined;
+      await retryLegacy.click();
+      await savedRow.getByText('Capture a follow-up when you have a new update.', { exact: true }).waitFor();
+      assert.equal(await legacyNotice.count(), 0);
+
       for (const [id, label, options] of [
         ['legacy-renewal', 'Call about Fixture renewal', {}],
         ['legacy-pricing', 'Send pricing for Fixture renewal', {}],
@@ -431,11 +480,19 @@ async function scenario(named, surface) {
       assert.equal(await savedRow.getByRole('link', { name: /^Open related opportunity/ }).count(), 0);
       reviewStatus = 'verified_done';
       await page.setViewportSize({ width: 1440, height: 1000 });
-      statusUnavailable = true;
+      reviewOutcomeState = 'open';
+      reviewOutcome = null;
+      legacyFailure = 503;
       await openStatus();
+      await legacyNotice.waitFor();
+      statusUnavailable = true;
+      await retryLegacy.click();
       await tracking.getByRole('alert').filter({ hasText: 'Plan status unavailable' }).waitFor();
+      assert.equal(await savedRow.count(), 0);
+      assert.equal(await legacyNotice.count(), 0);
       assert.equal(await page.getByRole('link', { name: /^Plan follow-up/ }).count(), 0);
       statusUnavailable = false;
+      legacyFailure = undefined;
       await tracking.getByRole('button', { name: 'Retry Plan status' }).click();
       await savedRow.getByText(/· Verified Done$/).waitFor();
 
@@ -445,7 +502,13 @@ async function scenario(named, surface) {
       const oldStatus = page.waitForRequest(req => req.method() === 'GET' && new URL(req.url()).pathname.endsWith('/plan_items'));
       await page.evaluate(() => window.dispatchEvent(new Event('focus')));
       await oldStatus;
-      await tracking.getByText('Checking Plan items…').waitFor();
+      await tracking.getByText('Checking possible follow-ups…').waitFor();
+      const readsWhilePending = reviewStatusReads;
+      await page.evaluate(() => {
+        window.dispatchEvent(new Event('focus'));
+        window.dispatchEvent(new Event('focus'));
+      });
+      assert.equal(reviewStatusReads, readsWhilePending);
       const statusSwitch = page.waitForURL('**/app/today');
       await page.getByLabel('Switch workspace').selectOption(workspace);
       await statusSwitch;
