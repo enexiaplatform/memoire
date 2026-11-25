@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { derivePlanCommitments } from '../../domain/commercialKernel/derivePlanCommitments';
-import { Link, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import {
   CalendarDays,
   ChevronLeft,
@@ -16,6 +16,7 @@ import { useEscapeToClose } from '../../hooks/useEscapeToClose';
 import { hasLocalSampleData } from '../../utils/dataMode';
 import {
   deleteSalesActivity,
+  loadAuthorizedSalesActivity,
   updateSalesActivityLink,
   type SalesActivityRecord,
 } from '../../services/salesActivityStore';
@@ -175,9 +176,38 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
   // Deep link from Today's capture inbox: ?activityId= jumps to the activity's
   // day and opens its detail modal (where the link/confirm panel lives).
   const [searchParams, setSearchParams] = useSearchParams();
+  const location = useLocation();
+  const reviewActivityOwner = typeof location.state?.reviewActivityOwner === 'string' ? location.state.reviewActivityOwner : null;
+  const requestedActivityId = searchParams.get('activityId');
+  const [unavailableReviewLink, setUnavailableReviewLink] = useState<string>();
   useEffect(() => {
-    const requestedActivityId = searchParams.get('activityId');
-    if (!requestedActivityId || loadingActivities) return;
+    if (!reviewActivityOwner || !requestedActivityId) return;
+    setSelectedActivity(null);
+    setUnavailableReviewLink(undefined);
+    if (reviewActivityOwner !== dataUserId) {
+      setUnavailableReviewLink(location.key);
+      return;
+    }
+    const controller = new AbortController();
+    void loadAuthorizedSalesActivity(reviewActivityOwner, requestedActivityId, controller.signal).then(activity => {
+      if (controller.signal.aborted) return;
+      if (!activity) {
+        setUnavailableReviewLink(location.key);
+        return;
+      }
+      if (isValidBusinessDate(activity.activityDate)) setAnchorDate(new Date(`${activity.activityDate}T00:00:00`));
+      setSelectedActivity(activity);
+      const next = new URLSearchParams(searchParams);
+      next.delete('activityId');
+      setSearchParams(next, { replace: true });
+    }).catch(() => {
+      if (!controller.signal.aborted) setUnavailableReviewLink(location.key);
+    });
+    return () => controller.abort();
+  }, [dataUserId, location.key, requestedActivityId, reviewActivityOwner, searchParams, setSearchParams]);
+
+  useEffect(() => {
+    if (reviewActivityOwner || !requestedActivityId || loadingActivities) return;
     const requested = activities.find((item) => item.id === requestedActivityId);
     if (requested) {
       if (isValidBusinessDate(requested.activityDate)) {
@@ -192,7 +222,7 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
     const next = new URLSearchParams(searchParams);
     next.delete('activityId');
     setSearchParams(next, { replace: true });
-  }, [activities, loadingActivities, searchParams, setSearchParams]);
+  }, [activities, loadingActivities, requestedActivityId, reviewActivityOwner, searchParams, setSearchParams]);
 
   const range = useMemo(() => getCalendarRange(viewMode, anchorDate), [anchorDate, viewMode]);
   const periodActivities = useMemo(() => {
@@ -295,6 +325,12 @@ export function SalesActivityCalendarPage({ embedded = false }: { embedded?: boo
 
   return (
     <div className={`flex w-full max-w-none flex-col gap-5 ${embedded ? '' : 'px-4 py-5 sm:px-5 lg:px-6'}`}>
+      {reviewActivityOwner && requestedActivityId && unavailableReviewLink === location.key && (
+        <div className="rounded-panel border border-line bg-white p-4 text-sm">
+          <p role="alert">Linked Activity is unavailable in this workspace.</p>
+          <Link to="/app/reviews" className="inline-flex min-h-11 items-center font-semibold text-brand-blue underline">Back to Review</Link>
+        </div>
+      )}
       <header className={`flex flex-col gap-3 lg:flex-row lg:items-end ${embedded ? 'lg:justify-end' : 'lg:justify-between'}`}>
         {!embedded && (
           <div>

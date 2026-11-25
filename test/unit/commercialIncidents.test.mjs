@@ -3,11 +3,14 @@ import assert from 'node:assert/strict';
 import {registerHooks} from 'node:module';
 class Storage{data=new Map();fail='';get length(){return this.data.size;}key(i){return [...this.data.keys()][i]??null;}getItem(k){return this.data.get(k)??null;}
  setItem(k,v){if(k===this.fail)throw new DOMException('Full','QuotaExceededError');this.data.set(k,String(v));}removeItem(k){this.data.delete(k);}}
-const storage=new Storage(),cloud=new Map(),history=[],writes=[];let signedIn=false;
+const storage=new Storage(),cloud=new Map(),history=[],writes=[];let signedIn=false,incidentListingGate;
 globalThis.window={localStorage:storage,dispatchEvent:()=>true};globalThis.localStorage=storage;globalThis.CustomEvent=class{constructor(type){this.type=type;}};
 globalThis.__incidentCloud={auth:{getUser:async()=>({data:{user:signedIn?{id:'owner'}:null},error:null})},rpc:async()=>({data:'2026-09-29T00:00:00Z',error:null}),
  from(table){let id,entityType;return {select(){return this;},eq(key,value){if(key==='id')id=value;if(key==='entity_type')entityType=value;return this;},order(){return this;},
-  maybeSingle:async()=>({data:cloud.get(`${table}:${id}`)||null,error:null}),range:async()=>({data:table==='commercial_state_revisions'?history.filter(r=>r.entity_type===entityType):[...cloud.values()].filter(r=>r.table===table).map(r=>r.row),error:null}),
+  maybeSingle:async()=>({data:cloud.get(`${table}:${id}`)||null,error:null}),range:async()=>{
+   if(table==='commercial_incidents')await incidentListingGate;
+   return {data:table==='commercial_state_revisions'?history.filter(r=>r.entity_type===entityType):[...cloud.values()].filter(r=>r.table===table).map(r=>r.row),error:null};
+  },
   upsert:async rows=>{for(const row of rows){writes.push([table,row.version]);cloud.set(`${table}:${row.id}`,row);history.push({entity_type:table,state:row});}return {error:null};}};}};
 registerHooks({load(url,context,next){if(url.endsWith('/lib/supabaseClient.ts'))return {format:'module',shortCircuit:true,source:'export const supabaseClient=globalThis.__incidentCloud;export const isPipelineSupabaseConfigured=true;'};return next(url,context);}});
 const {publishCommercialPolicy}=await import('../../src/domain/commercialKernel/policyCommands.ts');
@@ -21,6 +24,7 @@ const {decodeHistoricalStorage}=await import('../../src/services/historicalStora
 const {getLocalHistoricalSourcesAt}=await import('../../src/services/historicalQuery.ts');
 const {composeCommercialStateAsOf}=await import('../../src/services/commercialTimeMachine.ts');
 const {buildRestorePlan}=await import('../../src/utils/workspaceBackup.ts');
+const {invalidateLocalWorkspaceScope}=await import('../../src/services/localWorkspaceOwner.ts');
 const at='2026-09-01T00:00:00.000Z',scope={userId:'owner',sampleDataActive:false};
 const o={id:'o',userId:'owner',accountId:'a',accountName:'Acme',opportunityName:'Finance review',stage:'Proposal',status:'Active',createdAt:at,updatedAt:at};
 const r={id:'r',userId:'owner',accountId:'a',opportunityId:'o',expectedOutcome:'Finance approved',question:null,conditionId:null,role:'required_now',lifecycle:'active',sourceType:'manual',createdAt:at,updatedAt:at};
@@ -30,7 +34,7 @@ const input={id:'i',policyId:'p',policyVersion:1,summary:'Approval deviation',ma
 const open=(patch={})=>openCommercialIncident(scope,{...input,readings:readings(),...patch});
 const change=(row,patch={})=>updateCommercialIncident(scope,{id:row.id,expectedUpdatedAt:row.updatedAt,coordinator:row.coordinator,responseNote:'Recorded response',disposition:null,confirmed:true,opportunity:o,readings:readings(),...patch});
 const revisions=()=>JSON.parse(decodeHistoricalStorage(storage.getItem('memoire.stateRevisions.v1')||'[]'));
-beforeEach(async()=>{await new Promise(r=>setTimeout(r,0));storage.data.clear();storage.fail='';cloud.clear();history.length=0;writes.length=0;signedIn=false;
+beforeEach(async()=>{await new Promise(r=>setTimeout(r,0));storage.data.clear();storage.fail='';cloud.clear();history.length=0;writes.length=0;signedIn=false;incidentListingGate=undefined;
  storage.setItem('memoire.accounts.v1',JSON.stringify([{id:'a',userId:'owner'}]));storage.setItem('memoire.opportunities.v1',JSON.stringify([o]));storage.setItem('memoire.outcomeRequirements.v1',JSON.stringify([r]));
  assert.equal(publishCommercialPolicy(scope,policyInput,[r]).ok,true);
 });
@@ -102,4 +106,18 @@ test('JSONB object key order cannot block a same-version incident load; changed 
  const loaded=await loadCommercialIncidentsForWorkspace('owner');assert.equal(loaded[0].id,'i');assert.equal(loaded[0].version,1);
  const changed={...row,material_impact:'Changed impact'};cloud.set('commercial_incidents:i',changed);cloud.set('listing',{table:'commercial_incidents',row:changed});
  await assert.rejects(()=>loadCommercialIncidentsForWorkspace('owner'),/conflict|different|version/i);
+});
+
+test('a late incident response cannot repopulate storage after the workspace generation changes', async () => {
+ const row = incidentCodec.toRow(open().value, 'owner');
+ cloud.set('listing', {table:'commercial_incidents',row});
+ storage.removeItem(INCIDENT_STORAGE_KEY);
+ let release;
+ incidentListingGate = new Promise(resolve => { release = resolve; });
+ const pending = loadCommercialIncidentsForWorkspace('owner');
+ invalidateLocalWorkspaceScope();
+ release();
+ await assert.rejects(pending, { name: 'WorkspaceScopeChangedError' });
+ assert.equal(storage.getItem(INCIDENT_STORAGE_KEY), null);
+ assert.deepEqual(writes, []);
 });

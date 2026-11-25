@@ -1,0 +1,100 @@
+import { isValidBusinessDate } from './safeDate.ts';
+
+export const reviewPlanStatusLabels = {
+  planned: 'Planned',
+  reported_done: 'Reported Done',
+  verified_done: 'Verified Done',
+} as const;
+
+export type ReviewPlanStatusRow = {
+  item_id: string;
+  proposal_id: string;
+  label: string;
+  plan_date: string;
+  completion_status: keyof typeof reviewPlanStatusLabels;
+  activity_id: string | null;
+  activity_evidence: ReviewActivityEvidence | null;
+};
+
+type ReviewActivityEvidence = {
+  date: string | null;
+  type: string | null;
+  summary: string | null;
+  opportunity_id: string | null;
+  opportunity_name: string | null;
+  outcome: unknown;
+  // Optional while the previous draft projection is still in use.
+  outcome_state?: unknown;
+  has_outcome_evidence?: unknown;
+  pending_follow_up?: unknown;
+};
+
+const isUuid = (value: unknown): value is string => typeof value === 'string'
+  && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(value);
+const nullableText = (value: unknown) => value === null || typeof value === 'string';
+
+function isReviewActivityEvidence(value: unknown): value is ReviewActivityEvidence {
+  if (!value || typeof value !== 'object') return false;
+  const row = value as ReviewActivityEvidence;
+  return nullableText(row.date) && nullableText(row.type) && nullableText(row.summary)
+    && (row.opportunity_id === null || isUuid(row.opportunity_id)) && nullableText(row.opportunity_name);
+}
+
+export function confirmedReviewOutcome(activity: ReviewActivityEvidence | null) {
+  if (!activity?.opportunity_id || !activity.outcome || typeof activity.outcome !== 'object') return null;
+  if (activity.outcome_state !== undefined && activity.outcome_state !== 'recorded') return null;
+  const { result, date, reason } = activity.outcome as { result: string; date: string; reason: string };
+  if ((result !== 'Won' && result !== 'Lost') || !isValidBusinessDate(date) || !isValidBusinessDate(activity.date)
+      || date < activity.date || typeof reason !== 'string' || !reason.trim()) return null;
+  return { result, date, reason: reason.trim() };
+}
+
+const outcomeGapCopy = {
+  unlinked: 'This Activity is not linked to an opportunity. Open the Activity to check its link.',
+  unavailable: 'The linked opportunity is unavailable. Refresh Plan status before acting.',
+  unrecorded: 'No outcome has been recorded for this opportunity. Check the opportunity before recording a result.',
+  open: 'The linked opportunity is still open.',
+  conflicting: 'The Plan, Activity or outcome records disagree. Review the existing records before recording a result.',
+  incomplete: 'The recorded outcome is missing a valid result, date or reason. Review the existing evidence.',
+  outdated: 'The recorded outcome predates the verified Activity. Check whether there is a more recent result.',
+};
+
+export function reviewOutcomeGap(activity: ReviewActivityEvidence) {
+  const state = activity.outcome_state;
+  if (state === 'recorded') {
+    const date = (activity.outcome as { date?: unknown } | null)?.date;
+    return isValidBusinessDate(date) && isValidBusinessDate(activity.date) && date < activity.date
+      ? outcomeGapCopy.outdated : outcomeGapCopy.incomplete;
+  }
+  return typeof state === 'string' && Object.hasOwn(outcomeGapCopy, state)
+    ? outcomeGapCopy[state as keyof typeof outcomeGapCopy] : null;
+}
+
+export function reviewPendingFollowUp(activity: ReviewActivityEvidence) {
+  const item = activity.pending_follow_up as { item_id?: unknown; date?: unknown } | null;
+  return typeof item?.item_id === 'string' && item.item_id.length > 0 && item.item_id.length <= 200
+    && isValidBusinessDate(item.date) ? { id: item.item_id, date: item.date } : null;
+}
+
+export function requiresLegacyReviewLookup(row: ReviewPlanStatusRow) {
+  const activity = row.activity_evidence;
+  return Boolean(activity?.opportunity_id && activity.outcome_state === 'open'
+    && isValidBusinessDate(activity.date) && !reviewPendingFollowUp(activity));
+}
+
+export function isReviewPlanStatusRow(value: unknown): value is ReviewPlanStatusRow {
+  if (!value || typeof value !== 'object') return false;
+  const row = value as ReviewPlanStatusRow;
+  return typeof row.item_id === 'string' && row.item_id.length > 0 && row.item_id.length <= 200
+    && typeof row.proposal_id === 'string' && row.proposal_id.length > 0 && row.proposal_id.length <= 300
+    && typeof row.label === 'string' && Boolean(row.label.trim())
+    && isValidBusinessDate(row.plan_date)
+    && Object.hasOwn(reviewPlanStatusLabels, row.completion_status)
+    && (row.completion_status === 'verified_done'
+      ? isUuid(row.activity_id) && isReviewActivityEvidence(row.activity_evidence)
+      : row.activity_id === null && row.activity_evidence === null);
+}
+
+export function planItemHref(id: string, date: string) {
+  return '/app/timeline?' + new URLSearchParams({ view: 'upcoming', date, planItem: id }).toString();
+}

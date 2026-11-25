@@ -12,6 +12,7 @@ import type { PlanBoardWindow } from '../../domain/commercialKernel/derivePlanCo
 import { getPlanRange, planDateKeyToDate } from '../../utils/weeklyPlan';
 import { todayDateKey, isValidBusinessDate } from '../../utils/safeDate';
 import { formatCount } from '../../utils/numberFormat';
+import { readReviewPlanHandoff } from '../../utils/reviewPlanDraft';
 
 export type TimelineView = 'upcoming' | 'history';
 
@@ -46,8 +47,12 @@ export function TimelinePage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const view = readView(searchParams.get('view'));
   const location = useLocation();
+  const reviewPlanDraft = readReviewPlanHandoff(location.state);
   const dateParam = searchParams.get('date');
   const requestedDate = isValidBusinessDate(dateParam) ? dateParam : null;
+  const itemParam = searchParams.get('planItem');
+  const requestedItem = itemParam && itemParam.length <= 200 ? itemParam : undefined;
+  const requestedScope = typeof location.state?.planItemScope === 'string' ? location.state.planItemScope : undefined;
   // Seeded with the week the board opens on, so the panel above it is already
   // right on the first paint rather than briefly listing what is about to be
   // drawn underneath it.
@@ -70,10 +75,12 @@ export function TimelinePage() {
    * state to the value it already held, no effect would run, and the link would
    * do nothing.
    */
-  const [focusRequest, setFocusRequest] = useState<{ date: string; seq: number } | null>(null);
+  const [focusRequest, setFocusRequest] = useState<{ date: string; seq: number; itemId?: string; scope?: string } | null>(null);
   useEffect(() => {
-    if (requestedDate) setFocusRequest(current => ({date:requestedDate,seq:(current?.seq ?? 0)+1}));
-  }, [requestedDate, location.key]);
+    if (view === 'upcoming' && requestedDate) setFocusRequest(current => ({
+      date: requestedDate, seq: (current?.seq ?? 0) + 1, itemId: requestedItem, scope: requestedScope,
+    }));
+  }, [requestedDate, requestedItem, requestedScope, view, location.key]);
 
   // Deliberately no "timeline viewed" event. Page opens measure which rooms
   // people walk into; what matters is whether commitments get created and kept,
@@ -137,6 +144,7 @@ export function TimelinePage() {
               onRangeChange={setBoardWindow}
               onHeadingChange={setHeading}
               focusRequest={focusRequest}
+              reviewPlanDraft={reviewPlanDraft}
               beforeBoard={(
                 /* Handed the days the board is drawing, so it stops re-listing
                    the promises that board is about to show and counts them on

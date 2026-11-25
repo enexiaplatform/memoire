@@ -8,7 +8,7 @@ name: CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, codex/memoire-development]
   pull_request:
   workflow_dispatch:
 
@@ -19,7 +19,11 @@ concurrency:
 jobs:
   commercial-receipt-postgrest:
     name: Commercial receipts on PostgreSQL and PostgREST
-    if: github.event_name == 'pull_request' && github.head_ref == 'codex/agent-action-contract' && github.event.repository.visibility == 'public'
+    if: >-
+      github.event.repository.visibility == 'public' &&
+      ((github.event_name == 'pull_request' && github.head_ref == 'codex/agent-action-contract' &&
+        github.event.pull_request.head.repo.full_name == github.repository) ||
+       (github.event_name != 'pull_request' && github.ref == 'refs/heads/codex/memoire-development'))
     runs-on: ubuntu-24.04
     timeout-minutes: 8
     permissions:
@@ -39,7 +43,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
@@ -126,6 +130,7 @@ jobs:
       github.event.repository.visibility == 'public' &&
       ((github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository &&
         (github.head_ref == 'codex/enexia-staging-foundation' || startsWith(github.head_ref, 'codex/pr01-staging-'))) ||
+       (github.event_name != 'pull_request' && github.ref == 'refs/heads/codex/memoire-development') ||
        (github.event_name == 'workflow_dispatch' && github.ref_type == 'branch' &&
         (github.ref_name == 'codex/enexia-staging-foundation' || startsWith(github.ref_name, 'codex/pr01-staging-'))))
     runs-on: ubuntu-24.04
@@ -153,7 +158,7 @@ jobs:
         with:
           node-version: 22
       - run: npm ci
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install chromium
       - name: Run disposable integration without repository secrets
         run: |
           env -i PATH="$PATH" HOME="$HOME" CI=true GITHUB_SHA="$CANDIDATE_SHA" \

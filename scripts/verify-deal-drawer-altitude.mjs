@@ -68,7 +68,8 @@ for (const panel of ['<StakeholderMap', '<MeddicLitePanel', '<OpportunityCommerc
     closingCopy > foldEnd && closingCopy < saveAt,
     'the closing copy renders outside the fold and above the save it is a condition of',
   );
-  assert.match(page, /currentOpportunity && !closingThisDeal && \(/, 'the folded copy is skipped while the close-out is open');
+  assert.match(page, /currentOpportunity && !closingThisDeal && !reviewOutcome && \(/,
+    'the folded copy is skipped when the close-out or linked evidence is open');
 }
 
 // 4. The head shows the money-spine trio (money / risk / blocker) and next commitment.

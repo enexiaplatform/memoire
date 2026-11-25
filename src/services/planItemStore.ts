@@ -1,6 +1,7 @@
 import { getWorkspaceBrowserStorage } from './workspaceBrowserStorage.ts';
 import { guardLocalWorkspaceScope, WorkspaceScopeChangedError } from './localWorkspaceOwner.ts';
 import type { PlanRecord } from '../utils/weeklyPlan';
+import { readReviewPlanOrigin } from '../utils/reviewPlanDraft.ts';
 import {
   claimLocalCollectionForUser,
   deleteCloudJsonRecordForCurrentUser,
@@ -12,6 +13,7 @@ import {
 import { invalidateWorkspaceCollection } from './workspaceDataCache.ts';
 import { writeLocalRecords } from './localWriteGuard.ts';
 import { normalizeActivityChannel } from '../utils/activityChannel.ts';
+import { supabaseClient } from '../lib/supabaseClient.ts';
 
 export const PLAN_ITEM_STORAGE_KEY = 'memoire.planItems.v1';
 export const PLAN_ITEMS_UPDATED_EVENT = 'memoire:plan-items-updated';
@@ -86,6 +88,23 @@ export function savePlanItem(record: PlanRecord, options: { syncCloud?: boolean 
   return persistPlanItems([record, ...existing], options.syncCloud);
 }
 
+/** Confirm the explicit creation through the existing owner-scoped Plan table. */
+export async function createReviewPlanItem(ownerId: string, record: PlanRecord): Promise<PlanRecord[] | null> {
+  const assertCurrent = guardLocalWorkspaceScope(ownerId);
+  if (!supabaseClient || !record.reviewProposal || record.done || record.isSample) throw new Error('Review draft cannot be saved.');
+  const { data, error } = await supabaseClient.from('plan_items').upsert({
+    user_id: ownerId, id: record.id, payload: record, created_at: record.createdAt, updated_at: record.updatedAt,
+  }, { onConflict: 'user_id,id', ignoreDuplicates: true }).select('id').maybeSingle();
+  assertCurrent();
+  if (error) throw new Error('The Plan write could not be confirmed.');
+  if (data?.id !== record.id) return null;
+  const existing = loadPlanItems();
+  if (existing.some(item => item.id === record.id)) return existing;
+  // The cloud write has already committed. A local cache failure cannot undo it.
+  try { return savePlanItem(record, { syncCloud: false }); }
+  catch { return [...existing, record]; }
+}
+
 export function deletePlanItem(recordId: string, options: { syncCloud?: boolean } = {}): PlanRecord[] {
   const existing = loadPlanItems();
   const removed = existing.find(item => item.id === recordId);
@@ -127,6 +146,7 @@ function sanitizePlanRecord(value: unknown): PlanRecord | null {
 
   return {
     id: typeof candidate.id === 'string' && candidate.id ? candidate.id : `plan-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    reviewProposal: readReviewPlanOrigin(candidate.reviewProposal),
     automation: candidate.automation && ['quote-followup', 'commitment-reminder'].includes(candidate.automation.rule)
       && ['key', 'sourceId', 'dueDate', 'runId'].every(key => typeof candidate.automation?.[key as keyof NonNullable<PlanRecord['automation']>] === 'string')
       ? { ...candidate.automation } : undefined,

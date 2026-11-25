@@ -45,16 +45,16 @@ sql(`
 
 let transport = fetch;
 let arrival = 0;
-function synchronizedWrites() {
+function synchronizedWrites(expected = 2) {
   let release;
   const ready = new Promise(resolve => { release = resolve; });
   arrival = 0;
   transport = async (url, options) => {
     if (options?.method === 'POST' && new URL(url).pathname === '/commercial_events') {
       arrival += 1;
-      if (arrival === 2) release();
+      if (arrival === expected) release();
       await Promise.race([ready, delay(5000, undefined, { ref: false })]);
-      assert.equal(arrival, 2, 'Both app calls must reach the write boundary.');
+      assert.equal(arrival, expected, 'All app calls must reach the write boundary.');
     }
     return fetch(url, options);
   };
@@ -106,13 +106,13 @@ try {
     await delay(200);
   }
 
-  synchronizedWrites();
+  synchronizedWrites(3);
   const reordered = Object.fromEntries(Object.entries(observation).reverse());
-  const identical = await Promise.all([request(observation), request(reordered)]);
-  assert.deepEqual(identical.map(r => r.code).sort(), [200, 201]);
-  assert.equal(arrival, 2);
+  const identical = await Promise.all([request(observation), request(reordered), request(observation)]);
+  assert.deepEqual(identical.map(r => r.code).sort(), [200, 200, 201]);
+  assert.equal(arrival, 3);
   identical.forEach(r => receipt(r, idV1(OWNER_A, observation), observation, r.code === 200));
-  assert.deepEqual(identical[0].body.receipt, identical[1].body.receipt);
+  for (const result of identical) assert.deepEqual(result.body.receipt, identical[0].body.receipt);
   assert.equal(sql("select count(*) from public.commercial_events where source_id='same';"), '1');
   console.log('PASS concurrent reordered V1 requests: one event, stable effect ID and same receipt');
 
@@ -127,6 +127,16 @@ try {
   });
   assert.equal(sql("select count(*) from public.commercial_events where source_id='concurrent-conflict';"), '1');
   console.log('PASS concurrent conflicting V1 requests: one event and conflict without receipt');
+
+  synchronizedWrites();
+  const versions = ['1', '2'].map(sourceVersion => ({ ...observation, sourceEventId: 'different-versions', sourceVersion }));
+  const independent = await Promise.all(versions.map(input => request(input)));
+  independent.forEach((result, index) => {
+    assert.equal(result.code, 201);
+    receipt(result, idV1(OWNER_A, versions[index]), versions[index], false);
+  });
+  assert.notEqual(independent[0].body.receipt.id, independent[1].body.receipt.id);
+  assert.equal(sql("select count(*) from public.commercial_events where source_id='different-versions';"), '2');
 
   const uncertain = { ...observation, sourceEventId: 'unknown' };
   let discardedResponseStatus;
@@ -160,9 +170,31 @@ try {
   }
   console.log('PASS failed write/read and lost acknowledgment return no success and recover safely');
 
-  const scoped = await request(observation, book);
-  const sameLoginDifferentBook = await request(observation, sibling);
-  const otherLoginDefault = await request(observation, undefined, outsider);
+  const missing = { ...observation, sourceEventId: 'missing-readback' };
+  transport = (url, args) => {
+    if (args.method === 'GET' && url.pathname === '/commercial_events') {
+      assert.equal(url.searchParams.get('user_id'), 'eq.' + OWNER_A);
+      assert.equal(url.searchParams.get('id'), 'eq.' + idV1(OWNER_A, missing));
+      url.searchParams.set('id', 'eq.nonexistent-fixture-effect');
+    }
+    return fetch(url, args);
+  };
+  const withoutReadback = await request(missing);
+  assert.equal(withoutReadback.code, 503);
+  assert.deepEqual(withoutReadback.body, { version: 1, error: 'receipt_not_confirmed', retrySafe: true });
+  assert.equal(sql("select count(*) from public.commercial_events where source_id='missing-readback';"), '1');
+  transport = fetch;
+  const recovered = await request(missing);
+  assert.equal(recovered.code, 200);
+  receipt(recovered, idV1(OWNER_A, missing), missing, true);
+  assert.deepEqual((await request(missing)).body, recovered.body);
+  console.log('PASS missing scoped readback yields no receipt and retries return the original receipt');
+
+  synchronizedWrites(3);
+  const [scoped, sameLoginDifferentBook, otherLoginDefault] = await Promise.all([
+    request(observation, book), request(observation, sibling), request(observation, undefined, outsider),
+  ]);
+  transport = fetch;
   for (const result of [scoped, sameLoginDifferentBook, otherLoginDefault]) assert.equal(result.code, 201);
   const ids = [identical[0], scoped, sameLoginDifferentBook, otherLoginDefault].map(r => r.body.receipt.id);
   for (const result of [scoped, sameLoginDifferentBook]) receipt(result, result.body.receipt.id, observation, false);
@@ -175,6 +207,11 @@ try {
     { headers: { Authorization: 'Bearer ' + owner } });
   assert.equal(direct.status, 200);
   assert.deepEqual(await direct.json(), []);
+  const neighbor = await fetch(endpoint + '/commercial_events?select=id&id=eq.' + encodeURIComponent(scoped.body.receipt.id),
+    { headers: { Authorization: 'Bearer ' + outsider } });
+  assert.equal(neighbor.status, 200);
+  assert.deepEqual(await neighbor.json(), []);
+  assert.deepEqual((await request(observation, sibling)).body, { ...sameLoginDifferentBook.body, duplicate: true });
   const forged = await request({ ...observation, grant: { allowed: true } }, book);
   assert.equal(forged.code, 400);
   assert.deepEqual(forged.body, { version: 1, error: 'invalid_observation' });

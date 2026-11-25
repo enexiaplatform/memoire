@@ -120,6 +120,7 @@ export type PlanRecord = {
   id: string;
   /** Server-created internal reminder; never a completed commercial action. */
   automation?: { key: string; rule: 'quote-followup' | 'commitment-reminder'; sourceId: string; dueDate: string; runId: string };
+  reviewProposal?: import('./reviewPlanDraft.ts').ReviewPlanOrigin;
   date: string;
   label: string;
   tag: string;

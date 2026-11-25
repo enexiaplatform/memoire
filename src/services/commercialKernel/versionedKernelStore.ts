@@ -1,5 +1,6 @@
 import { dataOwnerForLogin } from '../activeWorkspaceScope.ts';
 import { getWorkspaceBrowserStorage } from '../workspaceBrowserStorage.ts';
+import { guardLocalWorkspaceScope } from '../localWorkspaceOwner.ts';
 import {writeLocal,upsertCloudRecords,reportKernelSyncFailure,type KernelCodec} from './kernelRepository.ts';
 import {supabaseClient} from '../../lib/supabaseClient.ts';
 import {fetchAllRows} from '../supabasePaging.ts';
@@ -62,21 +63,24 @@ export function versionedKernelStore<T extends Versioned>(codec:KernelCodec<T>,l
   reportWorkspaceSyncError(`${label} is saved in this browser; account versions have not synchronized.`);reportKernelSyncFailure(codec.table,'upsert',error);
  });}
  async function loadForWorkspace(userId?:string|null,sampleDataActive=false):Promise<T[]>{
+  const assertCurrent=guardLocalWorkspaceScope(userId);
   const all=load(),local=all.filter(row=>row.userId===(userId||null)&&Boolean(row.isSample)===sampleDataActive);
   if(!userId||sampleDataActive||!supabaseClient)return local;
   const rows=await fetchAllRows<Record<string,unknown>>((from,to)=>supabaseClient!.from(codec.table).select('*').eq('user_id',userId)
    .order(codec.orderColumn,{ascending:false}).order('id',{ascending:true}).range(from,to) as never);
+  assertCurrent();
   const cloud=rows.map(row=>{const record=codec.fromRow(row);if(!record||record.userId!==userId)throw new Error(`${label} account records are unreadable.`);return record;});
   const current=load(),merged=new Map(cloud.map(row=>[row.id,row]));
   for(const row of current.filter(row=>row.userId===userId&&!row.isSample)){
    const server=merged.get(row.id);
    if(server&&server.version===row.version&&!same(server,row))throw new Error(`${label} versions conflict between this browser and the account. Keep a backup.`);
-   if(server&&server.version>row.version)await requireAccepted(row,userId);
+   if(server&&server.version>row.version){await requireAccepted(row,userId);assertCurrent();}
    if(!server||row.version>server.version)merged.set(row.id,row);
   }
   const result=[...merged.values()].sort(codec.compare);
   if(JSON.stringify(load())!==JSON.stringify(current))throw new Error(`${label} changed during refresh. Reopen to read the latest versions.`);
   if(current.some(row=>(row.userId!==userId||row.isSample)&&merged.has(row.id)))throw new Error(`${label} identity conflicts with another browser workspace.`);
+  assertCurrent();
   writeLocal(codec,[...current.filter(row=>row.userId!==userId||row.isSample),...result]);
   const owed=result.filter(row=>!cloud.some(server=>server.id===row.id&&server.version>=row.version));if(owed.length)queue(owed);
   return result;

@@ -1,5 +1,5 @@
 {
-  "git": { "deploymentEnabled": {"codex/workspace-selector-contract":false,"codex/plan-journal-recovery":false,"codex/enexia-staging-foundation":false,"codex/pr01-staging-reliability":false,"codex/pr01-staging-protection-preflight":false,"codex/agent-authorization-foundation":false,"codex/advisory-action-receipt":false,"codex/trusted-advisory-history":false,"codex/agent-action-contract":false,"codex/sdk-lint-repeatability":false,"codex/memoire-integration-verification":false} },
+  "git": { "deploymentEnabled": {"codex/workspace-selector-contract":false,"codex/plan-journal-recovery":false,"codex/enexia-staging-foundation":false,"codex/pr01-staging-reliability":false,"codex/pr01-staging-protection-preflight":false,"codex/agent-authorization-foundation":false,"codex/advisory-action-receipt":false,"codex/trusted-advisory-history":false,"codex/agent-action-contract":false,"codex/sdk-lint-repeatability":false,"codex/memoire-integration-verification":false,"codex/memoire-development":false} },
   "trailingSlash": false,
   "headers": [
     {

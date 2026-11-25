@@ -1,7 +1,9 @@
 import { WorkspaceScopeChangedError } from '../../services/localWorkspaceOwner';
 import {ExternalObservationIntake} from './ExternalObservationIntake';
 import { useCallback, useEffect, useId, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useSearchParams, useNavigate } from 'react-router-dom';
+import { useReviewOpportunityLink } from '../../hooks/useReviewOpportunityLink';
+import { ReviewOpportunityLinkNotice } from '../../components/ReviewOpportunityLinkNotice';
 import { AlertTriangle, ArrowLeft, Building2, CalendarDays, Check, ChevronDown, Clipboard, Clock, Copy, Link2 as LinkIcon, Loader2, Lock, Mail, Mic, MicOff, NotebookPen, Save, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 import { useAuthContext } from '../../auth/authContext';
 import { useSpeechDictation } from '../../hooks/useSpeechDictation';
@@ -42,7 +44,7 @@ import { ActivityOpportunityLinkPanel } from '../opportunities/ActivityOpportuni
 import { applyOpportunityUpdateSuggestion, suggestOpportunityLinks, type OpportunityUpdateSuggestion } from '../../utils/activityOpportunityLinker';
 import { suggestQuoteStateChanges, type QuoteStateSuggestion } from '../../utils/quoteStateSuggestions';
 import { updateQuote, type QuoteRecord } from '../../services/quoteStore';
-import { confirmExistingPlanActivity, PLAN_COMPLETION_CHANGED } from '../../services/planCompletionClient';
+import { confirmExistingPlanActivity, PLAN_COMPLETION_CHANGED, type PlanCompletionOutcome } from '../../services/planCompletionClient';
 import { loadPlanItemsForWorkspace, savePlanItem } from '../../services/planItemStore';
 import {
   findClosablePlanItems,
@@ -73,6 +75,7 @@ import { markPipelineReviewHabitStepComplete } from '../../utils/pipelineReviewH
 import { markTrialActivationChecklistItemComplete } from '../../utils/trialActivationChecklist';
 import { markDemoJourneyStepComplete } from '../../utils/demoJourney';
 import { formatSafeBusinessDate, isValidBusinessDate, sanitizeBusinessDate, todayDateKey } from '../../utils/safeDate.ts';
+import { planItemHref } from '../../utils/reviewPlanStatus';
 import {
   buildEmailThreadIngestion,
   buildIngestionSourceTags,
@@ -304,7 +307,8 @@ const quickTemplates: {
 
 export function DailyCapturePage() {
   const navigate = useNavigate();
-  const { user } = useAuthContext();
+  const location = useLocation();
+  const { user, session } = useAuthContext();
   // Capture is the entry point of the whole loop, so it is where an ended
   // trial has to be felt. Reading, Plan, Orders and export all stay open.
   const entitlement = useEntitlement();
@@ -366,6 +370,9 @@ export function DailyCapturePage() {
   const [quoteSuggestionMessage, setQuoteSuggestionMessage] = useState('');
   const [lastSavedActivity, setLastSavedActivity] = useState<SalesActivityRecord | null>(null);
   const [planRecords, setPlanRecords] = useState<PlanRecord[]>([]);
+  const [planFeedback, setPlanFeedback] = useState<{
+    owner: string; activityId: string; planId: string; date: string; status: 'saving' | 'pending' | 'confirmed' | 'conflict' | 'failed';
+  } | null>(null);
   const [planCloseDismissed, setPlanCloseDismissed] = useState(false);
   const [markedDoneKeys, setMarkedDoneKeys] = useState<string[]>([]);
   const [loadingActivities, setLoadingActivities] = useState(true);
@@ -391,6 +398,16 @@ export function DailyCapturePage() {
   const [logToActivity, setLogToActivity] = useState(true);
   const sampleDataActive = hasLocalSampleData();
   const dataUserId = sampleDataActive ? undefined : user?.id;
+  const { status: reviewOpportunityLink, retry: retryOpportunity, opportunity: linkedReviewOpportunity } =
+    useReviewOpportunityLink(dataUserId, session?.access_token);
+  useEffect(() => {
+    if (!linkedReviewOpportunity) return;
+    setQuickForm(current => ({
+      ...current,
+      accountName: current.accountName || linkedReviewOpportunity.accountName,
+      opportunityName: current.opportunityName || linkedReviewOpportunity.opportunityName,
+    }));
+  }, [linkedReviewOpportunity]);
 
   const resetNoteDerivedState = useCallback(() => {
     setStructuredDraft(null);
@@ -579,14 +596,16 @@ export function DailyCapturePage() {
   }, [searchParamsKey]);
 
   const scopeOpportunities = useMemo(
-    () => opportunities.map((opportunity) => ({
+    () => (linkedReviewOpportunity
+      ? [linkedReviewOpportunity, ...opportunities.filter(opportunity => opportunity.id !== linkedReviewOpportunity.id)]
+      : opportunities).map((opportunity) => ({
       id: opportunity.id,
       accountName: opportunity.accountName,
       opportunityName: opportunity.opportunityName,
       status: opportunity.status,
       createdAt: opportunity.createdAt,
     })),
-    [opportunities],
+    [opportunities, linkedReviewOpportunity],
   );
 
   /**
@@ -1152,13 +1171,15 @@ export function DailyCapturePage() {
 
   useEffect(() => {
     const onCompletion = (event: Event) => {
-      const outcome = (event as CustomEvent).detail;
+      const outcome = (event as CustomEvent<PlanCompletionOutcome | undefined>).detail;
       if (outcome?.status === 'confirmed') {
-        const record = outcome.record as PlanRecord;
+        const record = outcome.record;
         setPlanRecords(current => [record, ...current.filter(row => row.id !== record.id)]);
-        setMessage(current => current === 'Plan completion saved on this device, waiting for workspace confirmation.'
-          ? 'Plan completion confirmed.' : current);
+        setPlanFeedback(current => current && current.owner === dataUserId && current.planId === record.id
+          && current.activityId === record.completionActivityId ? { ...current, date: record.date, status: 'confirmed' } : current);
       } else if (outcome?.status === 'conflict') {
+        setPlanFeedback(current => current && current.owner === dataUserId && current.planId === outcome.planId
+          && current.activityId === outcome.activityId && current.status !== 'confirmed' ? { ...current, status: 'conflict' } : current);
         void loadPlanItemsForWorkspace(dataUserId, sampleDataActive).then(setPlanRecords).catch(() => {});
       }
     };
@@ -1175,15 +1196,16 @@ export function DailyCapturePage() {
     });
     if (!record) return;
     if (dataUserId && !sampleDataActive) {
+      const attempt = { owner: dataUserId, activityId: lastSavedActivity.id, planId: record.id, date: record.date, status: 'saving' } as const;
+      setPlanFeedback(attempt);
       try {
         const result = await confirmExistingPlanActivity(
           dataUserId, item, record, lastSavedActivity.id, planRecords.find(row => row.id === record.id),
         );
-        if (result.status === 'confirmed') setMessage('Plan completion confirmed.');
-        if (result.status === 'pending') setMessage('Plan completion saved on this device, waiting for workspace confirmation.');
-        if (result.status === 'conflict') setMessage('The Activity link could not be confirmed. Review the latest item in Plan.');
+        setPlanFeedback(current => current === attempt ? { ...attempt, status: result.status } : current);
       } catch (error) {
-        if (!(error instanceof WorkspaceScopeChangedError)) setMessage('Could not save the completion to this device. Free storage and try again.');
+        const failure = error instanceof WorkspaceScopeChangedError ? null : { ...attempt, status: 'failed' } as const;
+        setPlanFeedback(current => current === attempt ? failure : current);
       }
       return;
     }
@@ -1191,6 +1213,9 @@ export function DailyCapturePage() {
     setMarkedDoneKeys((current) => [...current, closableKey(item)]);
     trackProductEvent('commitment_completed');
   }, [dataUserId, lastSavedActivity, planRecords, sampleDataActive]);
+
+  const currentPlanFeedback = planFeedback?.owner === dataUserId
+    && planFeedback?.activityId === lastSavedActivity?.id ? planFeedback : null;
 
   // Quote state is not a fact read out of the note - it is an existing quote
   // advancing its own lifecycle - so it stays its own suggestion rather than
@@ -1243,6 +1268,12 @@ export function DailyCapturePage() {
   };
   const hasDraft = captureMode === 'email' ? emailForm.body.trim().length > 0 : rawNote.trim().length > 0;
 
+  if (reviewOpportunityLink === 'checking' || reviewOpportunityLink === 'unavailable') {
+    return <PageContainer>
+      <ReviewOpportunityLinkNotice checking={reviewOpportunityLink === 'checking'} onRetry={retryOpportunity} />
+    </PageContainer>;
+  }
+
   return (
     <PageContainer>
       {/* The bar while composing. While a review is open the review owns the
@@ -1293,6 +1324,13 @@ export function DailyCapturePage() {
           and then unmounted in the same moment. It is said here instead. */}
       {!reviewSet && reviewMessage && (
         <p role="status" className="rounded-[13px] bg-tint-green-bg px-4 py-2.5 text-sm font-semibold text-tint-green-ink">{reviewMessage}</p>
+      )}
+
+      {!reviewSet && lastSavedActivity && linkedReviewOpportunity && location.state?.reviewReturn && (
+        <Link to="/app/reviews" state={{ reviewReturn: location.state.reviewReturn }}
+          className="inline-flex min-h-11 items-center font-semibold text-brand-blue underline">
+          Return to Review follow-up
+        </Link>
       )}
 
       {reviewSet && (
@@ -1691,6 +1729,26 @@ export function DailyCapturePage() {
           onIgnore={() => handleIgnoreActivityLink(lastSavedActivity)}
           onUnlink={() => handleUnlinkActivity(lastSavedActivity)}
         />
+      )}
+
+      {currentPlanFeedback && (
+        <div role="status" className="rounded-panel bg-tint-blue-bg px-4 py-3 text-sm text-tint-blue-ink">
+          <p>{{
+            saving: 'Saving Plan completion…',
+            pending: 'Plan completion saved on this device, waiting for workspace confirmation.',
+            confirmed: 'Plan completion confirmed.',
+            conflict: 'The Activity link could not be confirmed. Review the latest item in Plan.',
+            failed: 'Could not save the completion to this device. Free storage and try again.',
+          }[currentPlanFeedback.status]}</p>
+          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 font-semibold underline">
+            <Link to={currentPlanFeedback.status === 'confirmed'
+              ? planItemHref(currentPlanFeedback.planId, currentPlanFeedback.date)
+              : `/app/timeline?view=upcoming&date=${encodeURIComponent(currentPlanFeedback.date)}`}>Review in Plan</Link>
+            {currentPlanFeedback.status === 'confirmed' && (
+              <Link to={`/app/timeline?view=history&activityId=${encodeURIComponent(currentPlanFeedback.activityId)}`}>View linked activity</Link>
+            )}
+          </div>
+        </div>
       )}
 
       {lastSavedActivity && !planCloseDismissed && (planScheduledEntries.length > 0 || closablePlanItems.length > 0) && (

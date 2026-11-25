@@ -19,8 +19,21 @@ type Command = {
   label: string | null;
   tag: string | null;
 };
-type Outcome = { status: 'pending' | 'conflict' } | { status: 'confirmed'; record: PlanRecord; transitioned: boolean };
-const inFlight = new Map<string, Promise<Outcome>>();
+export type PlanCompletionOutcome = { status: 'pending' }
+  | { status: 'conflict'; planId: string; activityId: string }
+  | { status: 'confirmed'; record: PlanRecord; transitioned: boolean };
+const inFlight = new Map<string, Promise<PlanCompletionOutcome>>();
+const uuid = /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i;
+const nullableCommandFields = ['derivedKey', 'expectedUpdatedAt', 'label', 'tag'] as const;
+
+function isStoredCommand(value: unknown): value is Command {
+  if (!value || typeof value !== 'object' || Object.keys(value).length !== 7) return false;
+  const command = value as Record<string, unknown>;
+  return typeof command.requestId === 'string' && uuid.test(command.requestId)
+    && typeof command.activityId === 'string' && uuid.test(command.activityId)
+    && typeof command.planId === 'string' && command.planId.length > 0
+    && nullableCommandFields.every(field => command[field] === null || typeof command[field] === 'string');
+}
 
 function scopeFor(ownerId: string) {
   const assertCurrent = guardLocalWorkspaceScope(ownerId);
@@ -33,7 +46,7 @@ function scopeFor(ownerId: string) {
   return { assertCurrent, storage, login, workspace, prefix: prefix + login + '.' };
 }
 
-function notify(outcome?: Outcome) {
+function notify(outcome?: PlanCompletionOutcome) {
   window.dispatchEvent(new CustomEvent(PLAN_COMPLETION_CHANGED, { detail: outcome }));
 }
 
@@ -46,8 +59,8 @@ function readPendingJournal(scope: ReturnType<typeof scopeFor>) {
     const raw = scope.storage.getItem(key);
     if (raw === null) continue;
     try {
-      const command = JSON.parse(raw) as Command | null;
-      if (typeof command?.requestId === 'string' && command.requestId && key === scope.prefix + command.requestId) {
+      const command: unknown = JSON.parse(raw);
+      if (isStoredCommand(command) && key === scope.prefix + command.requestId) {
         commands.push(command);
         continue;
       }
@@ -64,7 +77,7 @@ export function getPlanCompletionJournalStatus(ownerId: string) {
   return { pending: commands.length, unreadable };
 }
 
-async function send(ownerId: string, scope: ReturnType<typeof scopeFor>, command: Command): Promise<Outcome> {
+async function send(ownerId: string, scope: ReturnType<typeof scopeFor>, command: Command): Promise<PlanCompletionOutcome> {
   const key = scope.prefix + command.requestId;
   if (navigator.onLine === false) return { status: 'pending' };
 
@@ -106,14 +119,14 @@ async function send(ownerId: string, scope: ReturnType<typeof scopeFor>, command
 
   if (!receipt.record) {
     scope.storage.removeItem(key);
-    const outcome = { status: 'conflict' } as const;
+    const outcome = { status: 'conflict', planId: command.planId, activityId: command.activityId } as const;
     notify(outcome);
     return outcome;
   }
   const local = loadPlanItems().find(plan => plan.id === command.planId);
   if (local && local.updatedAt > receipt.record.updatedAt) {
     scope.storage.removeItem(key);
-    const outcome = { status: 'conflict' } as const;
+    const outcome = { status: 'conflict', planId: command.planId, activityId: command.activityId } as const;
     notify(outcome);
     return outcome;
   }
@@ -130,7 +143,7 @@ async function send(ownerId: string, scope: ReturnType<typeof scopeFor>, command
 }
 
 function dispatch(ownerId: string, scope: ReturnType<typeof scopeFor>, command: Command) {
-  const flightKey = scope.workspace + ':' + command.requestId;
+  const flightKey = JSON.stringify([scope.login, scope.workspace, ownerId, command.requestId]);
   const busy = inFlight.get(flightKey);
   if (busy) return busy;
   const work = send(ownerId, scope, command).finally(() => inFlight.delete(flightKey));
@@ -144,7 +157,7 @@ export async function confirmExistingPlanActivity(
   const scope = scopeFor(ownerId);
   const queued = readPendingJournal(scope).commands.find(command => command.planId === completion.id);
   if (queued) return queued.activityId === activityId && queued.derivedKey === (item.derivedKey ?? null)
-    ? dispatch(ownerId, scope, queued) : { status: 'conflict' } as const;
+    ? dispatch(ownerId, scope, queued) : { status: 'conflict', planId: completion.id, activityId } as const;
 
   const command: Command = {
     requestId: crypto.randomUUID(), activityId, planId: completion.id,
