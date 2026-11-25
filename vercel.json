@@ -1,5 +1,5 @@
 {
-  "git": {"deploymentEnabled":{"feat/atlas-receiver":false}},
+  "git": {"deploymentEnabled":{"feat/atlas-receiver":false,"feat/m03-receiver":false}},
   "trailingSlash": false,
   "headers": [
     {
