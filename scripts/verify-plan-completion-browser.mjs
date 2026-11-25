@@ -296,6 +296,8 @@ async function scenario(named, surface) {
       };
       await openStatus();
       await savedRow.getByText(/· Planned$/).waitFor();
+      assert.match(await tracking.getByLabel('Review follow-up status overview').innerText(),
+        /1 Planned · 0 Reported · 0 Verified · 0 Confirmed outcomes/);
       await savedRow.getByText('Outcome not yet confirmed', { exact: true }).waitFor();
       const linkedPlan = savedRow.getByRole('link', { name: /^Open in Plan/ });
       const href = new URL(await linkedPlan.getAttribute('href'), base);
@@ -316,6 +318,9 @@ async function scenario(named, surface) {
       reviewStatus = 'verified_done';
       await openStatus();
       await savedRow.getByText(/· Verified Done$/).waitFor();
+      assert.match(await tracking.getByLabel('Review follow-up status overview').innerText(),
+        /0 Planned · 0 Reported · 1 Verified · 0 Confirmed outcomes/);
+      assert.equal(await savedRow.getByRole('navigation', { name: /Other follow-up actions for/ }).count(), 1);
       await savedRow.getByText('Verified Activity', { exact: true }).waitFor();
       await savedRow.getByText('Existing fixture call', { exact: true }).waitFor();
       await savedRow.getByText(/· Call$/).waitFor();
@@ -457,6 +462,7 @@ async function scenario(named, surface) {
       await page.setViewportSize({ width: 390, height: 844 });
       await openStatus();
       await savedRow.getByText(/Confirmed opportunity outcome · Won/).waitFor();
+      assert.match(await tracking.getByLabel('Review follow-up status overview').innerText(), /1 Confirmed outcomes/);
       await savedRow.getByText('Customer signed the renewal.', { exact: true }).waitFor();
       assert.ok(await tracking.evaluate(panel => panel.scrollWidth <= panel.clientWidth));
       const linkedEvidence = savedRow.getByRole('link', { name: /^View linked Activity/ });
