@@ -33,7 +33,9 @@ The Review follow-up UI presents authorized status counts (Planned, Reported Don
 | G3: In-flight workspace switch | Hold a live hosted Plan/Review read; switch between personal and named workspaces; then release old response | No stale records/caches rendered or persisted, correct subsequent authorized data |
 | G4: Migration and rollback | Apply Plan receipt migration **before** Review projection on isolated staging with synthetic legacy data; exercise rollback with `PLAN_COMPLETION_ENABLED=false` | Applied migration ledger, verified receipt-read compatibility, preserved legacy rows, rollback rehearsal and operator sign-off |
 
-**Do not use production Supabase**, live commercial data, or a production Vercel deployment as a substitute for isolated staging. Real hosted infrastructure is not identified or provisioned in this packet. Provisioning paid or production resources is out of scope. Avoid publishing secrets or test-user tokens.
+**Connected-host inventory (read-only, 2026-11-25):** The visible Supabase account has a production project with only its default `main` branch; no isolated nonproduction database branch was found. The visible Vercel `memoire` project has READY preview deployments on development branches, but no separate isolated staging application/database pair was verified. A Vercel preview **does not** close Auth, DB-migration, race or rollback hosted gates by itself.
+
+**Do not use production Supabase**, live commercial data, or a production Vercel deployment as a substitute for isolated staging. A complete isolated staging environment was not identified or provisioned in this packet. Provisioning paid or production resources is out of scope. Avoid publishing secrets or test-user tokens.
 
 ## Clean integration sequence (preparation only)
 
